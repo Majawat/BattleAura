@@ -8,6 +8,7 @@ DFRobotDFPlayerMini myDFPlayer;
 // LED pins for candle effect
 #define LED1 D0 // GPIO2
 #define LED2 D1 // GPIO3
+#define audio_tank_idle 2
 
 // Function declaration
 void candleFlicker(int ledPin);
@@ -17,7 +18,7 @@ void printDetail(uint8_t type, int value);
 void setup() {
   Serial.begin(9600);
   delay(1000);
-  Serial.println("=== DFPlayer Candle Mode ===");
+  Serial.println("=== BattleAura ===");
   
   // Initialize LEDs
   pinMode(LED1, OUTPUT);
@@ -32,7 +33,7 @@ void setup() {
     // Set volume and start looping
     myDFPlayer.volume(20); // Volume 0-30
     delay(500);
-    myDFPlayer.loop(1);
+    myDFPlayer.loop(audio_tank_idle);
     
     Serial.println("Playing 0001.mp3 in loop with candle flicker...");
   } else {
