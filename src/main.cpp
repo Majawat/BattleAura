@@ -6,9 +6,24 @@ SoftwareSerial softSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini myDFPlayer;
 
 // LED pins for candle effect
-#define LED1 D0 // GPIO2
-#define LED2 D1 // GPIO3
-#define audio_tank_idle 2
+#define LED1 D0 // Candle fiber optics 1
+#define LED2 D1 // Candle fiber optics 2
+#define LED3 D2 // Brazier
+#define LED4 D3 // Console screen
+#define LED5 D4 //Weap
+#define LED6 D8 // Engine stack 1
+#define LED7 D9 // Engine stack 2
+#define LED8 D10 // Unused currently
+
+// Audio files
+#define AUDIO_IDLE        2
+#define AUDIO_WEAPON_FIRE_1    3
+#define AUDIO_WEAPON_FIRE_2    4
+#define AUDIO_TAKING_HITS      5
+#define AUDIO_ENGINE_REV       6
+#define AUDIO_DESTROYED        7
+#define AUDIO_LIMITED_WEAPON   8
+#define AUDIO_UNIT_KILL        9
 
 // Function declaration
 void candleFlicker(int ledPin);
@@ -23,6 +38,12 @@ void setup() {
   // Initialize LEDs
   pinMode(LED1, OUTPUT);
   pinMode(LED2, OUTPUT);
+  pinMode(LED3, OUTPUT);
+  pinMode(LED4, OUTPUT);
+  pinMode(LED5, OUTPUT);
+  pinMode(LED6, OUTPUT); 
+  pinMode(LED7, OUTPUT);
+  pinMode(LED8, OUTPUT);
   
   // Initialize DFPlayer
   softSerial.begin(9600);
@@ -33,7 +54,7 @@ void setup() {
     // Set volume and start looping
     myDFPlayer.volume(20); // Volume 0-30
     delay(500);
-    myDFPlayer.loop(audio_tank_idle);
+    myDFPlayer.loop(AUDIO_IDLE);
     
     Serial.println("Playing 0001.mp3 in loop with candle flicker...");
   } else {

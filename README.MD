@@ -39,6 +39,16 @@ Speaker to DFPlayer
 - D9: Engine stack 2
 - D10: ?
 
+### Audio files assignments
+ - 0002 - Tank engine idle
+ - 0003 - Weapon 1 fire
+ - 0004 - Weapon 2 fire
+ - 0005 - Taking hits
+ - 0006 - Engine revving
+ - 0007 - Destroyed
+ - 0008 - Limited big weapon
+ - 0009 - Killed another unit
+
 ## How I Use It
 
 1. PlatformIO in VS Code
@@ -54,6 +64,6 @@ Speaker to DFPlayer
 ## Planned features
 
 - Add more MP3s, add LEDs
-- Add WiFi
+- Add WiFi and configuration
 - Try new LED patterns
 - Add connection to BattleSync
