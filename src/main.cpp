@@ -10,7 +10,8 @@ DFRobotDFPlayerMini myDFPlayer;
 #define LED2 D1 // Candle fiber optics 2
 #define LED3 D2 // Brazier
 #define LED4 D3 // Console screen
-#define LED5 D4 //Weap
+#define LED5 D4 // Weapon 1
+#define LED6 D5 // Weapon 2
 #define LED6 D8 // Engine stack 1
 #define LED7 D9 // Engine stack 2
 #define LED8 D10 // Unused currently
@@ -28,7 +29,6 @@ DFRobotDFPlayerMini myDFPlayer;
 // Function declaration
 void candleFlicker(int ledPin);
 void printDetail(uint8_t type, int value);
-
 
 void setup() {
   Serial.begin(9600);
@@ -56,7 +56,7 @@ void setup() {
     delay(500);
     myDFPlayer.loop(AUDIO_IDLE);
     
-    Serial.println("Playing 0001.mp3 in loop with candle flicker...");
+    Serial.println("Playing IDLE file in loop with candle flicker...");
   } else {
     Serial.println("DFPlayer connection failed!");
   }
