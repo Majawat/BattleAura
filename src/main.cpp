@@ -10,8 +10,8 @@ DFRobotDFPlayerMini myDFPlayer;
 #define LED2 D1 // Candle fiber optics 2
 #define LED3 D2 // Brazier
 #define LED4 D3 // Console screen
-#define LED5 D4 // Weapon 1
-#define LED6 D5 // Weapon 2
+#define LED5 D4 // Weapon 1 - machine gun
+#define LED6 D5 // Weapon 2 - flamethrower
 #define LED6 D8 // Engine stack 1
 #define LED7 D9 // Engine stack 2
 #define LED8 D10 // Unused currently
@@ -66,6 +66,7 @@ void loop() {
   // Candle flicker effect for both LEDs
   candleFlicker(LED1);
   candleFlicker(LED2);
+  candleFlicker(LED3);
   
   // Small delay for smooth flicker
   delay(50);
@@ -75,6 +76,7 @@ void loop() {
 
 }
 
+// Candle flicker effect
 void candleFlicker(int ledPin) {
   // Generate random flicker values
   int baseIntensity = random(40, 80);  // Base candle glow (40-80 out of 255)
@@ -85,6 +87,22 @@ void candleFlicker(int ledPin) {
   brightness = constrain(brightness, 5, 120); // Never fully off, never too bright
   
   analogWrite(ledPin, brightness);
+}
+
+// Engine breathing effect
+void enginePulse(int ledPin, int minBright, int maxBright, int speed) {
+  static unsigned long lastUpdate = 0;
+  static int brightness = minBright;
+  static int direction = 1;
+
+  if (millis() - lastUpdate > speed) {
+    lastUpdate = millis();
+    brightness += direction;
+    if (brightness >= maxBright || brightness <= minBright) {
+      direction = -direction;
+    }
+    analogWrite(ledPin, brightness);
+  }
 }
 
 void printDetail(uint8_t type, int value){
