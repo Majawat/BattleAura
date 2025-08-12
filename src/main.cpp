@@ -11,7 +11,7 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.7.0"
+#define FIRMWARE_VERSION "0.8.0"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
@@ -41,6 +41,8 @@ WiFiManager wifiManager;
 
 // Function declarations
 void candleFlicker(int ledPin);
+void enginePulseSmooth(int ledPin, int phase);
+void engineHeat(int ledPin);
 void printDetail(uint8_t type, int value);
 void setupWiFi();
 void setupWebServer();
@@ -90,6 +92,10 @@ void loop() {
   candleFlicker(LED2);
   candleFlicker(LED3);
   
+  // Engine stack effects
+  enginePulseSmooth(LED7, 0);    // First engine stack - smooth pulse
+  engineHeat(LED8);              // Second engine stack - heat flicker
+  
   // Small delay for smooth flicker
   delay(50);
   if (dfPlayer.available()) {
@@ -119,7 +125,7 @@ void candleFlicker(int ledPin) {
   analogWrite(ledPin, brightness);
 }
 
-// Engine breathing effect
+// Engine breathing effect (original - unused now)
 void enginePulse(int ledPin, int minBright, int maxBright, int speed) {
   static unsigned long lastUpdate = 0;
   static int brightness = minBright;
@@ -133,6 +139,31 @@ void enginePulse(int ledPin, int minBright, int maxBright, int speed) {
     }
     analogWrite(ledPin, brightness);
   }
+}
+
+// Smooth engine pulse using sine wave
+void enginePulseSmooth(int ledPin, int phase) {
+  // Use sine wave for smooth breathing
+  float angle = (millis() + phase) * 0.003;  // Slow breathing
+  int brightness = 40 + 80 * (sin(angle) + 1) / 2;  // Range 40-120
+  analogWrite(ledPin, brightness);
+}
+
+// Engine heat flicker effect
+void engineHeat(int ledPin) {
+  static unsigned long lastUpdate = 0;
+  static int baseHeat = 80;
+  
+  // Slow heat base changes
+  if (millis() - lastUpdate > random(300, 800)) {
+    baseHeat = random(60, 120);
+    lastUpdate = millis();
+  }
+  
+  // Fast flicker on top of base heat
+  int flicker = random(-15, 20);
+  int brightness = constrain(baseHeat + flicker, 30, 150);
+  analogWrite(ledPin, brightness);
 }
 
 void printDetail(uint8_t type, int value){
