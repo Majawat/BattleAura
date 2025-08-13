@@ -6,6 +6,8 @@
 #include <WebServer.h>
 #include <Update.h>
 #include <ESPmDNS.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
 #include "effects.h"
 #include "dfplayer.h"
 
@@ -13,8 +15,8 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.16.6"
-#define VERSION_FEATURE "Fix artifact filename typo: battlearua -> battleaura"
+#define FIRMWARE_VERSION "0.17.0"
+#define VERSION_FEATURE "Add over-the-air firmware updates via battlesync.me integration"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
@@ -44,6 +46,10 @@ void handleFactoryReset();
 void handleMachineGun();
 void handleFlamethrower();
 void resumeIdleAudio();
+void handleCheckUpdates();
+void handlePerformUpdate();
+int compareVersions(String current, String remote);
+bool checkForUpdates(String &newVersion, String &downloadUrl, String &changelog);
 
 void setup() {
   Serial.begin(9600);
@@ -215,6 +221,8 @@ void setupWebServer() {
   server.on("/factory-reset", handleFactoryReset);
   server.on("/machine-gun", handleMachineGun);
   server.on("/flamethrower", handleFlamethrower);
+  server.on("/check-updates", handleCheckUpdates);
+  server.on("/perform-update", handlePerformUpdate);
   
   server.begin();
   Serial.println(F("Web server started"));
@@ -274,11 +282,16 @@ void handleRoot() {
   }
   html += F("</div>");
   
-  html += F("<h2>📦 Upload Firmware</h2>");
-  html += F("<form method='POST' action='/upload' enctype='multipart/form-data'>");
+  html += F("<h2>📦 Firmware Management</h2>");
+  html += F("<div class='info-box'>");
+  html += F("<div class='control-desc'>Check for new firmware updates from battlesync.me</div>");
+  html += F("<button onclick=\"window.location='/check-updates'\">🔄 Check for Updates</button>");
+  html += F("<br><br><strong>Manual Upload:</strong>");
+  html += F("<form method='POST' action='/upload' enctype='multipart/form-data' style='margin-top:10px;'>");
   html += F("<input type='file' name='firmware' accept='.bin' required>");
   html += F("<input type='submit' value='📤 Upload Firmware'>");
   html += F("</form>");
+  html += F("</div>");
   
   html += F("<h2>🎮 Battle Effects</h2>");
   html += F("<div class='info-box'>");
@@ -388,4 +401,144 @@ void resumeIdleAudio() {
     dfPlayerPlaying = true;
     Serial.println("Auto-resumed idle audio after weapon effect");
   }
+}
+
+// Compare two version strings (returns 1 if remote > current, 0 if equal, -1 if current > remote)
+int compareVersions(String current, String remote) {
+  // Remove 'v' prefix if present
+  if (current.startsWith("v")) current = current.substring(1);
+  if (remote.startsWith("v")) remote = remote.substring(1);
+  
+  // Simple string comparison works for semantic versioning like 0.16.6
+  if (remote > current) return 1;
+  if (remote == current) return 0;
+  return -1;
+}
+
+// Check for firmware updates from battlesync.me
+bool checkForUpdates(String &newVersion, String &downloadUrl, String &changelog) {
+  HTTPClient http;
+  http.begin("https://battlesync.me/api/battleaura/firmware/latest");
+  http.addHeader("User-Agent", "BattleAura/" + String(FIRMWARE_VERSION));
+  
+  int httpCode = http.GET();
+  
+  if (httpCode == HTTP_CODE_OK) {
+    String payload = http.getString();
+    Serial.println("Update check response: " + payload);
+    
+    DynamicJsonDocument doc(1024);
+    deserializeJson(doc, payload);
+    
+    newVersion = doc["version"].as<String>();
+    downloadUrl = doc["download_url"].as<String>();
+    changelog = doc["changelog"].as<String>();
+    
+    http.end();
+    
+    // Compare versions
+    return compareVersions(FIRMWARE_VERSION, newVersion) > 0;
+  } else {
+    Serial.println("Update check failed: " + String(httpCode));
+    http.end();
+    return false;
+  }
+}
+
+// Handle check for updates request
+void handleCheckUpdates() {
+  Serial.println("Checking for firmware updates...");
+  
+  String newVersion, downloadUrl, changelog;
+  bool updateAvailable = checkForUpdates(newVersion, downloadUrl, changelog);
+  
+  String html = F("<!DOCTYPE html><html><head><title>BattleAura Updates</title>");
+  html += F("<meta name='viewport' content='width=device-width,initial-scale=1'>");
+  html += F("<style>");
+  html += F("body { font-family: 'Segoe UI', Arial, sans-serif; background: #0d1117; color: #e6edf3; padding: 20px; }");
+  html += F(".container { max-width: 600px; margin: 0 auto; }");
+  html += F("h1 { color: #58a6ff; }");
+  html += F(".info-box { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; margin: 16px 0; }");
+  html += F("button { background: #238636; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 5px; }");
+  html += F(".btn-update { background: #1f6feb !important; }");
+  html += F("</style></head><body><div class='container'>");
+  
+  html += F("<h1>Firmware Update Check</h1>");
+  html += F("<div class='info-box'>");
+  html += F("<strong>Current Version:</strong> ") + String(FIRMWARE_VERSION) + F("<br>");
+  
+  if (updateAvailable) {
+    html += F("<strong>New Version Available:</strong> ") + newVersion + F("<br>");
+    html += F("<strong>Changes:</strong> ") + changelog + F("<br><br>");
+    html += F("<button class='btn-update' onclick=\"if(confirm('Download and install ") + newVersion + F("? Device will restart.')) window.location='/perform-update?url=") + downloadUrl + F("'\">Download & Install Update</button>");
+  } else {
+    html += F("<strong>Status:</strong> You have the latest version!<br>");
+  }
+  
+  html += F("<br><button onclick=\"window.location='/'\">← Back to Main</button>");
+  html += F("</div></div></body></html>");
+  
+  server.send(200, "text/html", html);
+}
+
+// Handle firmware update download and installation
+void handlePerformUpdate() {
+  String updateUrl = server.arg("url");
+  
+  if (updateUrl.length() == 0) {
+    server.send(400, "text/html", F("<html><body><h1>Error</h1><p>No update URL provided</p></body></html>"));
+    return;
+  }
+  
+  Serial.println("Starting firmware update from: " + updateUrl);
+  
+  // Send immediate response to user
+  server.send(200, "text/html", 
+    F("<html><head><style>body{font-family:Arial;background:#0d1117;color:#e6edf3;padding:20px;text-align:center;}</style></head><body><h1>🔄 Updating Firmware</h1><p>Downloading and installing update...<br>Device will restart automatically when complete.</p></body></html>"));
+  
+  // Give time for response to send
+  delay(1000);
+  
+  // Start the actual update process
+  HTTPClient http;
+  http.begin(updateUrl);
+  
+  int httpCode = http.GET();
+  if (httpCode == HTTP_CODE_OK) {
+    int contentLength = http.getSize();
+    
+    if (contentLength > 0) {
+      bool canBegin = Update.begin(contentLength);
+      
+      if (canBegin) {
+        Serial.println("Starting OTA update...");
+        WiFiClient * client = http.getStreamPtr();
+        
+        size_t written = Update.writeStream(*client);
+        
+        if (written == contentLength) {
+          Serial.println("OTA update written successfully");
+        } else {
+          Serial.println("OTA update write failed");
+        }
+        
+        if (Update.end()) {
+          if (Update.isFinished()) {
+            Serial.println("OTA update completed successfully! Restarting...");
+            ESP.restart();
+          } else {
+            Serial.println("OTA update not finished");
+          }
+        } else {
+          Serial.println("OTA update end failed");
+        }
+      } else {
+        Serial.println("OTA update begin failed");
+      }
+    }
+  } else {
+    Serial.println("HTTP GET failed: " + String(httpCode));
+  }
+  
+  http.end();
 }

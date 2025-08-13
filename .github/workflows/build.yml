@@ -35,5 +35,12 @@ jobs:
         with:
           name: battleaura-firmware-${{ github.ref_name }}
           path: .pio/build/seeed_xiao_esp32c3/firmware.bin
-
-  # Future: Add deployment step here when battlesync.me API is ready
+          
+      - name: Deploy to battlesync.me
+        run: |
+          echo "Uploading firmware to battlesync.me..."
+          curl -X POST \
+            -F "file=@.pio/build/seeed_xiao_esp32c3/firmware.bin" \
+            -F "version=${{ github.ref_name }}" \
+            -F "changelog=${{ github.event.head_commit.message }}" \
+            https://battlesync.me/api/battleaura/firmware/upload
