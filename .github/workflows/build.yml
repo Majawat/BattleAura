@@ -33,7 +33,7 @@ jobs:
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
-          name: battlearua-firmware-${{ github.ref_name }}
+          name: battleaura-firmware-${{ github.ref_name }}
           path: .pio/build/seeed_xiao_esp32c3/firmware.bin
 
   # Future: Add deployment step here when battlesync.me API is ready

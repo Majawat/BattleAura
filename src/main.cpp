@@ -13,8 +13,8 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.16.5"
-#define VERSION_FEATURE "Fix GitHub Actions artifact upload to use v4"
+#define FIRMWARE_VERSION "0.16.6"
+#define VERSION_FEATURE "Fix artifact filename typo: battlearua -> battleaura"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
