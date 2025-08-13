@@ -6,14 +6,16 @@
 #include <WebServer.h>
 #include <Update.h>
 #include <ESPmDNS.h>
+#include "effects.h"
+#include "dfplayer.h"
 
 SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.9.0"
+#define FIRMWARE_VERSION "0.11.0"
+#define VERSION_FEATURE "Refactor code into modular structure with effects and dfplayer libraries"
 #define BUILD_DATE __DATE__ " " __TIME__
-#define VERSION_FEATURE "check actuall communication with dfplayer"
 
 // Web server and WiFi
 WebServer server(80);
@@ -26,16 +28,6 @@ int currentTrack = 0;
 String dfPlayerStatus = "Unknown";
 unsigned long lastStatusCheck = 0;
 
-// LED pins for candle effect
-#define LED1 D0 // Candle fiber optics 1
-#define LED2 D1 // Candle fiber optics 2
-#define LED3 D2 // Brazier
-#define LED4 D3 // Console screen
-#define LED5 D4 // Weapon 1 - machine gun
-#define LED6 D5 // Weapon 2 - flamethrower
-#define LED7 D8 // Engine stack 1
-#define LED8 D9 // Engine stack 2
-#define LED9 D10 // Unused currently
 
 // Audio files
 #define AUDIO_IDLE        2
@@ -48,9 +40,6 @@ unsigned long lastStatusCheck = 0;
 #define AUDIO_UNIT_KILL        9
 
 // Function declarations
-void candleFlicker(int ledPin);
-void enginePulseSmooth(int ledPin, int phase);
-void engineHeat(int ledPin);
 void printDetail(uint8_t type, int value);
 void checkDFPlayerStatus();
 void setupWiFi();
@@ -140,129 +129,6 @@ void loop() {
   // Handle web server requests
   server.handleClient();
 
-}
-
-// Candle flicker effect
-void candleFlicker(int ledPin) {
-  static unsigned long lastBaseUpdate = 0;
-  static int baseIntensity = 60;  // Starting base
-  
-  // Update base intensity every 200-500ms (randomly)
-  if (millis() - lastBaseUpdate > random(200, 500)) {
-    baseIntensity = random(40, 80);
-    lastBaseUpdate = millis();
-  }
-  
-  // Add flicker every call
-  int flicker = random(-20, 30);
-  int brightness = constrain(baseIntensity + flicker, 5, 120);
-  
-  analogWrite(ledPin, brightness);
-}
-
-// Engine breathing effect (original - unused now)
-void enginePulse(int ledPin, int minBright, int maxBright, int speed) {
-  static unsigned long lastUpdate = 0;
-  static int brightness = minBright;
-  static int direction = 1;
-
-  if (millis() - lastUpdate > speed) {
-    lastUpdate = millis();
-    brightness += direction;
-    if (brightness >= maxBright || brightness <= minBright) {
-      direction = -direction;
-    }
-    analogWrite(ledPin, brightness);
-  }
-}
-
-// Smooth engine pulse using sine wave
-void enginePulseSmooth(int ledPin, int phase) {
-  // Use sine wave for smooth breathing
-  float angle = (millis() + phase) * 0.003;  // Slow breathing
-  int brightness = 40 + 80 * (sin(angle) + 1) / 2;  // Range 40-120
-  analogWrite(ledPin, brightness);
-}
-
-// Engine heat flicker effect
-void engineHeat(int ledPin) {
-  static unsigned long lastUpdate = 0;
-  static int baseHeat = 80;
-  
-  // Slow heat base changes
-  if (millis() - lastUpdate > random(300, 800)) {
-    baseHeat = random(60, 120);
-    lastUpdate = millis();
-  }
-  
-  // Fast flicker on top of base heat
-  int flicker = random(-15, 20);
-  int brightness = constrain(baseHeat + flicker, 30, 150);
-  analogWrite(ledPin, brightness);
-}
-
-void printDetail(uint8_t type, int value){
-  switch (type) {
-    case TimeOut:
-      Serial.println(F("Time Out!"));
-      break;
-    case WrongStack:
-      Serial.println(F("Stack Wrong!"));
-      break;
-    case DFPlayerCardInserted:
-      Serial.println(F("Card Inserted!"));
-      break;
-    case DFPlayerCardRemoved:
-      Serial.println(F("Card Removed!"));
-      break;
-    case DFPlayerCardOnline:
-      Serial.println(F("Card Online!"));
-      break;
-    case DFPlayerUSBInserted:
-      Serial.println(F("USB Inserted!"));
-      break;
-    case DFPlayerUSBRemoved:
-      Serial.println(F("USB Removed!"));
-      break;
-    case DFPlayerPlayFinished:
-      Serial.print(F("Number:"));
-      Serial.print(value);
-      Serial.println(F(" Play Finished!"));
-      dfPlayerPlaying = false;
-      dfPlayerStatus = "Play Finished";
-      break;
-    case DFPlayerError:
-      Serial.print(F("DFPlayerError:"));
-      switch (value) {
-        case Busy:
-          Serial.println(F("Card not found"));
-          break;
-        case Sleeping:
-          Serial.println(F("Sleeping"));
-          break;
-        case SerialWrongStack:
-          Serial.println(F("Get Wrong Stack"));
-          break;
-        case CheckSumNotMatch:
-          Serial.println(F("Check Sum Not Match"));
-          break;
-        case FileIndexOut:
-          Serial.println(F("File Index Out of Bound"));
-          break;
-        case FileMismatch:
-          Serial.println(F("Cannot Find File"));
-          break;
-        case Advertise:
-          Serial.println(F("In Advertise"));
-          break;
-        default:
-          break;
-      }
-      break;
-    default:
-      break;
-  }
-  
 }
 
 // Check DFPlayer status periodically
