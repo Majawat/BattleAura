@@ -19,5 +19,6 @@ void candleFlicker(int ledPin);
 void enginePulse(int ledPin, int minBright, int maxBright, int speed);
 void enginePulseSmooth(int ledPin, int phase);
 void engineHeat(int ledPin);
+void consoleDataStream(int ledPin);
 
 #endif

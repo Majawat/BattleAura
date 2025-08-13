@@ -58,3 +58,17 @@ void engineHeat(int ledPin) {
   int brightness = constrain(baseHeat + flicker, 30, 150);
   analogWrite(ledPin, brightness);
 }
+
+// Console data stream effect
+void consoleDataStream(int ledPin) {
+  static unsigned long lastPulse = 0;
+  static bool isOn = false;
+  
+  // Fast, irregular pulses like data scrolling
+  if (millis() - lastPulse > random(100, 400)) {
+    isOn = !isOn;
+    int brightness = isOn ? random(80, 150) : random(10, 30);
+    analogWrite(ledPin, brightness);
+    lastPulse = millis();
+  }
+}

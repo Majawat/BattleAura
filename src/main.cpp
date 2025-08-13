@@ -13,8 +13,8 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.13.0"
-#define VERSION_FEATURE "Complete DFPlayer module separation and add web reset controls"
+#define FIRMWARE_VERSION "0.14.0"
+#define VERSION_FEATURE "Add console data stream effect for LED4 screen simulation"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
@@ -108,6 +108,9 @@ void loop() {
   candleFlicker(LED1); //candle fiber optics 1
   candleFlicker(LED2); //candle fiber optics 2
   candleFlicker(LED3); // brazier
+  
+  // Console screen data stream effect
+  consoleDataStream(LED4); // console screen
   
   // Engine stack effects
   enginePulseSmooth(LED7, 0);    // First engine stack - smooth pulse
