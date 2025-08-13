@@ -13,20 +13,14 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.12.0"
-#define VERSION_FEATURE "Add wifi reset and factory reset to main webpage"
+#define FIRMWARE_VERSION "0.13.0"
+#define VERSION_FEATURE "Complete DFPlayer module separation and add web reset controls"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
 WebServer server(80);
 WiFiManager wifiManager;
 
-// DFPlayer status tracking
-bool dfPlayerConnected = false;
-bool dfPlayerPlaying = false;
-int currentTrack = 0;
-String dfPlayerStatus = "Unknown";
-unsigned long lastStatusCheck = 0;
 
 
 // Audio files

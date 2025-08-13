@@ -1,5 +1,12 @@
 #include "dfplayer.h"
 
+// DFPlayer state variables
+bool dfPlayerConnected = false;
+bool dfPlayerPlaying = false;
+int currentTrack = 0;
+String dfPlayerStatus = "Unknown";
+unsigned long lastStatusCheck = 0;
+
 void printDetail(uint8_t type, int value){
   switch (type) {
     case TimeOut:
