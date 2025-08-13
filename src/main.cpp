@@ -18,6 +18,12 @@ DFRobotDFPlayerMini dfPlayer;
 WebServer server(80);
 WiFiManager wifiManager;
 
+// DFPlayer status tracking
+bool dfPlayerConnected = false;
+bool dfPlayerPlaying = false;
+int currentTrack = 0;
+String dfPlayerStatus = "Unknown";
+
 // LED pins for candle effect
 #define LED1 D0 // Candle fiber optics 1
 #define LED2 D1 // Candle fiber optics 2
@@ -70,15 +76,21 @@ void setup() {
   
   if (dfPlayer.begin(audioSerial, false, false)) {
     Serial.println("DFPlayer connected!");
+    dfPlayerConnected = true;
+    dfPlayerStatus = "Connected";
     
     // Set volume and start looping
     dfPlayer.volume(20); // Volume 0-30
     delay(500);
     dfPlayer.loop(AUDIO_IDLE);
+    currentTrack = AUDIO_IDLE;
+    dfPlayerPlaying = true;
     
     Serial.println("Playing IDLE file in loop with candle flicker...");
   } else {
     Serial.println("DFPlayer connection failed!");
+    dfPlayerConnected = false;
+    dfPlayerStatus = "Connection Failed";
   }
   
   // Setup WiFi and web server
@@ -193,6 +205,8 @@ void printDetail(uint8_t type, int value){
       Serial.print(F("Number:"));
       Serial.print(value);
       Serial.println(F(" Play Finished!"));
+      dfPlayerPlaying = false;
+      dfPlayerStatus = "Play Finished";
       break;
     case DFPlayerError:
       Serial.print(F("DFPlayerError:"));
@@ -283,7 +297,24 @@ void handleRoot() {
   html += F("<br><strong>Built:</strong> ");
   html += BUILD_DATE;
   html += F("</p>");
-  html += F("<p>Current Status: Running</p>");
+  
+  html += F("<h2>System Status</h2>");
+  html += F("<p><strong>System:</strong> Running<br>");
+  html += F("<strong>DFPlayer:</strong> ");
+  if (dfPlayerConnected) {
+    html += F("Connected<br>");
+    html += F("<strong>Audio Status:</strong> ");
+    html += dfPlayerStatus;
+    if (dfPlayerPlaying) {
+      html += F(" (Track ");
+      html += currentTrack;
+      html += F(")");
+    }
+  } else {
+    html += F("Disconnected");
+  }
+  html += F("</p>");
+  
   html += F("<h2>Upload New Firmware</h2>");
   html += F("<form method='POST' action='/upload' enctype='multipart/form-data'>");
   html += F("<input type='file' name='firmware' accept='.bin'><br><br>");
