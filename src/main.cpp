@@ -24,6 +24,7 @@ bool dfPlayerConnected = false;
 bool dfPlayerPlaying = false;
 int currentTrack = 0;
 String dfPlayerStatus = "Unknown";
+unsigned long lastStatusCheck = 0;
 
 // LED pins for candle effect
 #define LED1 D0 // Candle fiber optics 1
@@ -51,6 +52,7 @@ void candleFlicker(int ledPin);
 void enginePulseSmooth(int ledPin, int phase);
 void engineHeat(int ledPin);
 void printDetail(uint8_t type, int value);
+void checkDFPlayerStatus();
 void setupWiFi();
 void setupWebServer();
 void handleRoot();
@@ -76,22 +78,39 @@ void setup() {
   audioSerial.begin(9600);
   
   if (dfPlayer.begin(audioSerial, false, false)) {
-    Serial.println("DFPlayer connected!");
-    dfPlayerConnected = true;
-    dfPlayerStatus = "Connected";
+    Serial.println("DFPlayer serial initialized, testing communication...");
     
-    // Set volume and start looping
-    dfPlayer.volume(20); // Volume 0-30
+    // Test actual communication by trying to read current state
+    delay(1000);  // Give DFPlayer time to initialize
+    
+    // Try to set and verify volume to test bidirectional communication
+    dfPlayer.volume(20);
     delay(500);
-    dfPlayer.loop(AUDIO_IDLE);
-    currentTrack = AUDIO_IDLE;
-    dfPlayerPlaying = true;
     
-    Serial.println("Playing IDLE file in loop with candle flicker...");
+    int currentVolume = dfPlayer.readVolume();
+    delay(100);
+    
+    if (currentVolume > 0 && currentVolume <= 30) {
+      Serial.print("DFPlayer connected! Volume: ");
+      Serial.println(currentVolume);
+      dfPlayerConnected = true;
+      dfPlayerStatus = "Connected";
+      
+      // Start looping idle sound
+      dfPlayer.loop(AUDIO_IDLE);
+      currentTrack = AUDIO_IDLE;
+      dfPlayerPlaying = true;
+      
+      Serial.println("Playing IDLE file in loop with candle flicker...");
+    } else {
+      Serial.println("DFPlayer communication test failed - no response");
+      dfPlayerConnected = false;
+      dfPlayerStatus = "No Response";
+    }
   } else {
-    Serial.println("DFPlayer connection failed!");
+    Serial.println("DFPlayer serial initialization failed!");
     dfPlayerConnected = false;
-    dfPlayerStatus = "Connection Failed";
+    dfPlayerStatus = "Serial Init Failed";
   }
   
   // Setup WiFi and web server
@@ -114,6 +133,9 @@ void loop() {
   if (dfPlayer.available()) {
     printDetail(dfPlayer.readType(), dfPlayer.read()); //Print the detail message from DFPlayer to handle different errors and states.
   }
+  
+  // Periodic DFPlayer status check (every 10 seconds)
+  checkDFPlayerStatus();
   
   // Handle web server requests
   server.handleClient();
@@ -241,6 +263,42 @@ void printDetail(uint8_t type, int value){
       break;
   }
   
+}
+
+// Check DFPlayer status periodically
+void checkDFPlayerStatus() {
+  // Check every 10 seconds
+  if (millis() - lastStatusCheck < 10000) {
+    return;
+  }
+  lastStatusCheck = millis();
+  
+  // Only check if we think it's connected, or if it was disconnected and we want to retry
+  if (dfPlayerConnected || dfPlayerStatus == "No Response" || dfPlayerStatus == "Serial Init Failed") {
+    int volume = dfPlayer.readVolume();
+    delay(100);
+    
+    if (volume > 0 && volume <= 30) {
+      if (!dfPlayerConnected) {
+        Serial.println("DFPlayer reconnected!");
+        dfPlayerConnected = true;
+        dfPlayerStatus = "Connected";
+        // Restart idle loop if it was disconnected
+        if (!dfPlayerPlaying) {
+          dfPlayer.loop(AUDIO_IDLE);
+          currentTrack = AUDIO_IDLE;
+          dfPlayerPlaying = true;
+        }
+      }
+    } else {
+      if (dfPlayerConnected) {
+        Serial.println("DFPlayer connection lost!");
+        dfPlayerConnected = false;
+        dfPlayerStatus = "Connection Lost";
+        dfPlayerPlaying = false;
+      }
+    }
+  }
 }
 
 // WiFi setup with captive portal
