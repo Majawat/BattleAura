@@ -13,8 +13,8 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.14.0"
-#define VERSION_FEATURE "Add console data stream effect for LED4 screen simulation"
+#define FIRMWARE_VERSION "0.15.0"
+#define VERSION_FEATURE "Add modern dark mode web interface with improved styling"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
@@ -216,23 +216,47 @@ void setupWebServer() {
 
 // Main page with upload form
 void handleRoot() {
-  String html = F("<!DOCTYPE html><html><head><title>BattleAura OTA</title></head><body>");
-  html += F("<h1>BattleAura - OTA Update</h1>");
-  html += F("<p><strong>Firmware:</strong> ");
+  String html = F("<!DOCTYPE html><html><head><title>BattleAura OTA</title>");
+  html += F("<meta name='viewport' content='width=device-width,initial-scale=1'>");
+  html += F("<style>");
+  html += F("* { box-sizing: border-box; margin: 0; padding: 0; }");
+  html += F("body { font-family: 'Segoe UI', Arial, sans-serif; background: #0d1117; color: #e6edf3; padding: 20px; line-height: 1.6; }");
+  html += F(".container { max-width: 800px; margin: 0 auto; }");
+  html += F("h1 { color: #58a6ff; font-size: 2em; margin-bottom: 1em; border-bottom: 2px solid #21262d; padding-bottom: 0.5em; }");
+  html += F("h2 { color: #7c3aed; font-size: 1.4em; margin: 1.5em 0 0.8em 0; }");
+  html += F(".info-box { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; margin: 16px 0; }");
+  html += F(".status { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.9em; font-weight: bold; }");
+  html += F(".status.connected { background: #238636; color: white; }");
+  html += F(".status.disconnected { background: #da3633; color: white; }");
+  html += F(".status.running { background: #1f6feb; color: white; }");
+  html += F("form { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin: 16px 0; }");
+  html += F("input[type=file] { background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 8px 12px; color: #e6edf3; width: 100%; margin-bottom: 16px; }");
+  html += F("input[type=submit], button { background: #238636; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; margin: 4px; transition: background 0.2s; }");
+  html += F("input[type=submit]:hover, button:hover { background: #2ea043; }");
+  html += F(".btn-warning { background: #fb8500 !important; } .btn-warning:hover { background: #ffb700 !important; }");
+  html += F(".btn-danger { background: #da3633 !important; } .btn-danger:hover { background: #f85149 !important; }");
+  html += F(".control-desc { color: #8b949e; font-size: 0.9em; margin-bottom: 8px; }");
+  html += F("strong { color: #f0f6fc; }");
+  html += F("</style></head><body><div class='container'>");
+  
+  html += F("<h1>🎮 BattleAura</h1>");
+  
+  html += F("<div class='info-box'>");
+  html += F("<strong>Firmware:</strong> ");
   html += FIRMWARE_VERSION;
   html += F("<br><strong>Built:</strong> ");
   html += BUILD_DATE;
-  html += F("</p>");
-  html += F("<p>");
+  html += F("<br><strong>Feature:</strong> ");
   html += VERSION_FEATURE;
-  html += F("</p>");
+  html += F("</div>");
   
-  html += F("<h2>System Status</h2>");
-  html += F("<p><strong>System:</strong> Running<br>");
+  html += F("<h2>📊 System Status</h2>");
+  html += F("<div class='info-box'>");
+  html += F("<strong>System:</strong> <span class='status running'>Running</span><br>");
   html += F("<strong>DFPlayer:</strong> ");
   if (dfPlayerConnected) {
-    html += F("Connected<br>");
-    html += F("<strong>Audio Status:</strong> ");
+    html += F("<span class='status connected'>Connected</span><br>");
+    html += F("<strong>Audio:</strong> ");
     html += dfPlayerStatus;
     if (dfPlayerPlaying) {
       html += F(" (Track ");
@@ -240,24 +264,25 @@ void handleRoot() {
       html += F(")");
     }
   } else {
-    html += F("Disconnected");
+    html += F("<span class='status disconnected'>Disconnected</span>");
   }
-  html += F("</p>");
+  html += F("</div>");
   
-  html += F("<h2>Upload New Firmware</h2>");
+  html += F("<h2>📦 Upload Firmware</h2>");
   html += F("<form method='POST' action='/upload' enctype='multipart/form-data'>");
-  html += F("<input type='file' name='firmware' accept='.bin'><br><br>");
-  html += F("<input type='submit' value='Upload'>");
+  html += F("<input type='file' name='firmware' accept='.bin' required>");
+  html += F("<input type='submit' value='📤 Upload Firmware'>");
   html += F("</form>");
   
-  html += F("<h2>System Controls</h2>");
-  html += F("<p><strong>WiFi Reset:</strong> Clear WiFi settings and restart captive portal<br>");
-  html += F("<button onclick=\"if(confirm('Reset WiFi settings? Device will restart.')) window.location='/wifi-reset'\" style='background:#ff6b35;color:white;padding:10px;border:none;border-radius:5px;margin:5px;'>Reset WiFi</button></p>");
+  html += F("<h2>⚙️ System Controls</h2>");
+  html += F("<div class='info-box'>");
+  html += F("<div class='control-desc'>Reset WiFi settings and restart captive portal</div>");
+  html += F("<button class='btn-warning' onclick=\"if(confirm('Reset WiFi settings? Device will restart.')) window.location='/wifi-reset'\">🔄 Reset WiFi</button>");
+  html += F("<br><br><div class='control-desc'>Reset all settings to factory defaults</div>");
+  html += F("<button class='btn-danger' onclick=\"if(confirm('Factory reset? This will erase all settings and restart the device.')) window.location='/factory-reset'\">⚠️ Factory Reset</button>");
+  html += F("</div>");
   
-  html += F("<p><strong>Factory Reset:</strong> Reset all settings to factory defaults<br>");
-  html += F("<button onclick=\"if(confirm('Factory reset? This will erase all settings and restart the device.')) window.location='/factory-reset'\" style='background:#dc3545;color:white;padding:10px;border:none;border-radius:5px;margin:5px;'>Factory Reset</button></p>");
-  
-  html += F("</body></html>");
+  html += F("</div></body></html>");
   
   server.send(200, "text/html", html);
 }
