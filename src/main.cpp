@@ -13,8 +13,8 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.11.0"
-#define VERSION_FEATURE "Refactor code into modular structure with effects and dfplayer libraries"
+#define FIRMWARE_VERSION "0.12.0"
+#define VERSION_FEATURE "Add wifi reset and factory reset to main webpage"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
@@ -47,6 +47,8 @@ void setupWebServer();
 void handleRoot();
 void handleUpload();
 void handleUploadFile();
+void handleWiFiReset();
+void handleFactoryReset();
 
 void setup() {
   Serial.begin(9600);
@@ -208,6 +210,8 @@ void setupWiFi() {
 void setupWebServer() {
   server.on("/", handleRoot);
   server.on("/upload", HTTP_POST, handleUpload, handleUploadFile);
+  server.on("/wifi-reset", handleWiFiReset);
+  server.on("/factory-reset", handleFactoryReset);
   
   server.begin();
   Serial.println(F("Web server started"));
@@ -247,7 +251,16 @@ void handleRoot() {
   html += F("<form method='POST' action='/upload' enctype='multipart/form-data'>");
   html += F("<input type='file' name='firmware' accept='.bin'><br><br>");
   html += F("<input type='submit' value='Upload'>");
-  html += F("</form></body></html>");
+  html += F("</form>");
+  
+  html += F("<h2>System Controls</h2>");
+  html += F("<p><strong>WiFi Reset:</strong> Clear WiFi settings and restart captive portal<br>");
+  html += F("<button onclick=\"if(confirm('Reset WiFi settings? Device will restart.')) window.location='/wifi-reset'\" style='background:#ff6b35;color:white;padding:10px;border:none;border-radius:5px;margin:5px;'>Reset WiFi</button></p>");
+  
+  html += F("<p><strong>Factory Reset:</strong> Reset all settings to factory defaults<br>");
+  html += F("<button onclick=\"if(confirm('Factory reset? This will erase all settings and restart the device.')) window.location='/factory-reset'\" style='background:#dc3545;color:white;padding:10px;border:none;border-radius:5px;margin:5px;'>Factory Reset</button></p>");
+  
+  html += F("</body></html>");
   
   server.send(200, "text/html", html);
 }
@@ -278,4 +291,39 @@ void handleUploadFile() {
       Update.printError(Serial);
     }
   }
+}
+
+// Handle WiFi reset request
+void handleWiFiReset() {
+  Serial.println("WiFi reset requested via web interface");
+  server.send(200, "text/html", 
+    F("<html><body><h1>WiFi Reset</h1><p>WiFi settings cleared. Device restarting...</p></body></html>"));
+  
+  delay(1000);
+  
+  // Clear WiFi settings
+  wifiManager.resetSettings();
+  
+  Serial.println("WiFi settings reset, restarting...");
+  ESP.restart();
+}
+
+// Handle factory reset request  
+void handleFactoryReset() {
+  Serial.println("Factory reset requested via web interface");
+  server.send(200, "text/html",
+    F("<html><body><h1>Factory Reset</h1><p>All settings cleared. Device restarting...</p></body></html>"));
+  
+  delay(1000);
+  
+  // Clear WiFi settings
+  wifiManager.resetSettings();
+  
+  // Could add other factory reset actions here:
+  // - Clear EEPROM/NVS settings if you store any
+  // - Reset any saved configurations
+  // - Reset DFPlayer settings
+  
+  Serial.println("Factory reset complete, restarting...");
+  ESP.restart();
 }
