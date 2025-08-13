@@ -15,8 +15,8 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.17.0"
-#define VERSION_FEATURE "Add over-the-air firmware updates via battlesync.me integration"
+#define FIRMWARE_VERSION "0.17.1"
+#define VERSION_FEATURE "Fix missing ArduinoJson library dependency"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
