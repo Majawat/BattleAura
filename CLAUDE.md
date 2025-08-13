@@ -18,31 +18,34 @@ This project uses **PlatformIO** for building and uploading to the ESP32:
 ### Build and Upload
 ```bash
 # Build the project
-pio run
+platformio run
 
 # Upload to device (ensure device is connected)
-pio run --target upload
+platformio run --target upload
 
 # Build and upload in one command
-pio run -t upload
+platformio run -t upload
 
 # Clean build artifacts
-pio run -t clean
+platformio run -t clean
 
 # Open serial monitor
-pio device monitor
+platformio device monitor
+
+# Run tests (requires ESP32 connected)
+platformio test
 ```
 
 ### Development Workflow
 ```bash
 # Check for connected devices
-pio device list
+platformio device list
 
 # Run with verbose output for debugging
-pio run -v
+platformio run -v
 
 # Specify environment explicitly
-pio run -e seeed_xiao_esp32c3
+platformio run -e seeed_xiao_esp32c3
 ```
 
 ## Hardware Architecture
