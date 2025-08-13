@@ -13,8 +13,8 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.16.2"
-#define VERSION_FEATURE "GitHub action build test"
+#define FIRMWARE_VERSION "0.16.3"
+#define VERSION_FEATURE "GitHub action build test - test after workflow created"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
