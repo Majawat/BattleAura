@@ -21,4 +21,8 @@ void enginePulseSmooth(int ledPin, int phase);
 void engineHeat(int ledPin);
 void consoleDataStream(int ledPin);
 
+// Weapon effects
+void machineGunEffect(class DFRobotDFPlayerMini* dfPlayer, int ledPin, int audioTrack);
+void flamethrowerEffect(class DFRobotDFPlayerMini* dfPlayer, int ledPin, int audioTrack);
+
 #endif

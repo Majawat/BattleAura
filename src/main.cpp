@@ -13,15 +13,13 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.15.0"
-#define VERSION_FEATURE "Add modern dark mode web interface with improved styling"
+#define FIRMWARE_VERSION "0.16.0"
+#define VERSION_FEATURE "Add dual weapon system with synchronized audio/LED effects"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
 WebServer server(80);
 WiFiManager wifiManager;
-
-
 
 // Audio files
 #define AUDIO_IDLE        2
@@ -43,6 +41,9 @@ void handleUpload();
 void handleUploadFile();
 void handleWiFiReset();
 void handleFactoryReset();
+void handleMachineGun();
+void handleFlamethrower();
+void resumeIdleAudio();
 
 void setup() {
   Serial.begin(9600);
@@ -97,6 +98,9 @@ void setup() {
     dfPlayerConnected = false;
     dfPlayerStatus = "Serial Init Failed";
   }
+  
+  // Setup callback for resuming idle audio after weapon effects
+  setResumeIdleCallback(resumeIdleAudio);
   
   // Setup WiFi and web server
   setupWiFi();
@@ -209,6 +213,8 @@ void setupWebServer() {
   server.on("/upload", HTTP_POST, handleUpload, handleUploadFile);
   server.on("/wifi-reset", handleWiFiReset);
   server.on("/factory-reset", handleFactoryReset);
+  server.on("/machine-gun", handleMachineGun);
+  server.on("/flamethrower", handleFlamethrower);
   
   server.begin();
   Serial.println(F("Web server started"));
@@ -273,6 +279,14 @@ void handleRoot() {
   html += F("<input type='file' name='firmware' accept='.bin' required>");
   html += F("<input type='submit' value='📤 Upload Firmware'>");
   html += F("</form>");
+  
+  html += F("<h2>🎮 Battle Effects</h2>");
+  html += F("<div class='info-box'>");
+  html += F("<div class='control-desc'>Trigger machine gun burst with muzzle flash and audio</div>");
+  html += F("<button onclick=\"window.location='/machine-gun'\">🔥 Machine Gun</button>");
+  html += F("<br><br><div class='control-desc'>Trigger flamethrower with sustained flame effect and audio</div>");
+  html += F("<button onclick=\"window.location='/flamethrower'\">🔥 Flamethrower</button>");
+  html += F("</div>");
   
   html += F("<h2>⚙️ System Controls</h2>");
   html += F("<div class='info-box'>");
@@ -348,4 +362,30 @@ void handleFactoryReset() {
   
   Serial.println("Factory reset complete, restarting...");
   ESP.restart();
+}
+
+// Handle machine gun effect request
+void handleMachineGun() {
+  Serial.println("Machine gun triggered via web interface");
+  machineGunEffect(&dfPlayer, LED5, AUDIO_WEAPON_FIRE_1);
+  server.send(200, "text/html", 
+    F("<html><body><h1>🔥 Machine Gun Fire!</h1><p>Effect triggered successfully.</p><a href='/'>← Back to Main</a></body></html>"));
+}
+
+// Handle flamethrower effect request
+void handleFlamethrower() {
+  Serial.println("Flamethrower triggered via web interface");
+  flamethrowerEffect(&dfPlayer, LED6, AUDIO_WEAPON_FIRE_2);
+  server.send(200, "text/html", 
+    F("<html><body><h1>🔥 Flamethrower!</h1><p>Effect triggered successfully.</p><a href='/'>← Back to Main</a></body></html>"));
+}
+
+// Resume idle audio after weapon effects finish
+void resumeIdleAudio() {
+  if (dfPlayerConnected) {
+    dfPlayer.loop(AUDIO_IDLE);
+    currentTrack = AUDIO_IDLE;
+    dfPlayerPlaying = true;
+    Serial.println("Auto-resumed idle audio after weapon effect");
+  }
 }

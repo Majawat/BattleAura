@@ -11,7 +11,8 @@ extern int currentTrack;
 extern String dfPlayerStatus;
 extern unsigned long lastStatusCheck;
 
-// Function declaration
+// Function declarations
 void printDetail(uint8_t type, int value);
+void setResumeIdleCallback(void (*callback)());
 
 #endif

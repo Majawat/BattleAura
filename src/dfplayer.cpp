@@ -7,6 +7,9 @@ int currentTrack = 0;
 String dfPlayerStatus = "Unknown";
 unsigned long lastStatusCheck = 0;
 
+// Callback for resuming idle audio after effects
+void (*resumeIdleCallback)() = nullptr;
+
 void printDetail(uint8_t type, int value){
   switch (type) {
     case TimeOut:
@@ -36,6 +39,14 @@ void printDetail(uint8_t type, int value){
       Serial.println(F(" Play Finished!"));
       dfPlayerPlaying = false;
       dfPlayerStatus = "Play Finished";
+      
+      // If this was a weapon effect (not idle), resume idle audio
+      if (value == 3 || value == 4) { // AUDIO_WEAPON_FIRE_1 or AUDIO_WEAPON_FIRE_2
+        Serial.println(F("Weapon effect finished, resuming idle audio"));
+        if (resumeIdleCallback != nullptr) {
+          resumeIdleCallback();
+        }
+      }
       break;
     case DFPlayerError:
       Serial.print(F("DFPlayerError:"));
@@ -69,4 +80,9 @@ void printDetail(uint8_t type, int value){
       break;
   }
   
+}
+
+// Set the callback function for resuming idle audio
+void setResumeIdleCallback(void (*callback)()) {
+  resumeIdleCallback = callback;
 }

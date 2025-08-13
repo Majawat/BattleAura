@@ -1,4 +1,5 @@
 #include "effects.h"
+#include "dfplayer.h"
 
 // Candle flicker effect
 void candleFlicker(int ledPin) {
@@ -70,5 +71,85 @@ void consoleDataStream(int ledPin) {
     int brightness = isOn ? random(80, 150) : random(10, 30);
     analogWrite(ledPin, brightness);
     lastPulse = millis();
+  }
+}
+
+// Machine gun effect - burst fire with configurable LED and audio
+void machineGunEffect(DFRobotDFPlayerMini* dfPlayer, int ledPin, int audioTrack) {
+  
+  if (dfPlayerConnected && dfPlayer != nullptr) {
+    // Stop current audio and play weapon fire sound
+    dfPlayer->stop();
+    delay(100);
+    dfPlayer->play(audioTrack);
+    dfPlayerPlaying = true; // Mark as playing so callback knows to resume idle
+    currentTrack = audioTrack;
+    Serial.println("Playing machine gun audio with synchronized LED flashing");
+    
+    // Keep flashing LED while weapon audio is playing
+    while (dfPlayerPlaying && currentTrack == audioTrack) {
+      analogWrite(ledPin, 255); // Muzzle flash on
+      delay(50);
+      analogWrite(ledPin, 0);   // Off
+      delay(80);
+      
+      // Check if audio finished (this gets updated by the callback)
+      if (dfPlayer->available()) {
+        printDetail(dfPlayer->readType(), dfPlayer->read());
+      }
+    }
+    
+    // Ensure LED is off when done
+    analogWrite(ledPin, 0);
+    Serial.println("Machine gun effect finished");
+  } else {
+    // If no audio, do a few flashes as fallback
+    Serial.println("No audio available, doing fallback LED flashes");
+    for (int i = 0; i < 5; i++) {
+      analogWrite(ledPin, 255);
+      delay(50);
+      analogWrite(ledPin, 0);
+      delay(80);
+    }
+  }
+}
+
+// Flamethrower effect - sustained flame with configurable LED and audio
+void flamethrowerEffect(DFRobotDFPlayerMini* dfPlayer, int ledPin, int audioTrack) {
+  
+  if (dfPlayerConnected && dfPlayer != nullptr) {
+    // Stop current audio and play flamethrower sound
+    dfPlayer->stop();
+    delay(100);
+    dfPlayer->play(audioTrack);
+    dfPlayerPlaying = true; // Mark as playing so callback knows to resume idle
+    currentTrack = audioTrack;
+    Serial.println("Playing flamethrower audio with synchronized LED flame effect");
+    
+    // Keep flickering LED like a flame while audio is playing
+    while (dfPlayerPlaying && currentTrack == audioTrack) {
+      // Flickering flame effect - more realistic than steady glow
+      int intensity = random(180, 255);
+      analogWrite(ledPin, intensity);
+      delay(random(80, 150)); // Vary the flicker timing
+      
+      // Check if audio finished (this gets updated by the callback)
+      if (dfPlayer->available()) {
+        printDetail(dfPlayer->readType(), dfPlayer->read());
+      }
+    }
+    
+    // Ensure LED is off when done
+    analogWrite(ledPin, 0);
+    Serial.println("Flamethrower effect finished");
+  } else {
+    // If no audio, do a sustained flame effect as fallback
+    Serial.println("No audio available, doing fallback flame effect");
+    for (int i = 0; i < 20; i++) {
+      int intensity = random(180, 255);
+      analogWrite(ledPin, intensity);
+      delay(100);
+    }
+    analogWrite(ledPin, 0);
   }
 }
