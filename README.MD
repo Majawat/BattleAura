@@ -49,6 +49,12 @@ Speaker to DFPlayer
  - 0008 - Limited big weapon
  - 0009 - Killed another unit
 
+ #### Audacity settings
+  - Track > Mix > Mix stero down to Mono
+  - Track > Resample > 22050 Hz
+  - Effect > Normalize > -1dB
+  - Export as MP3
+
 ## How I Use It
 
 1. PlatformIO in VS Code
