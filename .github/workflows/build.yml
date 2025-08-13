@@ -1,0 +1,33 @@
+name: Build and Deploy Firmware
+on:
+  push:
+    tags:
+      - 'v*.*.*'        # Deploy only clean versions (v1.2.3)
+      - '!v*.*.*-*'     # Skip pre-release versions (v1.2.3-alpha, v1.2.3-beta)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install PlatformIO
+        run: pip install platformio
+        
+      - name: Build firmware
+        run: platformio run
+        
+      - name: Show build results
+        run: |
+          echo "Build complete for release version!"
+          ls -la .pio/build/seeed_xiao_esp32c3/
+          echo "Firmware size: $(du -h .pio/build/seeed_xiao_esp32c3/firmware.bin)"
+          echo "This would be deployed to battlesync.me"
+
+  # Future: Add deployment step here when battlesync.me API is ready
