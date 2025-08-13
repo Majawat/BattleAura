@@ -11,8 +11,9 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.8.0"
+#define FIRMWARE_VERSION "0.8.1"
 #define BUILD_DATE __DATE__ " " __TIME__
+#define VERSION_FEATURE "Remote OTA Update test"
 
 // Web server and WiFi
 WebServer server(80);
@@ -100,13 +101,13 @@ void setup() {
 
 void loop() {
   // Candle flicker effect for both LEDs
-  candleFlicker(LED1);
-  candleFlicker(LED2);
-  candleFlicker(LED3);
+  candleFlicker(LED1); //candle fiber optics 1
+  candleFlicker(LED2); //candle fiber optics 2
+  candleFlicker(LED3); // brazier
   
   // Engine stack effects
   enginePulseSmooth(LED7, 0);    // First engine stack - smooth pulse
-  engineHeat(LED8);              // Second engine stack - heat flicker
+  enginePulseSmooth(LED8, 0);    // Second engine stack - smooth pulse
   
   // Small delay for smooth flicker
   delay(50);
@@ -296,6 +297,9 @@ void handleRoot() {
   html += FIRMWARE_VERSION;
   html += F("<br><strong>Built:</strong> ");
   html += BUILD_DATE;
+  html += F("</p>");
+  html += F("<p>");
+  html += VERSION_FEATURE;
   html += F("</p>");
   
   html += F("<h2>System Status</h2>");
