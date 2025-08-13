@@ -15,8 +15,8 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.17.1"
-#define VERSION_FEATURE "Fix missing ArduinoJson library dependency"
+#define FIRMWARE_VERSION "0.17.2"
+#define VERSION_FEATURE "Fix ArduinoJson v7 API compatibility and string concatenation issues"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
@@ -427,7 +427,7 @@ bool checkForUpdates(String &newVersion, String &downloadUrl, String &changelog)
     String payload = http.getString();
     Serial.println("Update check response: " + payload);
     
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     deserializeJson(doc, payload);
     
     newVersion = doc["version"].as<String>();
@@ -465,12 +465,21 @@ void handleCheckUpdates() {
   
   html += F("<h1>Firmware Update Check</h1>");
   html += F("<div class='info-box'>");
-  html += F("<strong>Current Version:</strong> ") + String(FIRMWARE_VERSION) + F("<br>");
+  html += F("<strong>Current Version:</strong> ");
+  html += String(FIRMWARE_VERSION);
+  html += F("<br>");
   
   if (updateAvailable) {
-    html += F("<strong>New Version Available:</strong> ") + newVersion + F("<br>");
-    html += F("<strong>Changes:</strong> ") + changelog + F("<br><br>");
-    html += F("<button class='btn-update' onclick=\"if(confirm('Download and install ") + newVersion + F("? Device will restart.')) window.location='/perform-update?url=") + downloadUrl + F("'\">Download & Install Update</button>");
+    html += F("<strong>New Version Available:</strong> ");
+    html += newVersion;
+    html += F("<br><strong>Changes:</strong> ");
+    html += changelog;
+    html += F("<br><br>");
+    html += F("<button class='btn-update' onclick=\"if(confirm('Download and install ");
+    html += newVersion;
+    html += F("? Device will restart.')) window.location='/perform-update?url=");
+    html += downloadUrl;
+    html += F("'\">Download & Install Update</button>");
   } else {
     html += F("<strong>Status:</strong> You have the latest version!<br>");
   }
