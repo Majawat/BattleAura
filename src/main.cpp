@@ -129,17 +129,8 @@ void setup() {
 }
 
 void loop() {
-  // Candle flicker effect for both LEDs
-  candleFlicker(LED1); //candle fiber optics 1
-  candleFlicker(LED2); //candle fiber optics 2
-  candleFlicker(LED3); // brazier
-  
-  // Console screen data stream effect
-  consoleDataStream(LED4); // console screen
-  
-  // Engine stack effects
-  enginePulseSmooth(LED7, 0);    // First engine stack - smooth pulse
-  enginePulseSmooth(LED8, 0);    // Second engine stack - smooth pulse
+  // Run all configured background effects dynamically
+  runBackgroundEffects();
   
   // Small delay for smooth flicker
   delay(LED_UPDATE_DELAY_MS);
