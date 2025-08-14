@@ -15,8 +15,8 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.18.1"
-#define VERSION_FEATURE "Fix engine rev effect - auto-resume idle audio after completion"
+#define FIRMWARE_VERSION "0.19.0"
+#define VERSION_FEATURE "Redesign web interface - remove emojis, reorganize layout, add DFPlayer reconnect"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
@@ -46,6 +46,7 @@ void handleFactoryReset();
 void handleMachineGun();
 void handleFlamethrower();
 void handleEngineRev();
+void handleReconnectDFPlayer();
 void resumeIdleAudio();
 void handleCheckUpdates();
 void handlePerformUpdate();
@@ -223,6 +224,7 @@ void setupWebServer() {
   server.on("/machine-gun", handleMachineGun);
   server.on("/flamethrower", handleFlamethrower);
   server.on("/engine-rev", handleEngineRev);
+  server.on("/reconnect-dfplayer", handleReconnectDFPlayer);
   server.on("/check-updates", handleCheckUpdates);
   server.on("/perform-update", handlePerformUpdate);
   
@@ -255,25 +257,23 @@ void handleRoot() {
   html += F("strong { color: #f0f6fc; }");
   html += F("</style></head><body><div class='container'>");
   
-  html += F("<h1>🎮 BattleAura</h1>");
+  html += F("<h1>BattleAura</h1>");
   
+  html += F("<h2>Battle Effects</h2>");
   html += F("<div class='info-box'>");
-  html += F("<strong>Firmware:</strong> ");
-  html += FIRMWARE_VERSION;
-  html += F("<br><strong>Built:</strong> ");
-  html += BUILD_DATE;
-  html += F("<br><strong>Feature:</strong> ");
-  html += VERSION_FEATURE;
+  html += F("<div class='control-desc'>Trigger machine gun burst with muzzle flash and audio</div>");
+  html += F("<button onclick=\"window.location='/machine-gun'\">Machine Gun</button>");
+  html += F("<br><br><div class='control-desc'>Trigger flamethrower with sustained flame effect and audio</div>");
+  html += F("<button onclick=\"window.location='/flamethrower'\">Flamethrower</button>");
+  html += F("<br><br><div class='control-desc'>Rev engine with dual exhaust stack effects and audio</div>");
+  html += F("<button onclick=\"window.location='/engine-rev'\">Engine Rev</button>");
   html += F("</div>");
   
-  html += F("<h2>📊 System Status</h2>");
+  html += F("<h2>System Status</h2>");
   html += F("<div class='info-box'>");
-  html += F("<strong>System:</strong> <span class='status running'>Running</span><br>");
   html += F("<strong>DFPlayer:</strong> ");
   if (dfPlayerConnected) {
-    html += F("<span class='status connected'>Connected</span><br>");
-    html += F("<strong>Audio:</strong> ");
-    html += dfPlayerStatus;
+    html += F("<span class='status connected'>Connected</span>");
     if (dfPlayerPlaying) {
       html += F(" (Track ");
       html += currentTrack;
@@ -281,36 +281,33 @@ void handleRoot() {
     }
   } else {
     html += F("<span class='status disconnected'>Disconnected</span>");
+    html += F(" <button onclick=\"window.location='/reconnect-dfplayer'\" style='padding:4px 8px;font-size:12px;'>Reconnect</button>");
   }
   html += F("</div>");
   
-  html += F("<h2>📦 Firmware Management</h2>");
+  html += F("<h2>Firmware Management</h2>");
   html += F("<div class='info-box'>");
-  html += F("<div class='control-desc'>Check for new firmware updates from battlesync.me</div>");
-  html += F("<button onclick=\"window.location='/check-updates'\">🔄 Check for Updates</button>");
+  html += F("<strong>Current Version:</strong> ");
+  html += FIRMWARE_VERSION;
+  html += F("<br><strong>Built:</strong> ");
+  html += BUILD_DATE;
+  html += F("<br><strong>Feature:</strong> ");
+  html += VERSION_FEATURE;
+  html += F("<br><br><div class='control-desc'>Check for new firmware updates from battlesync.me</div>");
+  html += F("<button onclick=\"window.location='/check-updates'\">Check for Updates</button>");
   html += F("<br><br><strong>Manual Upload:</strong>");
   html += F("<form method='POST' action='/upload' enctype='multipart/form-data' style='margin-top:10px;'>");
   html += F("<input type='file' name='firmware' accept='.bin' required>");
-  html += F("<input type='submit' value='📤 Upload Firmware'>");
+  html += F("<input type='submit' value='Upload Firmware'>");
   html += F("</form>");
   html += F("</div>");
   
-  html += F("<h2>🎮 Battle Effects</h2>");
-  html += F("<div class='info-box'>");
-  html += F("<div class='control-desc'>Trigger machine gun burst with muzzle flash and audio</div>");
-  html += F("<button onclick=\"window.location='/machine-gun'\">🔥 Machine Gun</button>");
-  html += F("<br><br><div class='control-desc'>Trigger flamethrower with sustained flame effect and audio</div>");
-  html += F("<button onclick=\"window.location='/flamethrower'\">🔥 Flamethrower</button>");
-  html += F("<br><br><div class='control-desc'>Rev engine with dual exhaust stack effects and audio</div>");
-  html += F("<button onclick=\"window.location='/engine-rev'\">🚀 Engine Rev</button>");
-  html += F("</div>");
-  
-  html += F("<h2>⚙️ System Controls</h2>");
+  html += F("<h2>System Controls</h2>");
   html += F("<div class='info-box'>");
   html += F("<div class='control-desc'>Reset WiFi settings and restart captive portal</div>");
-  html += F("<button class='btn-warning' onclick=\"if(confirm('Reset WiFi settings? Device will restart.')) window.location='/wifi-reset'\">🔄 Reset WiFi</button>");
+  html += F("<button class='btn-warning' onclick=\"if(confirm('Reset WiFi settings? Device will restart.')) window.location='/wifi-reset'\">Reset WiFi</button>");
   html += F("<br><br><div class='control-desc'>Reset all settings to factory defaults</div>");
-  html += F("<button class='btn-danger' onclick=\"if(confirm('Factory reset? This will erase all settings and restart the device.')) window.location='/factory-reset'\">⚠️ Factory Reset</button>");
+  html += F("<button class='btn-danger' onclick=\"if(confirm('Factory reset? This will erase all settings and restart the device.')) window.location='/factory-reset'\">Factory Reset</button>");
   html += F("</div>");
   
   html += F("</div></body></html>");
@@ -403,6 +400,40 @@ void handleFlamethrower() {
 void handleEngineRev() {
   Serial.println("Engine rev triggered via web interface");
   engineRevEffect(&dfPlayer, LED7, LED8, AUDIO_ENGINE_REV);
+  // Redirect back to main page
+  server.sendHeader("Location", "/");
+  server.send(302);
+}
+
+// Handle DFPlayer reconnect request
+void handleReconnectDFPlayer() {
+  Serial.println("DFPlayer reconnect requested via web interface");
+  
+  // Attempt to reconnect DFPlayer
+  dfPlayer.begin(audioSerial, false, false);
+  delay(1000);
+  
+  // Test communication
+  dfPlayer.volume(20);
+  delay(500);
+  
+  int currentVolume = dfPlayer.readVolume();
+  delay(100);
+  
+  if (currentVolume > 0 && currentVolume <= 30) {
+    Serial.println("DFPlayer reconnected successfully!");
+    dfPlayerConnected = true;
+    dfPlayerStatus = "Reconnected";
+    // Start idle audio
+    dfPlayer.loop(AUDIO_IDLE);
+    currentTrack = AUDIO_IDLE;
+    dfPlayerPlaying = true;
+  } else {
+    Serial.println("DFPlayer reconnection failed");
+    dfPlayerConnected = false;
+    dfPlayerStatus = "Reconnection Failed";
+  }
+  
   // Redirect back to main page
   server.sendHeader("Location", "/");
   server.send(302);
