@@ -1,6 +1,6 @@
+#include <Arduino.h>
 #include "config.h"
 #include "effects.h"
-#include <Arduino.h>
 
 // Global device configuration
 DeviceConfig deviceConfig;
@@ -23,24 +23,24 @@ void loadDefaultConfig() {
   deviceConfig.enableSleep = true;
   
   // Default background effects (Tank configuration)
-  deviceConfig.backgroundEffects[0] = {D0, "candle", "Candle 1", true};
-  deviceConfig.backgroundEffects[1] = {D1, "candle", "Candle 2", true};
-  deviceConfig.backgroundEffects[2] = {D2, "candle", "Brazier", true};
-  deviceConfig.backgroundEffects[3] = {D3, "console", "Console", true};
-  deviceConfig.backgroundEffects[4] = {D4, "off", "Unused", false};
-  deviceConfig.backgroundEffects[5] = {D5, "off", "Unused", false};
-  deviceConfig.backgroundEffects[6] = {D8, "pulse", "Engine 1", true};
-  deviceConfig.backgroundEffects[7] = {D9, "pulse", "Engine 2", true};
+  deviceConfig.backgroundEffects[0] = EffectMapping(D0, "candle", "Candle 1", true);
+  deviceConfig.backgroundEffects[1] = EffectMapping(D1, "candle", "Candle 2", true);
+  deviceConfig.backgroundEffects[2] = EffectMapping(D2, "candle", "Brazier", true);
+  deviceConfig.backgroundEffects[3] = EffectMapping(D3, "console", "Console", true);
+  deviceConfig.backgroundEffects[4] = EffectMapping(D4, "off", "Unused", false);
+  deviceConfig.backgroundEffects[5] = EffectMapping(D5, "off", "Unused", false);
+  deviceConfig.backgroundEffects[6] = EffectMapping(D8, "pulse", "Engine 1", true);
+  deviceConfig.backgroundEffects[7] = EffectMapping(D9, "pulse", "Engine 2", true);
   
   // Default trigger effects (Tank configuration)
-  deviceConfig.triggerEffects[0] = {"machine-gun", D4, AUDIO_WEAPON_FIRE_1, "Machine Gun", true};
-  deviceConfig.triggerEffects[1] = {"flamethrower", D5, AUDIO_WEAPON_FIRE_2, "Flamethrower", true};
-  deviceConfig.triggerEffects[2] = {"engine-rev", D8, AUDIO_ENGINE_REV, "Engine Rev", true};
-  deviceConfig.triggerEffects[3] = {"rocket", D0, AUDIO_LIMITED_WEAPON, "Rocket", true};
-  deviceConfig.triggerEffects[4] = {"taking-hits", D3, AUDIO_TAKING_HITS, "Taking Hits", true};
-  deviceConfig.triggerEffects[5] = {"destroyed", 0, AUDIO_DESTROYED, "Destroyed", true};
-  deviceConfig.triggerEffects[6] = {"unit-kill", D3, AUDIO_UNIT_KILL, "Unit Kill", true};
-  deviceConfig.triggerEffects[7] = {"", 0, 0, "", false}; // Empty slot
+  deviceConfig.triggerEffects[0] = TriggerMapping("machine-gun", D4, AUDIO_WEAPON_FIRE_1, "Machine Gun", true);
+  deviceConfig.triggerEffects[1] = TriggerMapping("flamethrower", D5, AUDIO_WEAPON_FIRE_2, "Flamethrower", true);
+  deviceConfig.triggerEffects[2] = TriggerMapping("engine-rev", D8, AUDIO_ENGINE_REV, "Engine Rev", true);
+  deviceConfig.triggerEffects[3] = TriggerMapping("rocket", D0, AUDIO_LIMITED_WEAPON, "Rocket", true);
+  deviceConfig.triggerEffects[4] = TriggerMapping("taking-hits", D3, AUDIO_TAKING_HITS, "Taking Hits", true);
+  deviceConfig.triggerEffects[5] = TriggerMapping("destroyed", 0, AUDIO_DESTROYED, "Destroyed", true);
+  deviceConfig.triggerEffects[6] = TriggerMapping("unit-kill", D3, AUDIO_UNIT_KILL, "Unit Kill", true);
+  deviceConfig.triggerEffects[7] = TriggerMapping(); // Empty slot
   
   Serial.println("Loaded default device configuration");
   Serial.println("Device: " + deviceConfig.deviceName);

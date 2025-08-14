@@ -1,9 +1,11 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <Arduino.h>
+
 // Firmware version
-#define FIRMWARE_VERSION "0.25.0"
-#define VERSION_FEATURE "Universal pin-to-effect configuration system"
+#define FIRMWARE_VERSION "0.25.1"
+#define VERSION_FEATURE "Fix compilation errors in universal configuration system"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Audio file mappings
@@ -27,6 +29,11 @@ struct EffectMapping {
   String effectType;  // "candle", "pulse", "console", "static", "off"
   String label;       // User-friendly name
   bool enabled;
+  
+  // Constructor for easy initialization
+  EffectMapping() : ledPin(0), effectType("off"), label(""), enabled(false) {}
+  EffectMapping(int pin, String type, String lbl, bool en) : 
+    ledPin(pin), effectType(type), label(lbl), enabled(en) {}
 };
 
 // Trigger mapping for button-activated effects
@@ -36,6 +43,11 @@ struct TriggerMapping {
   int audioTrack;
   String label;       // User-friendly name
   bool enabled;
+  
+  // Constructor for easy initialization
+  TriggerMapping() : buttonId(""), ledPin(0), audioTrack(0), label(""), enabled(false) {}
+  TriggerMapping(String id, int pin, int audio, String lbl, bool en) :
+    buttonId(id), ledPin(pin), audioTrack(audio), label(lbl), enabled(en) {}
 };
 
 // Device configuration structure
