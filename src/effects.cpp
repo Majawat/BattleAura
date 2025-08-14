@@ -21,35 +21,46 @@ void setLED(int ledPin, int brightness) {
 
 // Candle flicker effect
 void candleFlicker(int ledPin) {
-  static unsigned long lastBaseUpdate = 0;
-  static int baseIntensity = 60;  // Starting base
+  // Each pin gets its own timing (up to 8 pins)
+  static unsigned long lastBaseUpdate[8] = {0};
+  static int baseIntensity[8] = {60, 60, 60, 60, 60, 60, 60, 60};
+  static unsigned long nextUpdateTime[8] = {0};
   
-  // Update base intensity every 200-500ms (randomly)
-  if (millis() - lastBaseUpdate > random(200, 500)) {
-    baseIntensity = random(40, 80);
-    lastBaseUpdate = millis();
+  // Convert pin to index (D0=0, D1=1, D2=2, D3=3, D4=4, D5=5, D8=6, D9=7)
+  int pinIndex = (ledPin <= D5) ? ledPin - D0 : ledPin - D8 + 6;
+  if (pinIndex < 0 || pinIndex >= 8) return; // Safety check
+  
+  // Update base intensity at random intervals
+  if (millis() >= nextUpdateTime[pinIndex]) {
+    baseIntensity[pinIndex] = random(40, 80);
+    nextUpdateTime[pinIndex] = millis() + random(200, 500);
   }
   
   // Add flicker every call
   int flicker = random(-20, 30);
-  int brightness = constrain(baseIntensity + flicker, 5, 120);
+  int brightness = constrain(baseIntensity[pinIndex] + flicker, 5, 120);
   
   setLED(ledPin, brightness);
 }
 
 // Engine breathing effect (original - unused now)
 void enginePulse(int ledPin, int minBright, int maxBright, int speed) {
-  static unsigned long lastUpdate = 0;
-  static int brightness = minBright;
-  static int direction = 1;
+  // Each pin gets its own state
+  static unsigned long lastUpdate[8] = {0};
+  static int brightness[8] = {60, 60, 60, 60, 60, 60, 60, 60};
+  static int direction[8] = {1, 1, 1, 1, 1, 1, 1, 1};
 
-  if (millis() - lastUpdate > speed) {
-    lastUpdate = millis();
-    brightness += direction;
-    if (brightness >= maxBright || brightness <= minBright) {
-      direction = -direction;
+  // Convert pin to index
+  int pinIndex = (ledPin <= D5) ? ledPin - D0 : ledPin - D8 + 6;
+  if (pinIndex < 0 || pinIndex >= 8) return;
+
+  if (millis() - lastUpdate[pinIndex] > speed) {
+    lastUpdate[pinIndex] = millis();
+    brightness[pinIndex] += direction[pinIndex];
+    if (brightness[pinIndex] >= maxBright || brightness[pinIndex] <= minBright) {
+      direction[pinIndex] = -direction[pinIndex];
     }
-    setLED(ledPin, brightness);
+    setLED(ledPin, brightness[pinIndex]);
   }
 }
 
@@ -80,15 +91,21 @@ void engineHeat(int ledPin) {
 
 // Console data stream effect
 void consoleDataStream(int ledPin) {
-  static unsigned long lastPulse = 0;
-  static bool isOn = false;
+  // Each pin gets its own state
+  static unsigned long lastPulse[8] = {0};
+  static bool isOn[8] = {false};
+  static unsigned long nextPulseTime[8] = {0};
+  
+  // Convert pin to index
+  int pinIndex = (ledPin <= D5) ? ledPin - D0 : ledPin - D8 + 6;
+  if (pinIndex < 0 || pinIndex >= 8) return;
   
   // Fast, irregular pulses like data scrolling
-  if (millis() - lastPulse > random(100, 400)) {
-    isOn = !isOn;
-    int brightness = isOn ? random(80, 150) : random(10, 30);
+  if (millis() >= nextPulseTime[pinIndex]) {
+    isOn[pinIndex] = !isOn[pinIndex];
+    int brightness = isOn[pinIndex] ? random(80, 150) : random(10, 30);
     setLED(ledPin, brightness);
-    lastPulse = millis();
+    nextPulseTime[pinIndex] = millis() + random(100, 400);
   }
 }
 

@@ -5,6 +5,14 @@
 // Global device configuration
 DeviceConfig deviceConfig;
 
+// Weapon effect states for non-blocking effects
+WeaponEffectState weaponEffects[4] = {
+  {false, 0, 0, 0, 0, 0},
+  {false, 0, 0, 0, 0, 0},
+  {false, 0, 0, 0, 0, 0},
+  {false, 0, 0, 0, 0, 0}
+};
+
 // Load default configuration values
 void loadDefaultConfig() {
   deviceConfig.deviceName = "BattleAura Device";
@@ -88,4 +96,72 @@ void runEffect(int ledPin, String effectType) {
     setLED(ledPin, 0); // Off
   }
   // Add more effect types as needed
+}
+
+// Start a non-blocking weapon effect
+void startWeaponEffect(int effectId, DFRobotDFPlayerMini* dfPlayer, int ledPin, int audioTrack, String effectType) {
+  if (effectId < 0 || effectId >= 4) return;
+  
+  // Initialize the effect state
+  weaponEffects[effectId].active = true;
+  weaponEffects[effectId].startTime = millis();
+  weaponEffects[effectId].lastUpdate = millis();
+  weaponEffects[effectId].currentStep = 0;
+  weaponEffects[effectId].ledPin = ledPin;
+  weaponEffects[effectId].audioTrack = audioTrack;
+  
+  // Start the audio
+  if (dfPlayer && dfPlayerConnected) {
+    dfPlayer->stop();
+    delay(100); // This one delay is needed for DFPlayer
+    dfPlayer->play(audioTrack);
+    dfPlayerPlaying = true;
+    currentTrack = audioTrack;
+  }
+  
+  Serial.println("Started non-blocking " + effectType + " effect on pin " + String(ledPin));
+}
+
+// Update all active weapon effects (call from main loop)
+void updateWeaponEffects(DFRobotDFPlayerMini* dfPlayer) {
+  for (int i = 0; i < 4; i++) {
+    if (!weaponEffects[i].active) continue;
+    
+    WeaponEffectState& effect = weaponEffects[i];
+    unsigned long now = millis();
+    unsigned long elapsed = now - effect.startTime;
+    
+    // Generic weapon effect pattern: flash for duration of audio
+    if (elapsed < 5000) { // 5 second max duration
+      // Check if it's time for next flash
+      if (now - effect.lastUpdate >= 130) { // 130ms cycle (50ms on, 80ms off)
+        effect.lastUpdate = now;
+        
+        if (effect.currentStep % 2 == 0) {
+          setLED(effect.ledPin, 255); // Flash on
+        } else {
+          setLED(effect.ledPin, 0);   // Flash off
+        }
+        effect.currentStep++;
+      }
+      
+      // Check if audio is still playing
+      if (dfPlayer && dfPlayer->available()) {
+        // Process DFPlayer messages but don't block
+        uint8_t type = dfPlayer->readType();
+        int value = dfPlayer->read();
+        if (type == DFPlayerPlayFinished && value == effect.audioTrack) {
+          // This effect's audio finished
+          effect.active = false;
+          setLED(effect.ledPin, 0); // Ensure LED is off
+          Serial.println("Weapon effect " + String(i) + " finished");
+        }
+      }
+    } else {
+      // Timeout - end the effect
+      effect.active = false;
+      setLED(effect.ledPin, 0);
+      Serial.println("Weapon effect " + String(i) + " timed out");
+    }
+  }
 }

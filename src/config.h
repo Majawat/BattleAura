@@ -4,8 +4,8 @@
 #include <Arduino.h>
 
 // Firmware version
-#define FIRMWARE_VERSION "0.26.1"
-#define VERSION_FEATURE "Fix GitHub Actions deployment with multiline commit messages"
+#define FIRMWARE_VERSION "0.27.0"
+#define VERSION_FEATURE "Convert to non-blocking timing for responsive operation"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Audio file mappings
@@ -84,5 +84,21 @@ void saveDeviceConfig();
 // Effect execution functions
 void runBackgroundEffects();
 void runEffect(int ledPin, String effectType);
+
+// Weapon effect state tracking
+struct WeaponEffectState {
+  bool active;
+  unsigned long startTime;
+  unsigned long lastUpdate;
+  int currentStep;
+  int ledPin;
+  int audioTrack;
+};
+
+extern WeaponEffectState weaponEffects[4]; // Support up to 4 concurrent weapon effects
+
+// Non-blocking weapon effects
+void startWeaponEffect(int effectId, DFRobotDFPlayerMini* dfPlayer, int ledPin, int audioTrack, String effectType);
+void updateWeaponEffects(DFRobotDFPlayerMini* dfPlayer);
 
 #endif

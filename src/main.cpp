@@ -131,11 +131,14 @@ void setup() {
 }
 
 void loop() {
-  // Run all configured background effects dynamically
-  runBackgroundEffects();
-  
-  // Small delay for smooth flicker
-  delay(LED_UPDATE_DELAY_MS);
+  // Non-blocking timing for LED updates
+  static unsigned long lastLEDUpdate = 0;
+  if (millis() - lastLEDUpdate >= LED_UPDATE_DELAY_MS) {
+    lastLEDUpdate = millis();
+    
+    // Run all configured background effects dynamically
+    runBackgroundEffects();
+  }
   if (dfPlayer.available()) {
     printDetail(dfPlayer.readType(), dfPlayer.read()); //Print the detail message from DFPlayer to handle different errors and states.
   }
@@ -153,6 +156,9 @@ void loop() {
     dfPlayerStatus = "Idle Timeout - Stopped";
     Serial.println("Idle audio stopped - device now in low-power mode");
   }
+  
+  // Update non-blocking weapon effects
+  updateWeaponEffects(&dfPlayer);
   
   // Handle web server requests
   server.handleClient();
@@ -426,7 +432,7 @@ void handleFactoryReset() {
 void handleMachineGun() {
   Serial.println("Machine gun triggered via web interface");
   triggerActivity();
-  machineGunEffect(&dfPlayer, LED5, AUDIO_WEAPON_FIRE_1);
+  startWeaponEffect(0, &dfPlayer, LED5, AUDIO_WEAPON_FIRE_1, "machine-gun");
   // Redirect back to main page
   server.sendHeader("Location", "/");
   server.send(302);
@@ -436,7 +442,7 @@ void handleMachineGun() {
 void handleFlamethrower() {
   Serial.println("Flamethrower triggered via web interface");
   triggerActivity();
-  flamethrowerEffect(&dfPlayer, LED6, AUDIO_WEAPON_FIRE_2);
+  startWeaponEffect(1, &dfPlayer, LED6, AUDIO_WEAPON_FIRE_2, "flamethrower");
   // Redirect back to main page
   server.sendHeader("Location", "/");
   server.send(302);
@@ -446,7 +452,7 @@ void handleFlamethrower() {
 void handleEngineRev() {
   Serial.println("Engine rev triggered via web interface");
   triggerActivity();
-  engineRevEffect(&dfPlayer, LED7, LED8, AUDIO_ENGINE_REV);
+  startWeaponEffect(2, &dfPlayer, LED7, AUDIO_ENGINE_REV, "engine-rev");
   // Redirect back to main page
   server.sendHeader("Location", "/");
   server.send(302);
@@ -798,7 +804,7 @@ void handleDestroyed() {
 void handleRocket() {
   Serial.println("Rocket fired via web interface");
   triggerActivity();
-  rocketEffect(&dfPlayer, AUDIO_LIMITED_WEAPON);
+  startWeaponEffect(3, &dfPlayer, LED1, AUDIO_LIMITED_WEAPON, "rocket");
   server.sendHeader("Location", "/");
   server.send(302);
 }
