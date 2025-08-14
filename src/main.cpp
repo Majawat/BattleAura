@@ -15,8 +15,8 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.19.3"
-#define VERSION_FEATURE "Add device reboot button to web interface"
+#define FIRMWARE_VERSION "0.22.0"
+#define VERSION_FEATURE "Add idle audio timeout for battery conservation"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
@@ -107,6 +107,8 @@ void setup() {
       dfPlayer.loop(AUDIO_IDLE);
       currentTrack = AUDIO_IDLE;
       dfPlayerPlaying = true;
+      idleAudioActive = true;
+      triggerActivity();
       
       Serial.println("Playing IDLE file in loop with candle flicker...");
     } else {
@@ -149,6 +151,17 @@ void loop() {
   
   // Periodic DFPlayer status check (every 10 seconds)
   checkDFPlayerStatus();
+  
+  // Check if idle audio should timeout to save battery
+  checkIdleTimeout();
+  
+  // Handle actual idle audio stopping (dfPlayer is only accessible here)
+  if (!idleAudioActive && dfPlayerConnected && dfPlayerPlaying && currentTrack == AUDIO_IDLE) {
+    dfPlayer.stop();
+    dfPlayerPlaying = false;
+    dfPlayerStatus = "Idle Timeout - Stopped";
+    Serial.println("Idle audio stopped - device now in low-power mode");
+  }
   
   // Handle web server requests
   server.handleClient();
@@ -416,6 +429,7 @@ void handleFactoryReset() {
 // Handle machine gun effect request
 void handleMachineGun() {
   Serial.println("Machine gun triggered via web interface");
+  triggerActivity();
   machineGunEffect(&dfPlayer, LED5, AUDIO_WEAPON_FIRE_1);
   // Redirect back to main page
   server.sendHeader("Location", "/");
@@ -425,6 +439,7 @@ void handleMachineGun() {
 // Handle flamethrower effect request
 void handleFlamethrower() {
   Serial.println("Flamethrower triggered via web interface");
+  triggerActivity();
   flamethrowerEffect(&dfPlayer, LED6, AUDIO_WEAPON_FIRE_2);
   // Redirect back to main page
   server.sendHeader("Location", "/");
@@ -434,6 +449,7 @@ void handleFlamethrower() {
 // Handle engine rev effect request
 void handleEngineRev() {
   Serial.println("Engine rev triggered via web interface");
+  triggerActivity();
   engineRevEffect(&dfPlayer, LED7, LED8, AUDIO_ENGINE_REV);
   // Redirect back to main page
   server.sendHeader("Location", "/");
@@ -443,6 +459,7 @@ void handleEngineRev() {
 // Handle DFPlayer reconnect request
 void handleReconnectDFPlayer() {
   Serial.println("DFPlayer reconnect requested via web interface");
+  triggerActivity();
   
   // Attempt to reconnect DFPlayer
   dfPlayer.begin(audioSerial, false, false);
@@ -464,6 +481,8 @@ void handleReconnectDFPlayer() {
     dfPlayer.loop(AUDIO_IDLE);
     currentTrack = AUDIO_IDLE;
     dfPlayerPlaying = true;
+    idleAudioActive = true;
+    triggerActivity();
   } else {
     Serial.println("DFPlayer reconnection failed");
     dfPlayerConnected = false;
@@ -495,6 +514,8 @@ void resumeIdleAudio() {
     dfPlayer.loop(AUDIO_IDLE);
     currentTrack = AUDIO_IDLE;
     dfPlayerPlaying = true;
+    idleAudioActive = true;
+    triggerActivity();
     Serial.println("Auto-resumed idle audio after weapon effect");
   }
 }
@@ -709,6 +730,7 @@ void handleAudioPause() {
 
 // Handle audio play request
 void handleAudioPlay() {
+  triggerActivity();
   if (dfPlayerConnected) {
     if (!dfPlayerPlaying) {
       dfPlayer.start();
@@ -720,6 +742,7 @@ void handleAudioPlay() {
       dfPlayer.loop(AUDIO_IDLE);
       currentTrack = AUDIO_IDLE;
       dfPlayerPlaying = true;
+      idleAudioActive = true;
       dfPlayerStatus = "Playing Idle";
       Serial.println("Playing idle audio");
     }
@@ -761,6 +784,7 @@ void handleLedsToggle() {
 // Handle taking hits request
 void handleTakingHits() {
   Serial.println("Taking hits triggered via web interface");
+  triggerActivity();
   takingHitsEffect(&dfPlayer, AUDIO_TAKING_HITS);
   server.sendHeader("Location", "/");
   server.send(302);
@@ -769,6 +793,7 @@ void handleTakingHits() {
 // Handle destroyed request
 void handleDestroyed() {
   Serial.println("CRITICAL: Destroyed effect triggered via web interface");
+  triggerActivity();
   destroyedEffect(&dfPlayer, AUDIO_DESTROYED);
   // Note: This function will shutdown the device, so no redirect needed
 }
@@ -776,6 +801,7 @@ void handleDestroyed() {
 // Handle rocket request  
 void handleRocket() {
   Serial.println("Rocket fired via web interface");
+  triggerActivity();
   rocketEffect(&dfPlayer, AUDIO_LIMITED_WEAPON);
   server.sendHeader("Location", "/");
   server.send(302);
@@ -784,6 +810,7 @@ void handleRocket() {
 // Handle unit kill request
 void handleUnitKill() {
   Serial.println("Unit kill confirmed via web interface");
+  triggerActivity();
   unitKillEffect(&dfPlayer, AUDIO_UNIT_KILL);
   server.sendHeader("Location", "/");
   server.send(302);

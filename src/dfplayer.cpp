@@ -7,6 +7,8 @@ int currentTrack = 0;
 int currentVolume = 20;
 String dfPlayerStatus = "Unknown";
 unsigned long lastStatusCheck = 0;
+unsigned long lastActivity = 0;
+bool idleAudioActive = false;
 
 // Callback for resuming idle audio after effects
 void (*resumeIdleCallback)() = nullptr;
@@ -86,4 +88,24 @@ void printDetail(uint8_t type, int value){
 // Set the callback function for resuming idle audio
 void setResumeIdleCallback(void (*callback)()) {
   resumeIdleCallback = callback;
+}
+
+// Trigger activity - starts or extends idle audio timeout
+void triggerActivity() {
+  lastActivity = millis();
+  Serial.println("Activity triggered - extending idle audio timeout");
+}
+
+// Check if idle audio should timeout to save battery
+void checkIdleTimeout() {
+  const unsigned long IDLE_TIMEOUT = 30000; // 30 seconds
+  
+  // Only check if we think audio is playing
+  if (idleAudioActive && dfPlayerConnected && dfPlayerPlaying) {
+    if (millis() - lastActivity > IDLE_TIMEOUT) {
+      Serial.println("Idle timeout reached - stopping audio to save battery");
+      // Note: We'll implement the actual stopping in main.cpp where dfPlayer is accessible
+      idleAudioActive = false;
+    }
+  }
 }
