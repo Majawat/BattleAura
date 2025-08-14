@@ -14,10 +14,10 @@
 SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
-// Firmware version
-#define FIRMWARE_VERSION "0.22.0"
-#define VERSION_FEATURE "Add idle audio timeout for battery conservation"
-#define BUILD_DATE __DATE__ " " __TIME__
+// Firmware version (accessible to web module)
+const char* FIRMWARE_VERSION = "0.23.0";
+const char* VERSION_FEATURE = "Begin modular architecture refactoring";
+const char* BUILD_DATE = __DATE__ " " __TIME__;
 
 // Web server and WiFi
 WebServer server(80);
