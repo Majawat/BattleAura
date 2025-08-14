@@ -8,6 +8,7 @@
 extern bool dfPlayerConnected;
 extern bool dfPlayerPlaying;
 extern int currentTrack;
+extern int currentVolume;
 extern String dfPlayerStatus;
 extern unsigned long lastStatusCheck;
 

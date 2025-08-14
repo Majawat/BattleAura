@@ -14,12 +14,19 @@
 #define LED8 D9 // Engine stack 2
 #define LED9 D10 // Unused currently
 
+// Global LED settings
+extern bool ledsEnabled;
+extern int globalBrightness; // 0-100 percentage
+
 // Effect function declarations
 void candleFlicker(int ledPin);
 void enginePulse(int ledPin, int minBright, int maxBright, int speed);
 void enginePulseSmooth(int ledPin, int phase);
 void engineHeat(int ledPin);
 void consoleDataStream(int ledPin);
+
+// Utility functions
+void setLED(int ledPin, int brightness);
 
 // Weapon effects
 void machineGunEffect(class DFRobotDFPlayerMini* dfPlayer, int ledPin, int audioTrack);

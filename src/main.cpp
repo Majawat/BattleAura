@@ -51,6 +51,13 @@ void handleReboot();
 void resumeIdleAudio();
 void handleCheckUpdates();
 void handlePerformUpdate();
+void handleVolumeUp();
+void handleVolumeDown();
+void handleAudioPause();
+void handleAudioPlay();
+void handleBrightnessUp();
+void handleBrightnessDown();
+void handleLedsToggle();
 int compareVersions(String current, String remote);
 bool checkForUpdates(String &newVersion, String &downloadUrl, String &changelog);
 
@@ -79,15 +86,16 @@ void setup() {
     delay(1000);  // Give DFPlayer time to initialize
     
     // Try to set and verify volume to test bidirectional communication
-    dfPlayer.volume(20);
+    dfPlayer.volume(currentVolume);
     delay(500);
     
-    int currentVolume = dfPlayer.readVolume();
+    int readVolume = dfPlayer.readVolume();
     delay(100);
     
-    if (currentVolume > 0 && currentVolume <= 30) {
+    if (readVolume > 0 && readVolume <= 30) {
       Serial.print("DFPlayer connected! Volume: ");
-      Serial.println(currentVolume);
+      Serial.println(readVolume);
+      currentVolume = readVolume;
       dfPlayerConnected = true;
       dfPlayerStatus = "Connected";
       
@@ -229,6 +237,13 @@ void setupWebServer() {
   server.on("/reboot", handleReboot);
   server.on("/check-updates", handleCheckUpdates);
   server.on("/perform-update", handlePerformUpdate);
+  server.on("/volume-up", handleVolumeUp);
+  server.on("/volume-down", handleVolumeDown);
+  server.on("/audio-pause", handleAudioPause);
+  server.on("/audio-play", handleAudioPlay);
+  server.on("/brightness-up", handleBrightnessUp);
+  server.on("/brightness-down", handleBrightnessDown);
+  server.on("/leds-toggle", handleLedsToggle);
   
   server.begin();
   Serial.println(F("Web server started"));
@@ -250,6 +265,23 @@ void handleRoot() {
   
   html += F("<h1>BattleAura</h1>");
   
+  html += F("<h2>Audio Controls</h2>");
+  html += F("<button onclick=\"window.location='/volume-down'\">Vol -</button>");
+  html += F("<button onclick=\"window.location='/volume-up'\">Vol +</button>");
+  html += F("<button onclick=\"window.location='/audio-pause'\">Pause</button>");
+  html += F("<button onclick=\"window.location='/audio-play'\">Play</button>");
+  
+  html += F("<h2>Lighting Controls</h2>");
+  html += F("<button onclick=\"window.location='/leds-toggle'\">");
+  if (ledsEnabled) {
+    html += F("LEDs ON");
+  } else {
+    html += F("LEDs OFF"); 
+  }
+  html += F("</button>");
+  html += F("<button onclick=\"window.location='/brightness-down'\">Bright -</button>");
+  html += F("<button onclick=\"window.location='/brightness-up'\">Bright +</button>");
+  
   html += F("<h2>Battle Effects</h2>");
   html += F("<button onclick=\"window.location='/machine-gun'\">Machine Gun</button>");
   html += F("<button onclick=\"window.location='/flamethrower'\">Flamethrower</button>");
@@ -264,6 +296,20 @@ void handleRoot() {
       html += currentTrack;
       html += F(")");
     }
+    html += F("<br><b>Volume:</b> ");
+    html += currentVolume;
+    html += F("/30");
+  }
+  
+  html += F("<br><b>LEDs:</b> ");
+  if (ledsEnabled) {
+    html += F("<span class='connected'>ON</span>");
+    html += F(" <b>Brightness:</b> ");
+    html += globalBrightness;
+    html += F("%");
+  } else {
+    html += F("<span class='disconnected'>OFF</span>");
+  }
   } else {
     html += F("<span class='disconnected'>Disconnected</span>");
     html += F(" <button onclick=\"window.location='/reconnect-dfplayer'\">Reconnect</button>");
@@ -390,14 +436,15 @@ void handleReconnectDFPlayer() {
   delay(1000);
   
   // Test communication
-  dfPlayer.volume(20);
+  dfPlayer.volume(currentVolume);
   delay(500);
   
-  int currentVolume = dfPlayer.readVolume();
+  int readVolume = dfPlayer.readVolume();
   delay(100);
   
-  if (currentVolume > 0 && currentVolume <= 30) {
+  if (readVolume > 0 && readVolume <= 30) {
     Serial.println("DFPlayer reconnected successfully!");
+    currentVolume = readVolume;
     dfPlayerConnected = true;
     dfPlayerStatus = "Reconnected";
     // Start idle audio
@@ -611,4 +658,89 @@ void handlePerformUpdate() {
   }
   
   http.end();
+}
+
+// Handle volume up request
+void handleVolumeUp() {
+  if (dfPlayerConnected && currentVolume < 30) {
+    currentVolume++;
+    dfPlayer.volume(currentVolume);
+    Serial.println("Volume up: " + String(currentVolume));
+  }
+  server.sendHeader("Location", "/");
+  server.send(302);
+}
+
+// Handle volume down request  
+void handleVolumeDown() {
+  if (dfPlayerConnected && currentVolume > 0) {
+    currentVolume--;
+    dfPlayer.volume(currentVolume);
+    Serial.println("Volume down: " + String(currentVolume));
+  }
+  server.sendHeader("Location", "/");
+  server.send(302);
+}
+
+// Handle audio pause request
+void handleAudioPause() {
+  if (dfPlayerConnected) {
+    dfPlayer.pause();
+    dfPlayerPlaying = false;
+    dfPlayerStatus = "Paused";
+    Serial.println("Audio paused");
+  }
+  server.sendHeader("Location", "/");
+  server.send(302);
+}
+
+// Handle audio play request
+void handleAudioPlay() {
+  if (dfPlayerConnected) {
+    if (!dfPlayerPlaying) {
+      dfPlayer.start();
+      dfPlayerPlaying = true;
+      dfPlayerStatus = "Playing";
+      Serial.println("Audio resumed");
+    } else {
+      // Start idle loop if nothing is playing
+      dfPlayer.loop(AUDIO_IDLE);
+      currentTrack = AUDIO_IDLE;
+      dfPlayerPlaying = true;
+      dfPlayerStatus = "Playing Idle";
+      Serial.println("Playing idle audio");
+    }
+  }
+  server.sendHeader("Location", "/");
+  server.send(302);
+}
+
+// Handle brightness up request
+void handleBrightnessUp() {
+  if (globalBrightness < 100) {
+    globalBrightness += 10;
+    if (globalBrightness > 100) globalBrightness = 100;
+    Serial.println("Brightness up: " + String(globalBrightness) + "%");
+  }
+  server.sendHeader("Location", "/");
+  server.send(302);
+}
+
+// Handle brightness down request  
+void handleBrightnessDown() {
+  if (globalBrightness > 0) {
+    globalBrightness -= 10;
+    if (globalBrightness < 0) globalBrightness = 0;
+    Serial.println("Brightness down: " + String(globalBrightness) + "%");
+  }
+  server.sendHeader("Location", "/");
+  server.send(302);
+}
+
+// Handle LEDs toggle request
+void handleLedsToggle() {
+  ledsEnabled = !ledsEnabled;
+  Serial.println("LEDs " + String(ledsEnabled ? "enabled" : "disabled"));
+  server.sendHeader("Location", "/");
+  server.send(302);
 }

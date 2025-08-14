@@ -4,6 +4,7 @@
 bool dfPlayerConnected = false;
 bool dfPlayerPlaying = false;
 int currentTrack = 0;
+int currentVolume = 20;
 String dfPlayerStatus = "Unknown";
 unsigned long lastStatusCheck = 0;
 

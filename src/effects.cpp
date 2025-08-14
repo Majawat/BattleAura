@@ -1,6 +1,22 @@
 #include "effects.h"
 #include "dfplayer.h"
 
+// Global LED settings
+bool ledsEnabled = true;
+int globalBrightness = 100; // 0-100 percentage
+
+// Helper function to set LED with global brightness and on/off control
+void setLED(int ledPin, int brightness) {
+  if (!ledsEnabled) {
+    setLED(ledPin, 0);
+    return;
+  }
+  
+  // Apply global brightness percentage
+  int adjustedBrightness = (brightness * globalBrightness) / 100;
+  analogWrite(ledPin, constrain(adjustedBrightness, 0, 255));
+}
+
 // Candle flicker effect
 void candleFlicker(int ledPin) {
   static unsigned long lastBaseUpdate = 0;
@@ -16,7 +32,7 @@ void candleFlicker(int ledPin) {
   int flicker = random(-20, 30);
   int brightness = constrain(baseIntensity + flicker, 5, 120);
   
-  analogWrite(ledPin, brightness);
+  setLED(ledPin, brightness);
 }
 
 // Engine breathing effect (original - unused now)
@@ -31,7 +47,7 @@ void enginePulse(int ledPin, int minBright, int maxBright, int speed) {
     if (brightness >= maxBright || brightness <= minBright) {
       direction = -direction;
     }
-    analogWrite(ledPin, brightness);
+    setLED(ledPin, brightness);
   }
 }
 
@@ -40,7 +56,7 @@ void enginePulseSmooth(int ledPin, int phase) {
   // Use sine wave for smooth breathing
   float angle = (millis() + phase) * 0.003;  // Slow breathing
   int brightness = 40 + 80 * (sin(angle) + 1) / 2;  // Range 40-120
-  analogWrite(ledPin, brightness);
+  setLED(ledPin, brightness);
 }
 
 // Engine heat flicker effect
@@ -57,7 +73,7 @@ void engineHeat(int ledPin) {
   // Fast flicker on top of base heat
   int flicker = random(-15, 20);
   int brightness = constrain(baseHeat + flicker, 30, 150);
-  analogWrite(ledPin, brightness);
+  setLED(ledPin, brightness);
 }
 
 // Console data stream effect
@@ -69,7 +85,7 @@ void consoleDataStream(int ledPin) {
   if (millis() - lastPulse > random(100, 400)) {
     isOn = !isOn;
     int brightness = isOn ? random(80, 150) : random(10, 30);
-    analogWrite(ledPin, brightness);
+    setLED(ledPin, brightness);
     lastPulse = millis();
   }
 }
@@ -88,9 +104,9 @@ void machineGunEffect(DFRobotDFPlayerMini* dfPlayer, int ledPin, int audioTrack)
     
     // Keep flashing LED while weapon audio is playing
     while (dfPlayerPlaying && currentTrack == audioTrack) {
-      analogWrite(ledPin, 255); // Muzzle flash on
+      setLED(ledPin, 255); // Muzzle flash on
       delay(50);
-      analogWrite(ledPin, 0);   // Off
+      setLED(ledPin, 0);   // Off
       delay(80);
       
       // Check if audio finished (this gets updated by the callback)
@@ -100,15 +116,15 @@ void machineGunEffect(DFRobotDFPlayerMini* dfPlayer, int ledPin, int audioTrack)
     }
     
     // Ensure LED is off when done
-    analogWrite(ledPin, 0);
+    setLED(ledPin, 0);
     Serial.println("Machine gun effect finished");
   } else {
     // If no audio, do a few flashes as fallback
     Serial.println("No audio available, doing fallback LED flashes");
     for (int i = 0; i < 5; i++) {
-      analogWrite(ledPin, 255);
+      setLED(ledPin, 255);
       delay(50);
-      analogWrite(ledPin, 0);
+      setLED(ledPin, 0);
       delay(80);
     }
   }
@@ -130,7 +146,7 @@ void flamethrowerEffect(DFRobotDFPlayerMini* dfPlayer, int ledPin, int audioTrac
     while (dfPlayerPlaying && currentTrack == audioTrack) {
       // Flickering flame effect - more realistic than steady glow
       int intensity = random(180, 255);
-      analogWrite(ledPin, intensity);
+      setLED(ledPin, intensity);
       delay(random(80, 150)); // Vary the flicker timing
       
       // Check if audio finished (this gets updated by the callback)
@@ -140,17 +156,17 @@ void flamethrowerEffect(DFRobotDFPlayerMini* dfPlayer, int ledPin, int audioTrac
     }
     
     // Ensure LED is off when done
-    analogWrite(ledPin, 0);
+    setLED(ledPin, 0);
     Serial.println("Flamethrower effect finished");
   } else {
     // If no audio, do a sustained flame effect as fallback
     Serial.println("No audio available, doing fallback flame effect");
     for (int i = 0; i < 20; i++) {
       int intensity = random(180, 255);
-      analogWrite(ledPin, intensity);
+      setLED(ledPin, intensity);
       delay(100);
     }
-    analogWrite(ledPin, 0);
+    setLED(ledPin, 0);
   }
 }
 
@@ -171,13 +187,13 @@ void engineRevEffect(DFRobotDFPlayerMini* dfPlayer, int engineLed1, int engineLe
       // Create revving pattern - rapid alternating pulses that build intensity
       for (int cycle = 0; cycle < 3 && dfPlayerPlaying && currentTrack == audioTrack; cycle++) {
         // Engine 1 bright, Engine 2 dim
-        analogWrite(engineLed1, random(200, 255));
-        analogWrite(engineLed2, random(50, 100));
+        setLED(engineLed1, random(200, 255));
+        setLED(engineLed2, random(50, 100));
         delay(random(80, 150));
         
         // Engine 1 dim, Engine 2 bright  
-        analogWrite(engineLed1, random(50, 100));
-        analogWrite(engineLed2, random(200, 255));
+        setLED(engineLed1, random(50, 100));
+        setLED(engineLed2, random(200, 255));
         delay(random(80, 150));
         
         // Check if audio finished
@@ -188,22 +204,22 @@ void engineRevEffect(DFRobotDFPlayerMini* dfPlayer, int engineLed1, int engineLe
     }
     
     // Ensure LEDs are off when done
-    analogWrite(engineLed1, 0);
-    analogWrite(engineLed2, 0);
+    setLED(engineLed1, 0);
+    setLED(engineLed2, 0);
     Serial.println("Engine rev effect finished");
   } else {
     // If no audio, do a rev effect as fallback
     Serial.println("No audio available, doing fallback engine rev effect");
     for (int i = 0; i < 15; i++) {
       // Alternating bright pulses
-      analogWrite(engineLed1, random(180, 255));
-      analogWrite(engineLed2, random(50, 120));
+      setLED(engineLed1, random(180, 255));
+      setLED(engineLed2, random(50, 120));
       delay(100);
-      analogWrite(engineLed1, random(50, 120));
-      analogWrite(engineLed2, random(180, 255));
+      setLED(engineLed1, random(50, 120));
+      setLED(engineLed2, random(180, 255));
       delay(100);
     }
-    analogWrite(engineLed1, 0);
-    analogWrite(engineLed2, 0);
+    setLED(engineLed1, 0);
+    setLED(engineLed2, 0);
   }
 }
