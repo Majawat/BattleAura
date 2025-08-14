@@ -40,19 +40,33 @@ jobs:
         run: |
           echo "Uploading firmware to battlesync.me..."
           
-          # Get HTTP status code only
+          # Create a temporary file for the changelog to handle multiline content properly
+          echo "${{ github.event.head_commit.message }}" > changelog.tmp
+          
+          # Get HTTP status code only  
           http_code=$(curl -X POST \
             -F "file=@.pio/build/seeed_xiao_esp32c3/firmware.bin" \
             -F "version=${{ github.ref_name }}" \
-            -F "changelog=${{ github.event.head_commit.message }}" \
+            -F "changelog=<changelog.tmp" \
             --write-out "%{http_code}" \
             --silent \
             --output /dev/null \
             https://battlesync.me/api/battleaura/firmware/upload)
           
+          # Clean up temp file
+          rm changelog.tmp
+          
           if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 201 ]; then
             echo "✅ Upload successful (HTTP $http_code)"
           else
             echo "❌ Upload failed (HTTP $http_code)"
+            echo "Debug: Checking server response..."
+            # Retry with verbose output for debugging
+            curl -X POST \
+              -F "file=@.pio/build/seeed_xiao_esp32c3/firmware.bin" \
+              -F "version=${{ github.ref_name }}" \
+              -F "changelog=Upload via GitHub Actions" \
+              -v \
+              https://battlesync.me/api/battleaura/firmware/upload || true
             exit 1
           fi

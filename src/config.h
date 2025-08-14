@@ -4,8 +4,8 @@
 #include <Arduino.h>
 
 // Firmware version
-#define FIRMWARE_VERSION "0.26.0"
-#define VERSION_FEATURE "Add web-based effect configuration interface"
+#define FIRMWARE_VERSION "0.26.1"
+#define VERSION_FEATURE "Fix GitHub Actions deployment with multiline commit messages"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Audio file mappings
