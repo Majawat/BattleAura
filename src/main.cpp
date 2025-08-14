@@ -52,6 +52,8 @@ void handleTakingHits();
 void handleDestroyed();
 void handleRocket();
 void handleUnitKill();
+void handleConfig();
+void handleConfigSave();
 int compareVersions(String current, String remote);
 bool checkForUpdates(String &newVersion, String &downloadUrl, String &changelog);
 
@@ -254,6 +256,8 @@ void setupWebServer() {
   server.on("/destroyed", handleDestroyed);
   server.on("/rocket", handleRocket);
   server.on("/unit-kill", handleUnitKill);
+  server.on("/config", handleConfig);
+  server.on("/config-save", HTTP_POST, handleConfigSave);
   
   server.begin();
   Serial.println(F("Web server started"));
@@ -341,6 +345,9 @@ void handleRoot() {
   html += F("<input type='file' name='firmware' accept='.bin' required>");
   html += F("<input type='submit' value='Upload'>");
   html += F("</form>");
+  
+  html += F("<h2>Configuration</h2>");
+  html += F("<button onclick=\"window.location='/config'\">Configure Effects</button>");
   
   html += F("<h2>System Controls</h2>");
   html += F("<button onclick=\"if(confirm('Reboot device?')) window.location='/reboot'\">Reboot</button>");
@@ -803,4 +810,106 @@ void handleUnitKill() {
   unitKillEffect(&dfPlayer, AUDIO_UNIT_KILL);
   server.sendHeader("Location", "/");
   server.send(302);
+}
+
+// Handle configuration page request
+void handleConfig() {
+  String html = F("<!DOCTYPE html><html><head><title>BattleAura Configuration</title>");
+  html += F("<meta name='viewport' content='width=device-width,initial-scale=1'>");
+  html += F("<style>");
+  html += F("body{background:#222;color:#fff;font-family:Arial;padding:20px}");
+  html += F("h1{color:#5af}h2{color:#a5f;margin-top:20px}");
+  html += F("table{width:100%;border-collapse:collapse;margin:10px 0}");
+  html += F("th,td{border:1px solid #666;padding:8px;text-align:left}");
+  html += F("th{background:#333}");
+  html += F("select,input{padding:5px;margin:2px;background:#333;color:#fff;border:1px solid #666}");
+  html += F("button{background:#4a4;color:#fff;border:none;padding:10px 20px;margin:5px;border-radius:4px}");
+  html += F(".save{background:#44a;font-size:16px;padding:15px 30px}");
+  html += F("</style></head><body>");
+  
+  html += F("<h1>Effect Configuration</h1>");
+  html += F("<form method='POST' action='/config-save'>");
+  
+  html += F("<h2>Background Effects</h2>");
+  html += F("<table><tr><th>Pin</th><th>Effect Type</th><th>Label</th><th>Enabled</th></tr>");
+  
+  // Generate background effects table
+  const char* effectTypes[] = {"off", "candle", "pulse", "console", "static"};
+  const char* pinNames[] = {"D0", "D1", "D2", "D3", "D4", "D5", "D8", "D9"};
+  
+  for (int i = 0; i < 8; i++) {
+    html += F("<tr><td>");
+    html += pinNames[i];
+    html += F("</td><td><select name='bg_effect_");
+    html += String(i);
+    html += F("'>");
+    
+    for (int j = 0; j < 5; j++) {
+      html += F("<option value='");
+      html += effectTypes[j];
+      html += F("'");
+      if (deviceConfig.backgroundEffects[i].effectType == effectTypes[j]) {
+        html += F(" selected");
+      }
+      html += F(">");
+      html += effectTypes[j];
+      html += F("</option>");
+    }
+    
+    html += F("</select></td><td><input type='text' name='bg_label_");
+    html += String(i);
+    html += F("' value='");
+    html += deviceConfig.backgroundEffects[i].label;
+    html += F("' placeholder='Label'></td><td><input type='checkbox' name='bg_enabled_");
+    html += String(i);
+    html += F("'");
+    if (deviceConfig.backgroundEffects[i].enabled) {
+      html += F(" checked");
+    }
+    html += F("></td></tr>");
+  }
+  html += F("</table>");
+  
+  html += F("<br><button type='submit' class='save'>Save Configuration</button>");
+  html += F("<button type='button' onclick=\"window.location='/'\">Back to Main</button>");
+  html += F("</form></body></html>");
+  
+  server.send(200, "text/html", html);
+}
+
+// Handle configuration save request
+void handleConfigSave() {
+  Serial.println("Saving configuration from web interface");
+  
+  // Update background effects from form data
+  for (int i = 0; i < 8; i++) {
+    String effectParam = "bg_effect_" + String(i);
+    String labelParam = "bg_label_" + String(i);
+    String enabledParam = "bg_enabled_" + String(i);
+    
+    if (server.hasArg(effectParam)) {
+      deviceConfig.backgroundEffects[i].effectType = server.arg(effectParam);
+    }
+    if (server.hasArg(labelParam)) {
+      deviceConfig.backgroundEffects[i].label = server.arg(labelParam);
+    }
+    deviceConfig.backgroundEffects[i].enabled = server.hasArg(enabledParam);
+    
+    Serial.println("Pin " + String(i) + ": " + deviceConfig.backgroundEffects[i].effectType + 
+                   " (" + deviceConfig.backgroundEffects[i].label + ") " + 
+                   (deviceConfig.backgroundEffects[i].enabled ? "ON" : "OFF"));
+  }
+  
+  // Save configuration (placeholder for now)
+  saveDeviceConfig();
+  
+  // Redirect back to main page with success message
+  String html = F("<!DOCTYPE html><html><head>");
+  html += F("<meta http-equiv='refresh' content='2;url=/'>");
+  html += F("<style>body{background:#222;color:#fff;font-family:Arial;padding:20px;text-align:center}</style>");
+  html += F("</head><body><h1>Configuration Saved!</h1>");
+  html += F("<p>Effects will be active on next loop cycle</p>");
+  html += F("<p>Redirecting...</p></body></html>");
+  
+  server.send(200, "text/html", html);
 }

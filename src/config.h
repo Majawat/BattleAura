@@ -4,8 +4,8 @@
 #include <Arduino.h>
 
 // Firmware version
-#define FIRMWARE_VERSION "0.25.1"
-#define VERSION_FEATURE "Fix compilation errors in universal configuration system"
+#define FIRMWARE_VERSION "0.26.0"
+#define VERSION_FEATURE "Add web-based effect configuration interface"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Audio file mappings
