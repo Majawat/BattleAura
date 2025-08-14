@@ -39,8 +39,17 @@ jobs:
       - name: Deploy to battlesync.me
         run: |
           echo "Uploading firmware to battlesync.me..."
-          curl -X POST \
+          response=$(curl -X POST \
             -F "file=@.pio/build/seeed_xiao_esp32c3/firmware.bin" \
             -F "version=${{ github.ref_name }}" \
             -F "changelog=${{ github.event.head_commit.message }}" \
-            https://battlesync.me/api/battleaura/firmware/upload
+            --write-out "%{http_code}" \
+            --silent \
+            https://battlesync.me/api/battleaura/firmware/upload)
+          
+          if [ "$response" -eq 200 ] || [ "$response" -eq 201 ]; then
+            echo "✅ Upload successful (HTTP $response)"
+          else
+            echo "❌ Upload failed (HTTP $response)"
+            exit 1
+          fi
