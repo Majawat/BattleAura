@@ -299,6 +299,9 @@ void handleRoot() {
     html += F("<br><b>Volume:</b> ");
     html += currentVolume;
     html += F("/30");
+  } else {
+    html += F("<span class='disconnected'>Disconnected</span>");
+    html += F(" <button onclick=\"window.location='/reconnect-dfplayer'\">Reconnect</button>");
   }
   
   html += F("<br><b>LEDs:</b> ");
@@ -309,10 +312,6 @@ void handleRoot() {
     html += F("%");
   } else {
     html += F("<span class='disconnected'>OFF</span>");
-  }
-  } else {
-    html += F("<span class='disconnected'>Disconnected</span>");
-    html += F(" <button onclick=\"window.location='/reconnect-dfplayer'\">Reconnect</button>");
   }
   
   html += F("<h2>Firmware</h2>");
