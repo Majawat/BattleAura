@@ -15,8 +15,8 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.19.2"
-#define VERSION_FEATURE "Simplify web interface styling to save flash memory"
+#define FIRMWARE_VERSION "0.19.3"
+#define VERSION_FEATURE "Add device reboot button to web interface"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
@@ -47,6 +47,7 @@ void handleMachineGun();
 void handleFlamethrower();
 void handleEngineRev();
 void handleReconnectDFPlayer();
+void handleReboot();
 void resumeIdleAudio();
 void handleCheckUpdates();
 void handlePerformUpdate();
@@ -225,6 +226,7 @@ void setupWebServer() {
   server.on("/flamethrower", handleFlamethrower);
   server.on("/engine-rev", handleEngineRev);
   server.on("/reconnect-dfplayer", handleReconnectDFPlayer);
+  server.on("/reboot", handleReboot);
   server.on("/check-updates", handleCheckUpdates);
   server.on("/perform-update", handlePerformUpdate);
   
@@ -280,6 +282,7 @@ void handleRoot() {
   html += F("</form>");
   
   html += F("<h2>System Controls</h2>");
+  html += F("<button onclick=\"if(confirm('Reboot device?')) window.location='/reboot'\">Reboot</button>");
   html += F("<button class='warn' onclick=\"if(confirm('Reset WiFi?')) window.location='/wifi-reset'\">Reset WiFi</button>");
   html += F("<button class='danger' onclick=\"if(confirm('Factory reset?')) window.location='/factory-reset'\">Factory Reset</button>");
   
@@ -410,6 +413,20 @@ void handleReconnectDFPlayer() {
   // Redirect back to main page
   server.sendHeader("Location", "/");
   server.send(302);
+}
+
+// Handle device reboot request
+void handleReboot() {
+  Serial.println("Device reboot requested via web interface");
+  server.send(200, "text/html", 
+    F("<html><body style='background:#222;color:#fff;font-family:Arial;padding:20px;text-align:center'>"
+      "<h1>Rebooting...</h1><p>Device is restarting</p>"
+      "<script>setTimeout(function(){window.location.href='/';}, 10000);</script>"
+      "</body></html>"));
+  
+  delay(1000);
+  Serial.println("Rebooting device...");
+  ESP.restart();
 }
 
 // Resume idle audio after weapon effects finish
