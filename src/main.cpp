@@ -15,8 +15,8 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.17.3"
-#define VERSION_FEATURE "Test upload to battlesync.me with proper API endpoints"
+#define FIRMWARE_VERSION "0.17.4"
+#define VERSION_FEATURE "Fix GitHub Actions HTTP status code parsing"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
