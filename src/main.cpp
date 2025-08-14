@@ -15,8 +15,8 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.19.0"
-#define VERSION_FEATURE "Redesign web interface - remove emojis, reorganize layout, add DFPlayer reconnect"
+#define FIRMWARE_VERSION "0.19.1"
+#define VERSION_FEATURE "Add auto-reconnect after firmware updates with 30s countdown timer"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
@@ -547,9 +547,47 @@ void handlePerformUpdate() {
   
   Serial.println("Starting firmware update from: " + updateUrl);
   
-  // Send immediate response to user
-  server.send(200, "text/html", 
-    F("<html><head><style>body{font-family:Arial;background:#0d1117;color:#e6edf3;padding:20px;text-align:center;}</style></head><body><h1>🔄 Updating Firmware</h1><p>Downloading and installing update...<br>Device will restart automatically when complete.</p></body></html>"));
+  // Get current host for reconnection
+  String currentHost = server.hostHeader();
+  
+  // Send immediate response with auto-reconnect
+  String updateHtml = F("<!DOCTYPE html><html><head>");
+  updateHtml += F("<meta name='viewport' content='width=device-width,initial-scale=1'>");
+  updateHtml += F("<style>");
+  updateHtml += F("body { font-family: 'Segoe UI', Arial, sans-serif; background: #0d1117; color: #e6edf3; padding: 20px; text-align: center; }");
+  updateHtml += F(".container { max-width: 600px; margin: 0 auto; }");
+  updateHtml += F("h1 { color: #58a6ff; }");
+  updateHtml += F(".status { color: #8b949e; margin: 20px 0; }");
+  updateHtml += F(".progress { background: #21262d; border-radius: 10px; padding: 20px; margin: 20px 0; }");
+  updateHtml += F("</style>");
+  updateHtml += F("<script>");
+  updateHtml += F("let countdown = 30;");
+  updateHtml += F("function updateCountdown() {");
+  updateHtml += F("  document.getElementById('countdown').textContent = countdown;");
+  updateHtml += F("  if (countdown <= 0) {");
+  updateHtml += F("    document.getElementById('status').innerHTML = 'Reconnecting...';");
+  updateHtml += F("    window.location.href = 'http://");
+  updateHtml += currentHost;
+  updateHtml += F("';");
+  updateHtml += F("  } else {");
+  updateHtml += F("    countdown--;");
+  updateHtml += F("    setTimeout(updateCountdown, 1000);");
+  updateHtml += F("  }");
+  updateHtml += F("}");
+  updateHtml += F("setTimeout(updateCountdown, 1000);");
+  updateHtml += F("</script>");
+  updateHtml += F("</head><body><div class='container'>");
+  updateHtml += F("<h1>Updating Firmware</h1>");
+  updateHtml += F("<div class='progress'>");
+  updateHtml += F("<p>Downloading and installing update...</p>");
+  updateHtml += F("<p>Device will restart automatically when complete.</p>");
+  updateHtml += F("<div class='status' id='status'>Auto-reconnecting in <span id='countdown'>30</span> seconds...</div>");
+  updateHtml += F("<p><a href='http://");
+  updateHtml += currentHost;
+  updateHtml += F("'>Click here to reconnect manually</a></p>");
+  updateHtml += F("</div></div></body></html>");
+  
+  server.send(200, "text/html", updateHtml);
   
   // Give time for response to send
   delay(1000);
