@@ -35,4 +35,10 @@ void flamethrowerEffect(class DFRobotDFPlayerMini* dfPlayer, int ledPin, int aud
 // Vehicle effects
 void engineRevEffect(class DFRobotDFPlayerMini* dfPlayer, int engineLed1, int engineLed2, int audioTrack);
 
+// Battle effects
+void takingHitsEffect(class DFRobotDFPlayerMini* dfPlayer, int audioTrack);
+void destroyedEffect(class DFRobotDFPlayerMini* dfPlayer, int audioTrack);
+void rocketEffect(class DFRobotDFPlayerMini* dfPlayer, int audioTrack);
+void unitKillEffect(class DFRobotDFPlayerMini* dfPlayer, int audioTrack);
+
 #endif

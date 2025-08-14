@@ -58,6 +58,10 @@ void handleAudioPlay();
 void handleBrightnessUp();
 void handleBrightnessDown();
 void handleLedsToggle();
+void handleTakingHits();
+void handleDestroyed();
+void handleRocket();
+void handleUnitKill();
 int compareVersions(String current, String remote);
 bool checkForUpdates(String &newVersion, String &downloadUrl, String &changelog);
 
@@ -244,6 +248,10 @@ void setupWebServer() {
   server.on("/brightness-up", handleBrightnessUp);
   server.on("/brightness-down", handleBrightnessDown);
   server.on("/leds-toggle", handleLedsToggle);
+  server.on("/taking-hits", handleTakingHits);
+  server.on("/destroyed", handleDestroyed);
+  server.on("/rocket", handleRocket);
+  server.on("/unit-kill", handleUnitKill);
   
   server.begin();
   Serial.println(F("Web server started"));
@@ -286,6 +294,12 @@ void handleRoot() {
   html += F("<button onclick=\"window.location='/machine-gun'\">Machine Gun</button>");
   html += F("<button onclick=\"window.location='/flamethrower'\">Flamethrower</button>");
   html += F("<button onclick=\"window.location='/engine-rev'\">Engine Rev</button>");
+  html += F("<button onclick=\"window.location='/rocket'\">Rocket</button>");
+  
+  html += F("<h2>Battle Events</h2>");
+  html += F("<button onclick=\"window.location='/taking-hits'\">Taking Hits</button>");
+  html += F("<button class='warn' onclick=\"if(confirm('Simulate destruction?')) window.location='/destroyed'\">Destroyed</button>");
+  html += F("<button onclick=\"window.location='/unit-kill'\">Unit Kill</button>");
   
   html += F("<h2>System Status</h2>");
   html += F("<b>DFPlayer:</b> ");
@@ -740,6 +754,37 @@ void handleBrightnessDown() {
 void handleLedsToggle() {
   ledsEnabled = !ledsEnabled;
   Serial.println("LEDs " + String(ledsEnabled ? "enabled" : "disabled"));
+  server.sendHeader("Location", "/");
+  server.send(302);
+}
+
+// Handle taking hits request
+void handleTakingHits() {
+  Serial.println("Taking hits triggered via web interface");
+  takingHitsEffect(&dfPlayer, AUDIO_TAKING_HITS);
+  server.sendHeader("Location", "/");
+  server.send(302);
+}
+
+// Handle destroyed request
+void handleDestroyed() {
+  Serial.println("CRITICAL: Destroyed effect triggered via web interface");
+  destroyedEffect(&dfPlayer, AUDIO_DESTROYED);
+  // Note: This function will shutdown the device, so no redirect needed
+}
+
+// Handle rocket request  
+void handleRocket() {
+  Serial.println("Rocket fired via web interface");
+  rocketEffect(&dfPlayer, AUDIO_LIMITED_WEAPON);
+  server.sendHeader("Location", "/");
+  server.send(302);
+}
+
+// Handle unit kill request
+void handleUnitKill() {
+  Serial.println("Unit kill confirmed via web interface");
+  unitKillEffect(&dfPlayer, AUDIO_UNIT_KILL);
   server.sendHeader("Location", "/");
   server.send(302);
 }
