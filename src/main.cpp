@@ -15,8 +15,8 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.17.4"
-#define VERSION_FEATURE "Fix GitHub Actions HTTP status code parsing"
+#define FIRMWARE_VERSION "0.17.5"
+#define VERSION_FEATURE "Remove weapon effect redirect pages - stay on main interface"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
@@ -381,16 +381,18 @@ void handleFactoryReset() {
 void handleMachineGun() {
   Serial.println("Machine gun triggered via web interface");
   machineGunEffect(&dfPlayer, LED5, AUDIO_WEAPON_FIRE_1);
-  server.send(200, "text/html", 
-    F("<html><body><h1>🔥 Machine Gun Fire!</h1><p>Effect triggered successfully.</p><a href='/'>← Back to Main</a></body></html>"));
+  // Redirect back to main page
+  server.sendHeader("Location", "/");
+  server.send(302);
 }
 
 // Handle flamethrower effect request
 void handleFlamethrower() {
   Serial.println("Flamethrower triggered via web interface");
   flamethrowerEffect(&dfPlayer, LED6, AUDIO_WEAPON_FIRE_2);
-  server.send(200, "text/html", 
-    F("<html><body><h1>🔥 Flamethrower!</h1><p>Effect triggered successfully.</p><a href='/'>← Back to Main</a></body></html>"));
+  // Redirect back to main page
+  server.sendHeader("Location", "/");
+  server.send(302);
 }
 
 // Resume idle audio after weapon effects finish
