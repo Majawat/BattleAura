@@ -25,4 +25,7 @@ void consoleDataStream(int ledPin);
 void machineGunEffect(class DFRobotDFPlayerMini* dfPlayer, int ledPin, int audioTrack);
 void flamethrowerEffect(class DFRobotDFPlayerMini* dfPlayer, int ledPin, int audioTrack);
 
+// Vehicle effects
+void engineRevEffect(class DFRobotDFPlayerMini* dfPlayer, int engineLed1, int engineLed2, int audioTrack);
+
 #endif

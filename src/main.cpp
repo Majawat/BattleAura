@@ -15,8 +15,8 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.17.5"
-#define VERSION_FEATURE "Remove weapon effect redirect pages - stay on main interface"
+#define FIRMWARE_VERSION "0.18.0"
+#define VERSION_FEATURE "Add engine rev effect with dual exhaust stack LED synchronization"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
@@ -45,6 +45,7 @@ void handleWiFiReset();
 void handleFactoryReset();
 void handleMachineGun();
 void handleFlamethrower();
+void handleEngineRev();
 void resumeIdleAudio();
 void handleCheckUpdates();
 void handlePerformUpdate();
@@ -221,6 +222,7 @@ void setupWebServer() {
   server.on("/factory-reset", handleFactoryReset);
   server.on("/machine-gun", handleMachineGun);
   server.on("/flamethrower", handleFlamethrower);
+  server.on("/engine-rev", handleEngineRev);
   server.on("/check-updates", handleCheckUpdates);
   server.on("/perform-update", handlePerformUpdate);
   
@@ -299,6 +301,8 @@ void handleRoot() {
   html += F("<button onclick=\"window.location='/machine-gun'\">🔥 Machine Gun</button>");
   html += F("<br><br><div class='control-desc'>Trigger flamethrower with sustained flame effect and audio</div>");
   html += F("<button onclick=\"window.location='/flamethrower'\">🔥 Flamethrower</button>");
+  html += F("<br><br><div class='control-desc'>Rev engine with dual exhaust stack effects and audio</div>");
+  html += F("<button onclick=\"window.location='/engine-rev'\">🚀 Engine Rev</button>");
   html += F("</div>");
   
   html += F("<h2>⚙️ System Controls</h2>");
@@ -390,6 +394,15 @@ void handleMachineGun() {
 void handleFlamethrower() {
   Serial.println("Flamethrower triggered via web interface");
   flamethrowerEffect(&dfPlayer, LED6, AUDIO_WEAPON_FIRE_2);
+  // Redirect back to main page
+  server.sendHeader("Location", "/");
+  server.send(302);
+}
+
+// Handle engine rev effect request
+void handleEngineRev() {
+  Serial.println("Engine rev triggered via web interface");
+  engineRevEffect(&dfPlayer, LED7, LED8, AUDIO_ENGINE_REV);
   // Redirect back to main page
   server.sendHeader("Location", "/");
   server.send(302);

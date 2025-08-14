@@ -153,3 +153,57 @@ void flamethrowerEffect(DFRobotDFPlayerMini* dfPlayer, int ledPin, int audioTrac
     analogWrite(ledPin, 0);
   }
 }
+
+// Engine rev effect - dual engine stack rev-up with configurable LEDs and audio
+void engineRevEffect(DFRobotDFPlayerMini* dfPlayer, int engineLed1, int engineLed2, int audioTrack) {
+  
+  if (dfPlayerConnected && dfPlayer != nullptr) {
+    // Stop current audio and play engine rev sound
+    dfPlayer->stop();
+    delay(100);
+    dfPlayer->play(audioTrack);
+    dfPlayerPlaying = true; // Mark as playing so callback knows to resume idle
+    currentTrack = audioTrack;
+    Serial.println("Playing engine rev audio with synchronized dual engine LED effects");
+    
+    // Engine rev effect - starts slow, builds up intensity
+    while (dfPlayerPlaying && currentTrack == audioTrack) {
+      // Create revving pattern - rapid alternating pulses that build intensity
+      for (int cycle = 0; cycle < 3 && dfPlayerPlaying && currentTrack == audioTrack; cycle++) {
+        // Engine 1 bright, Engine 2 dim
+        analogWrite(engineLed1, random(200, 255));
+        analogWrite(engineLed2, random(50, 100));
+        delay(random(80, 150));
+        
+        // Engine 1 dim, Engine 2 bright  
+        analogWrite(engineLed1, random(50, 100));
+        analogWrite(engineLed2, random(200, 255));
+        delay(random(80, 150));
+        
+        // Check if audio finished
+        if (dfPlayer->available()) {
+          printDetail(dfPlayer->readType(), dfPlayer->read());
+        }
+      }
+    }
+    
+    // Ensure LEDs are off when done
+    analogWrite(engineLed1, 0);
+    analogWrite(engineLed2, 0);
+    Serial.println("Engine rev effect finished");
+  } else {
+    // If no audio, do a rev effect as fallback
+    Serial.println("No audio available, doing fallback engine rev effect");
+    for (int i = 0; i < 15; i++) {
+      // Alternating bright pulses
+      analogWrite(engineLed1, random(180, 255));
+      analogWrite(engineLed2, random(50, 120));
+      delay(100);
+      analogWrite(engineLed1, random(50, 120));
+      analogWrite(engineLed2, random(180, 255));
+      delay(100);
+    }
+    analogWrite(engineLed1, 0);
+    analogWrite(engineLed2, 0);
+  }
+}
