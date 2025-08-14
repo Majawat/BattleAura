@@ -40,9 +40,9 @@ void printDetail(uint8_t type, int value){
       dfPlayerPlaying = false;
       dfPlayerStatus = "Play Finished";
       
-      // If this was a weapon effect (not idle), resume idle audio
-      if (value == 3 || value == 4) { // AUDIO_WEAPON_FIRE_1 or AUDIO_WEAPON_FIRE_2
-        Serial.println(F("Weapon effect finished, resuming idle audio"));
+      // If this was a battle effect (not idle), resume idle audio
+      if (value == 3 || value == 4 || value == 6) { // AUDIO_WEAPON_FIRE_1, AUDIO_WEAPON_FIRE_2, AUDIO_ENGINE_REV
+        Serial.println(F("Battle effect finished, resuming idle audio"));
         if (resumeIdleCallback != nullptr) {
           resumeIdleCallback();
         }

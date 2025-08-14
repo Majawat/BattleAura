@@ -15,8 +15,8 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.18.0"
-#define VERSION_FEATURE "Add engine rev effect with dual exhaust stack LED synchronization"
+#define FIRMWARE_VERSION "0.18.1"
+#define VERSION_FEATURE "Fix engine rev effect - auto-resume idle audio after completion"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
