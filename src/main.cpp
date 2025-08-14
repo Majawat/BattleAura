@@ -15,8 +15,8 @@ SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
 // Firmware version
-#define FIRMWARE_VERSION "0.19.1"
-#define VERSION_FEATURE "Add auto-reconnect after firmware updates with 30s countdown timer"
+#define FIRMWARE_VERSION "0.19.2"
+#define VERSION_FEATURE "Simplify web interface styling to save flash memory"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Web server and WiFi
@@ -234,83 +234,56 @@ void setupWebServer() {
 
 // Main page with upload form
 void handleRoot() {
-  String html = F("<!DOCTYPE html><html><head><title>BattleAura OTA</title>");
+  String html = F("<!DOCTYPE html><html><head><title>BattleAura</title>");
   html += F("<meta name='viewport' content='width=device-width,initial-scale=1'>");
   html += F("<style>");
-  html += F("* { box-sizing: border-box; margin: 0; padding: 0; }");
-  html += F("body { font-family: 'Segoe UI', Arial, sans-serif; background: #0d1117; color: #e6edf3; padding: 20px; line-height: 1.6; }");
-  html += F(".container { max-width: 800px; margin: 0 auto; }");
-  html += F("h1 { color: #58a6ff; font-size: 2em; margin-bottom: 1em; border-bottom: 2px solid #21262d; padding-bottom: 0.5em; }");
-  html += F("h2 { color: #7c3aed; font-size: 1.4em; margin: 1.5em 0 0.8em 0; }");
-  html += F(".info-box { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; margin: 16px 0; }");
-  html += F(".status { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.9em; font-weight: bold; }");
-  html += F(".status.connected { background: #238636; color: white; }");
-  html += F(".status.disconnected { background: #da3633; color: white; }");
-  html += F(".status.running { background: #1f6feb; color: white; }");
-  html += F("form { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin: 16px 0; }");
-  html += F("input[type=file] { background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 8px 12px; color: #e6edf3; width: 100%; margin-bottom: 16px; }");
-  html += F("input[type=submit], button { background: #238636; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; margin: 4px; transition: background 0.2s; }");
-  html += F("input[type=submit]:hover, button:hover { background: #2ea043; }");
-  html += F(".btn-warning { background: #fb8500 !important; } .btn-warning:hover { background: #ffb700 !important; }");
-  html += F(".btn-danger { background: #da3633 !important; } .btn-danger:hover { background: #f85149 !important; }");
-  html += F(".control-desc { color: #8b949e; font-size: 0.9em; margin-bottom: 8px; }");
-  html += F("strong { color: #f0f6fc; }");
-  html += F("</style></head><body><div class='container'>");
+  html += F("body{background:#222;color:#fff;font-family:Arial;padding:20px}");
+  html += F("h1{color:#5af}h2{color:#a5f;margin-top:20px}");
+  html += F("button{background:#4a4;color:#fff;border:none;padding:10px 20px;margin:5px;border-radius:4px}");
+  html += F(".warn{background:#fa0}.danger{background:#f44}");
+  html += F(".connected{background:#4a4;padding:3px 6px;border-radius:3px}");
+  html += F(".disconnected{background:#f44;padding:3px 6px;border-radius:3px}");
+  html += F("input[type=file]{width:100%;padding:8px;margin:10px 0}");
+  html += F("</style></head><body>");
   
   html += F("<h1>BattleAura</h1>");
   
   html += F("<h2>Battle Effects</h2>");
-  html += F("<div class='info-box'>");
-  html += F("<div class='control-desc'>Trigger machine gun burst with muzzle flash and audio</div>");
   html += F("<button onclick=\"window.location='/machine-gun'\">Machine Gun</button>");
-  html += F("<br><br><div class='control-desc'>Trigger flamethrower with sustained flame effect and audio</div>");
   html += F("<button onclick=\"window.location='/flamethrower'\">Flamethrower</button>");
-  html += F("<br><br><div class='control-desc'>Rev engine with dual exhaust stack effects and audio</div>");
   html += F("<button onclick=\"window.location='/engine-rev'\">Engine Rev</button>");
-  html += F("</div>");
   
   html += F("<h2>System Status</h2>");
-  html += F("<div class='info-box'>");
-  html += F("<strong>DFPlayer:</strong> ");
+  html += F("<b>DFPlayer:</b> ");
   if (dfPlayerConnected) {
-    html += F("<span class='status connected'>Connected</span>");
+    html += F("<span class='connected'>Connected</span>");
     if (dfPlayerPlaying) {
       html += F(" (Track ");
       html += currentTrack;
       html += F(")");
     }
   } else {
-    html += F("<span class='status disconnected'>Disconnected</span>");
-    html += F(" <button onclick=\"window.location='/reconnect-dfplayer'\" style='padding:4px 8px;font-size:12px;'>Reconnect</button>");
+    html += F("<span class='disconnected'>Disconnected</span>");
+    html += F(" <button onclick=\"window.location='/reconnect-dfplayer'\">Reconnect</button>");
   }
-  html += F("</div>");
   
-  html += F("<h2>Firmware Management</h2>");
-  html += F("<div class='info-box'>");
-  html += F("<strong>Current Version:</strong> ");
+  html += F("<h2>Firmware</h2>");
+  html += F("<b>Version:</b> ");
   html += FIRMWARE_VERSION;
-  html += F("<br><strong>Built:</strong> ");
+  html += F("<br><b>Built:</b> ");
   html += BUILD_DATE;
-  html += F("<br><strong>Feature:</strong> ");
-  html += VERSION_FEATURE;
-  html += F("<br><br><div class='control-desc'>Check for new firmware updates from battlesync.me</div>");
-  html += F("<button onclick=\"window.location='/check-updates'\">Check for Updates</button>");
-  html += F("<br><br><strong>Manual Upload:</strong>");
-  html += F("<form method='POST' action='/upload' enctype='multipart/form-data' style='margin-top:10px;'>");
+  html += F("<br><br><button onclick=\"window.location='/check-updates'\">Check for Updates</button>");
+  html += F("<br><br><b>Manual Upload:</b>");
+  html += F("<form method='POST' action='/upload' enctype='multipart/form-data'>");
   html += F("<input type='file' name='firmware' accept='.bin' required>");
-  html += F("<input type='submit' value='Upload Firmware'>");
+  html += F("<input type='submit' value='Upload'>");
   html += F("</form>");
-  html += F("</div>");
   
   html += F("<h2>System Controls</h2>");
-  html += F("<div class='info-box'>");
-  html += F("<div class='control-desc'>Reset WiFi settings and restart captive portal</div>");
-  html += F("<button class='btn-warning' onclick=\"if(confirm('Reset WiFi settings? Device will restart.')) window.location='/wifi-reset'\">Reset WiFi</button>");
-  html += F("<br><br><div class='control-desc'>Reset all settings to factory defaults</div>");
-  html += F("<button class='btn-danger' onclick=\"if(confirm('Factory reset? This will erase all settings and restart the device.')) window.location='/factory-reset'\">Factory Reset</button>");
-  html += F("</div>");
+  html += F("<button class='warn' onclick=\"if(confirm('Reset WiFi?')) window.location='/wifi-reset'\">Reset WiFi</button>");
+  html += F("<button class='danger' onclick=\"if(confirm('Factory reset?')) window.location='/factory-reset'\">Factory Reset</button>");
   
-  html += F("</div></body></html>");
+  html += F("</body></html>");
   
   server.send(200, "text/html", html);
 }
@@ -498,40 +471,34 @@ void handleCheckUpdates() {
   String newVersion, downloadUrl, changelog;
   bool updateAvailable = checkForUpdates(newVersion, downloadUrl, changelog);
   
-  String html = F("<!DOCTYPE html><html><head><title>BattleAura Updates</title>");
+  String html = F("<!DOCTYPE html><html><head><title>Updates</title>");
   html += F("<meta name='viewport' content='width=device-width,initial-scale=1'>");
-  html += F("<style>");
-  html += F("body { font-family: 'Segoe UI', Arial, sans-serif; background: #0d1117; color: #e6edf3; padding: 20px; }");
-  html += F(".container { max-width: 600px; margin: 0 auto; }");
-  html += F("h1 { color: #58a6ff; }");
-  html += F(".info-box { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; margin: 16px 0; }");
-  html += F("button { background: #238636; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 5px; }");
-  html += F(".btn-update { background: #1f6feb !important; }");
-  html += F("</style></head><body><div class='container'>");
+  html += F("<style>body{background:#222;color:#fff;font-family:Arial;padding:20px}");
+  html += F("button{background:#4a4;color:#fff;border:none;padding:10px 20px;margin:5px;border-radius:4px}");
+  html += F(".update{background:#44a}</style></head><body>");
   
-  html += F("<h1>Firmware Update Check</h1>");
-  html += F("<div class='info-box'>");
-  html += F("<strong>Current Version:</strong> ");
+  html += F("<h1>Update Check</h1>");
+  html += F("<b>Current:</b> ");
   html += String(FIRMWARE_VERSION);
   html += F("<br>");
   
   if (updateAvailable) {
-    html += F("<strong>New Version Available:</strong> ");
+    html += F("<b>New Version:</b> ");
     html += newVersion;
-    html += F("<br><strong>Changes:</strong> ");
+    html += F("<br><b>Changes:</b> ");
     html += changelog;
     html += F("<br><br>");
-    html += F("<button class='btn-update' onclick=\"if(confirm('Download and install ");
+    html += F("<button class='update' onclick=\"if(confirm('Install ");
     html += newVersion;
-    html += F("? Device will restart.')) window.location='/perform-update?url=");
+    html += F("?')) window.location='/perform-update?url=");
     html += downloadUrl;
-    html += F("'\">Download & Install Update</button>");
+    html += F("'\">Install Update</button>");
   } else {
-    html += F("<strong>Status:</strong> You have the latest version!<br>");
+    html += F("<b>Status:</b> Latest version!<br>");
   }
   
-  html += F("<br><button onclick=\"window.location='/'\">← Back to Main</button>");
-  html += F("</div></div></body></html>");
+  html += F("<br><button onclick=\"window.location='/'\">Back</button>");
+  html += F("</body></html>");
   
   server.send(200, "text/html", html);
 }
@@ -553,13 +520,7 @@ void handlePerformUpdate() {
   // Send immediate response with auto-reconnect
   String updateHtml = F("<!DOCTYPE html><html><head>");
   updateHtml += F("<meta name='viewport' content='width=device-width,initial-scale=1'>");
-  updateHtml += F("<style>");
-  updateHtml += F("body { font-family: 'Segoe UI', Arial, sans-serif; background: #0d1117; color: #e6edf3; padding: 20px; text-align: center; }");
-  updateHtml += F(".container { max-width: 600px; margin: 0 auto; }");
-  updateHtml += F("h1 { color: #58a6ff; }");
-  updateHtml += F(".status { color: #8b949e; margin: 20px 0; }");
-  updateHtml += F(".progress { background: #21262d; border-radius: 10px; padding: 20px; margin: 20px 0; }");
-  updateHtml += F("</style>");
+  updateHtml += F("<style>body{background:#222;color:#fff;font-family:Arial;padding:20px;text-align:center}</style>");
   updateHtml += F("<script>");
   updateHtml += F("let countdown = 30;");
   updateHtml += F("function updateCountdown() {");
@@ -576,16 +537,15 @@ void handlePerformUpdate() {
   updateHtml += F("}");
   updateHtml += F("setTimeout(updateCountdown, 1000);");
   updateHtml += F("</script>");
-  updateHtml += F("</head><body><div class='container'>");
-  updateHtml += F("<h1>Updating Firmware</h1>");
-  updateHtml += F("<div class='progress'>");
-  updateHtml += F("<p>Downloading and installing update...</p>");
-  updateHtml += F("<p>Device will restart automatically when complete.</p>");
-  updateHtml += F("<div class='status' id='status'>Auto-reconnecting in <span id='countdown'>30</span> seconds...</div>");
+  updateHtml += F("</head><body>");
+  updateHtml += F("<h1>Updating...</h1>");
+  updateHtml += F("<p>Installing firmware update</p>");
+  updateHtml += F("<p>Device will restart when complete</p>");
+  updateHtml += F("<div id='status'>Auto-reconnecting in <span id='countdown'>30</span> seconds</div>");
   updateHtml += F("<p><a href='http://");
   updateHtml += currentHost;
-  updateHtml += F("'>Click here to reconnect manually</a></p>");
-  updateHtml += F("</div></div></body></html>");
+  updateHtml += F("'>Manual reconnect</a></p>");
+  updateHtml += F("</body></html>");
   
   server.send(200, "text/html", updateHtml);
   
