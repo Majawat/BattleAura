@@ -1,9 +1,11 @@
 #include "effects.h"
 #include "dfplayer.h"
 
+#include "config.h"
+
 // Global LED settings
 bool ledsEnabled = true;
-int globalBrightness = 100; // 0-100 percentage
+int globalBrightness = 100; // Will be set from device config
 
 // Helper function to set LED with global brightness and on/off control
 void setLED(int ledPin, int brightness) {

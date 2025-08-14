@@ -1,4 +1,5 @@
 #include "dfplayer.h"
+#include "config.h"
 
 // DFPlayer state variables
 bool dfPlayerConnected = false;
@@ -98,11 +99,10 @@ void triggerActivity() {
 
 // Check if idle audio should timeout to save battery
 void checkIdleTimeout() {
-  const unsigned long IDLE_TIMEOUT = 30000; // 30 seconds
   
   // Only check if we think audio is playing
   if (idleAudioActive && dfPlayerConnected && dfPlayerPlaying) {
-    if (millis() - lastActivity > IDLE_TIMEOUT) {
+    if (millis() - lastActivity > IDLE_TIMEOUT_MS) {
       Serial.println("Idle timeout reached - stopping audio to save battery");
       // Note: We'll implement the actual stopping in main.cpp where dfPlayer is accessible
       idleAudioActive = false;

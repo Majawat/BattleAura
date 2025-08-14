@@ -8,30 +8,20 @@
 #include <ESPmDNS.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include "config.h"
 #include "effects.h"
 #include "dfplayer.h"
 
 SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
-// Firmware version (accessible to web module)
-const char* FIRMWARE_VERSION = "0.23.0";
-const char* VERSION_FEATURE = "Begin modular architecture refactoring";
-const char* BUILD_DATE = __DATE__ " " __TIME__;
+// Firmware version constants now in config.h
 
 // Web server and WiFi
 WebServer server(80);
 WiFiManager wifiManager;
 
-// Audio files
-#define AUDIO_IDLE        2
-#define AUDIO_WEAPON_FIRE_1    3
-#define AUDIO_WEAPON_FIRE_2    4
-#define AUDIO_TAKING_HITS      5
-#define AUDIO_ENGINE_REV       6
-#define AUDIO_DESTROYED        7
-#define AUDIO_LIMITED_WEAPON   8
-#define AUDIO_UNIT_KILL        9
+// Audio file constants now in config.h
 
 // Function declarations
 void printDetail(uint8_t type, int value);
@@ -70,6 +60,13 @@ void setup() {
   delay(1000);
   Serial.println("=== BattleAura ===");
   
+  // Load device configuration
+  loadDeviceConfig();
+  
+  // Apply device configuration
+  globalBrightness = deviceConfig.defaultBrightness;
+  ledsEnabled = deviceConfig.hasLEDs;
+  
   // Initialize LEDs
   pinMode(LED1, OUTPUT);
   pinMode(LED2, OUTPUT);
@@ -89,7 +86,8 @@ void setup() {
     // Test actual communication by trying to read current state
     delay(1000);  // Give DFPlayer time to initialize
     
-    // Try to set and verify volume to test bidirectional communication
+    // Try to set and verify volume to test bidirectional communication  
+    currentVolume = deviceConfig.defaultVolume;
     dfPlayer.volume(currentVolume);
     delay(500);
     
@@ -144,7 +142,7 @@ void loop() {
   enginePulseSmooth(LED8, 0);    // Second engine stack - smooth pulse
   
   // Small delay for smooth flicker
-  delay(50);
+  delay(LED_UPDATE_DELAY_MS);
   if (dfPlayer.available()) {
     printDetail(dfPlayer.readType(), dfPlayer.read()); //Print the detail message from DFPlayer to handle different errors and states.
   }
@@ -171,7 +169,7 @@ void loop() {
 // Check DFPlayer status periodically
 void checkDFPlayerStatus() {
   // Check every 10 seconds
-  if (millis() - lastStatusCheck < 10000) {
+  if (millis() - lastStatusCheck < STATUS_CHECK_INTERVAL_MS) {
     return;
   }
   lastStatusCheck = millis();
