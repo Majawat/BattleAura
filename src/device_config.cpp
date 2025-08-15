@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "config.h"
 #include "effects.h"
+#include "dfplayer.h"
 
 // Global device configuration
 DeviceConfig deviceConfig;

@@ -2,6 +2,7 @@
 #define CONFIG_H
 
 #include <Arduino.h>
+#include "DFRobotDFPlayerMini.h"
 
 // Firmware version
 #define FIRMWARE_VERSION "0.27.0"
