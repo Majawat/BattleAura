@@ -5,8 +5,8 @@
 #include "DFRobotDFPlayerMini.h"
 
 // Firmware version
-#define FIRMWARE_VERSION "0.27.0"
-#define VERSION_FEATURE "Convert to non-blocking timing for responsive operation"
+#define FIRMWARE_VERSION "0.27.1"
+#define VERSION_FEATURE "Fix compilation errors with missing DFPlayer"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Audio file mappings
