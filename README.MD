@@ -29,14 +29,14 @@ Speaker to DFPlayer
 
 ### LED Pin assignment
 
-- D0: Candle Fibers 1
-- D1: Candle Fibers 2
-- D2: Brazier
-- D3: Console screen
-- D4: Weapon 1
-- D5: Weapon 2
-- D8: Engine stack 1
-- D9: Engine stack 2
+- D0: Candle Fibers 1 - 3mm warm white, 3v
+- D1: Candle Fibers 2 - 3mm warm white, 3v
+- D2: Brazier - Chip (3.2mm) warm white, 3v
+- D3: Console screen - WS2812B RGB, 5v
+- D4: Weapon 1 - Nano (1.6mm) warm white, 3v
+- D5: Weapon 2 - Nano (1.6mm) warm white, 3v
+- D8: Engine stack 1 - Chip (3.2mm) warm white, 3v
+- D9: Engine stack 2 - Chip (3.2mm) warm white, 3v
 - D10: ?
 
 ### Audio files assignments
