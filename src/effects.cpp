@@ -192,426 +192,58 @@ void rgbPulse(int rgbPin, uint8_t r, uint8_t g, uint8_t b) {
   setRGB(rgbPin, pulsedR, pulsedG, pulsedB);
 }
 
-// Machine gun effect - burst fire with configurable LED and audio
+// Machine gun effect - burst fire with configurable LED and audio (NON-BLOCKING)
 void machineGunEffect(DFRobotDFPlayerMini* dfPlayer, int ledPin, int audioTrack) {
-  
-  if (dfPlayerConnected && dfPlayer != nullptr) {
-    // Stop current audio and play weapon fire sound
-    dfPlayer->stop();
-    delay(100);
-    dfPlayer->play(audioTrack);
-    dfPlayerPlaying = true; // Mark as playing so callback knows to resume idle
-    currentTrack = audioTrack;
-    Serial.println("Playing machine gun audio with synchronized LED flashing");
-    
-    // Keep flashing LED while weapon audio is playing
-    while (dfPlayerPlaying && currentTrack == audioTrack) {
-      setLED(ledPin, 255); // Muzzle flash on
-      delay(50);
-      setLED(ledPin, 0);   // Off
-      delay(80);
-      
-      // Check if audio finished (this gets updated by the callback)
-      if (dfPlayer->available()) {
-        printDetail(dfPlayer->readType(), dfPlayer->read());
-      }
-    }
-    
-    // Ensure LED is off when done
-    setLED(ledPin, 0);
-    Serial.println("Machine gun effect finished");
-  } else {
-    // If no audio, do a few flashes as fallback
-    Serial.println("No audio available, doing fallback LED flashes");
-    for (int i = 0; i < 5; i++) {
-      setLED(ledPin, 255);
-      delay(50);
-      setLED(ledPin, 0);
-      delay(80);
-    }
-  }
+  // This function is now deprecated - use startWeaponEffect() instead for non-blocking operation
+  // Keeping for backward compatibility, but calling the non-blocking version
+  Serial.println("Machine gun effect triggered - using non-blocking weapon effect system");
+  startWeaponEffect(0, dfPlayer, ledPin, audioTrack, "machine-gun");
 }
 
-// Flamethrower effect - sustained flame with configurable LED and audio
+// Flamethrower effect - sustained flame with configurable LED and audio (NON-BLOCKING)
 void flamethrowerEffect(DFRobotDFPlayerMini* dfPlayer, int ledPin, int audioTrack) {
-  
-  if (dfPlayerConnected && dfPlayer != nullptr) {
-    // Stop current audio and play flamethrower sound
-    dfPlayer->stop();
-    delay(100);
-    dfPlayer->play(audioTrack);
-    dfPlayerPlaying = true; // Mark as playing so callback knows to resume idle
-    currentTrack = audioTrack;
-    Serial.println("Playing flamethrower audio with synchronized LED flame effect");
-    
-    // Keep flickering LED like a flame while audio is playing
-    while (dfPlayerPlaying && currentTrack == audioTrack) {
-      // Flickering flame effect - more realistic than steady glow
-      int intensity = random(180, 255);
-      setLED(ledPin, intensity);
-      delay(random(80, 150)); // Vary the flicker timing
-      
-      // Check if audio finished (this gets updated by the callback)
-      if (dfPlayer->available()) {
-        printDetail(dfPlayer->readType(), dfPlayer->read());
-      }
-    }
-    
-    // Ensure LED is off when done
-    setLED(ledPin, 0);
-    Serial.println("Flamethrower effect finished");
-  } else {
-    // If no audio, do a sustained flame effect as fallback
-    Serial.println("No audio available, doing fallback flame effect");
-    for (int i = 0; i < 20; i++) {
-      int intensity = random(180, 255);
-      setLED(ledPin, intensity);
-      delay(100);
-    }
-    setLED(ledPin, 0);
-  }
+  // This function is now deprecated - use startWeaponEffect() instead for non-blocking operation
+  // Keeping for backward compatibility, but calling the non-blocking version
+  Serial.println("Flamethrower effect triggered - using non-blocking weapon effect system");
+  startWeaponEffect(1, dfPlayer, ledPin, audioTrack, "flamethrower");
 }
 
-// Engine rev effect - dual engine stack rev-up with configurable LEDs and audio
+// Engine rev effect - dual engine stack rev-up with configurable LEDs and audio (NON-BLOCKING)
 void engineRevEffect(DFRobotDFPlayerMini* dfPlayer, int engineLed1, int engineLed2, int audioTrack) {
+  // This function is now deprecated - use startWeaponEffect() instead for non-blocking operation
+  // For now, use the primary engine LED for the weapon effect system
+  Serial.println("Engine rev effect triggered - using non-blocking weapon effect system");
+  startWeaponEffect(2, dfPlayer, engineLed1, audioTrack, "engine-rev");
   
-  if (dfPlayerConnected && dfPlayer != nullptr) {
-    // Stop current audio and play engine rev sound
-    dfPlayer->stop();
-    delay(100);
-    dfPlayer->play(audioTrack);
-    dfPlayerPlaying = true; // Mark as playing so callback knows to resume idle
-    currentTrack = audioTrack;
-    Serial.println("Playing engine rev audio with synchronized dual engine LED effects");
-    
-    // Engine rev effect - starts slow, builds up intensity
-    while (dfPlayerPlaying && currentTrack == audioTrack) {
-      // Create revving pattern - rapid alternating pulses that build intensity
-      for (int cycle = 0; cycle < 3 && dfPlayerPlaying && currentTrack == audioTrack; cycle++) {
-        // Engine 1 bright, Engine 2 dim
-        setLED(engineLed1, random(200, 255));
-        setLED(engineLed2, random(50, 100));
-        delay(random(80, 150));
-        
-        // Engine 1 dim, Engine 2 bright  
-        setLED(engineLed1, random(50, 100));
-        setLED(engineLed2, random(200, 255));
-        delay(random(80, 150));
-        
-        // Check if audio finished
-        if (dfPlayer->available()) {
-          printDetail(dfPlayer->readType(), dfPlayer->read());
-        }
-      }
-    }
-    
-    // Ensure LEDs are off when done
-    setLED(engineLed1, 0);
-    setLED(engineLed2, 0);
-    Serial.println("Engine rev effect finished");
-  } else {
-    // If no audio, do a rev effect as fallback
-    Serial.println("No audio available, doing fallback engine rev effect");
-    for (int i = 0; i < 15; i++) {
-      // Alternating bright pulses
-      setLED(engineLed1, random(180, 255));
-      setLED(engineLed2, random(50, 120));
-      delay(100);
-      setLED(engineLed1, random(50, 120));
-      setLED(engineLed2, random(180, 255));
-      delay(100);
-    }
-    setLED(engineLed1, 0);
-    setLED(engineLed2, 0);
-  }
+  // TODO: Enhance weapon effect system to handle dual LED effects properly
+  // For now, the secondary LED will be handled by the main weapon effect system
 }
 
-// Taking hits effect - damage alerts and power fluctuation
+// Taking hits effect - damage alerts and power fluctuation (NON-BLOCKING)
 void takingHitsEffect(DFRobotDFPlayerMini* dfPlayer, int audioTrack) {
-  
-  if (dfPlayerConnected && dfPlayer != nullptr) {
-    // Stop current audio and play taking hits sound
-    dfPlayer->stop();
-    delay(100);
-    dfPlayer->play(audioTrack);
-    dfPlayerPlaying = true;
-    currentTrack = audioTrack;
-    Serial.println("Playing taking hits audio with damage effect visuals");
-    
-    // Store original states to restore later
-    bool originalLedsEnabled = ledsEnabled;
-    
-    // Damage effect sequence while audio plays
-    unsigned long effectStart = millis();
-    while (dfPlayerPlaying && currentTrack == audioTrack && (millis() - effectStart < 8000)) {
-      
-      // Console critical alerts - rapid red warning flashes
-      for (int flash = 0; flash < 3; flash++) {
-        setRGB(LED4, 255, 0, 0);  // Console RED alert
-        delay(80);
-        setRGB(LED4, 0, 0, 0);    // Off
-        delay(60);
-      }
-      
-      // Power fluctuation - dim all candles briefly
-      int originalBrightness = globalBrightness;
-      globalBrightness = 30; // Dim to 30%
-      delay(200);
-      globalBrightness = originalBrightness; // Restore
-      
-      // Engine strain - brief stutter in engine pulse
-      setLED(LED7, 50);  // Engines dim
-      setLED(LED8, 50);
-      delay(100);
-      
-      // Check if audio finished
-      if (dfPlayer->available()) {
-        printDetail(dfPlayer->readType(), dfPlayer->read());
-      }
-      
-      delay(300); // Pause between damage bursts
-    }
-    
-    // Restore normal operations
-    Serial.println("Taking hits effect finished - systems recovering");
-  } else {
-    // Fallback visual effect if no audio
-    Serial.println("No audio available, doing fallback damage effect");
-    for (int cycle = 0; cycle < 5; cycle++) {
-      // Console warning flashes
-      for (int i = 0; i < 3; i++) {
-        setRGB(LED4, 255, 0, 0);  // Red warning
-        delay(80);
-        setRGB(LED4, 0, 0, 0);
-        delay(60);
-      }
-      delay(400);
-    }
-  }
+  Serial.println("Taking hits effect triggered - using non-blocking battle effect system");
+  triggerActivity();
+  startBattleEffect("taking-hits", dfPlayer, audioTrack);
 }
 
-// Destroyed effect - complete system failure and shutdown
+// Destroyed effect - complete system failure and shutdown (NON-BLOCKING)
 void destroyedEffect(DFRobotDFPlayerMini* dfPlayer, int audioTrack) {
-  
-  if (dfPlayerConnected && dfPlayer != nullptr) {
-    // Stop current audio and play destruction sound
-    dfPlayer->stop();
-    delay(100);
-    dfPlayer->play(audioTrack);
-    dfPlayerPlaying = true;
-    currentTrack = audioTrack;
-    Serial.println("CRITICAL: Unit destroyed - initiating shutdown sequence");
-    
-    // Death sequence - all systems failing
-    unsigned long effectStart = millis();
-    while (dfPlayerPlaying && currentTrack == audioTrack && (millis() - effectStart < 10000)) {
-      
-      // Console critical failure - random warning colors
-      int r = random(100, 255);
-      int g = random(0, 100);  // Mostly red/yellow warning colors
-      setRGB(LED4, r, g, 0);
-      delay(random(50, 150));
-      setRGB(LED4, 0, 0, 0);
-      delay(random(100, 300));
-      
-      // Candles dying - erratic flicker getting weaker
-      for (int i = 0; i < 3; i++) {
-        int candleLed = LED1 + i;
-        int intensity = random(20, 100); // Getting dimmer over time
-        setLED(candleLed, intensity);
-        delay(random(80, 200));
-        setLED(candleLed, 0);
-        delay(random(50, 150));
-      }
-      
-      // Engines violent death throes
-      setLED(LED7, random(0, 200));
-      setLED(LED8, random(0, 200));
-      delay(random(100, 250));
-      
-      // Check if audio finished
-      if (dfPlayer->available()) {
-        printDetail(dfPlayer->readType(), dfPlayer->read());
-      }
-    }
-    
-    // Final shutdown sequence - everything dies
-    Serial.println("FINAL SHUTDOWN: All systems offline");
-    for (int fade = 100; fade >= 0; fade -= 10) {
-      globalBrightness = fade;
-      delay(200);
-    }
-    
-    // Turn off all LEDs explicitly
-    setLED(LED1, 0);
-    setLED(LED2, 0);
-    setLED(LED3, 0);
-    setRGB(LED4, 0, 0, 0);  // Turn off RGB
-    setLED(LED5, 0);
-    setLED(LED6, 0);
-    setLED(LED7, 0);
-    setLED(LED8, 0);
-    
-    // Stop all audio before shutdown
-    dfPlayer->stop();
-    delay(500);
-    
-    Serial.println("Unit destroyed. Entering deep sleep...");
-    delay(1000);
-    
-    // Complete shutdown - device will need physical reset to wake
-    ESP.deepSleep(0);
-    
-  } else {
-    // Fallback without audio
-    Serial.println("No audio - simulating destruction sequence");
-    for (int cycle = 10; cycle >= 0; cycle--) {
-      globalBrightness = cycle * 10;
-      // Flicker all LEDs erratically
-      setLED(LED1, random(0, 100));
-      setLED(LED2, random(0, 100));
-      setLED(LED3, random(0, 100));
-      setRGB(LED4, random(0, 150), random(0, 100), 0);  // Dying RGB console
-      setLED(LED7, random(0, 100));
-      setLED(LED8, random(0, 100));
-      delay(300);
-    }
-    
-    // Final shutdown
-    ESP.deepSleep(0);
-  }
+  Serial.println("CRITICAL: Unit destroyed - initiating shutdown sequence");
+  triggerActivity();
+  startBattleEffect("destroyed", dfPlayer, audioTrack);
+  // Note: This effect will eventually call ESP.deepSleep(0) from the non-blocking system
 }
 
-// Rocket effect - explosive backlight and system strain  
+// Rocket effect - explosive backlight and system strain (NON-BLOCKING)
 void rocketEffect(DFRobotDFPlayerMini* dfPlayer, int audioTrack) {
-  
-  if (dfPlayerConnected && dfPlayer != nullptr) {
-    // Stop current audio and play rocket sound
-    dfPlayer->stop();
-    delay(100);
-    dfPlayer->play(audioTrack);
-    dfPlayerPlaying = true;
-    currentTrack = audioTrack;
-    Serial.println("ROCKET FIRED - explosive backlight effect");
-    
-    // Rocket effect while audio plays
-    while (dfPlayerPlaying && currentTrack == audioTrack) {
-      
-      // Massive explosion backlight - all candles flare intensely
-      setLED(LED1, 255);
-      setLED(LED2, 255); 
-      setLED(LED3, 255);
-      delay(200);
-      
-      // Console overload flash - bright white/blue explosion effect
-      setRGB(LED4, 255, 255, 255);  // Bright white flash
-      delay(100);
-      setRGB(LED4, 0, 0, 0);
-      delay(100);
-      setRGB(LED4, 200, 200, 255);  // Blue explosion glow
-      delay(100);
-      setRGB(LED4, 0, 0, 0);
-      
-      // Candles settle to intense glow
-      setLED(LED1, random(180, 220));
-      setLED(LED2, random(180, 220));
-      setLED(LED3, random(180, 220));
-      delay(300);
-      
-      // Check if audio finished
-      if (dfPlayer->available()) {
-        printDetail(dfPlayer->readType(), dfPlayer->read());
-      }
-    }
-    
-    Serial.println("Rocket effect finished");
-  } else {
-    // Fallback effect
-    Serial.println("No audio - doing fallback rocket explosion effect");
-    // Massive flash
-    setLED(LED1, 255);
-    setLED(LED2, 255);
-    setLED(LED3, 255);
-    setRGB(LED4, 255, 255, 255);  // Bright white explosion
-    delay(300);
-    
-    // Intense flickering
-    for (int i = 0; i < 10; i++) {
-      setLED(LED1, random(150, 255));
-      setLED(LED2, random(150, 255));
-      setLED(LED3, random(150, 255));
-      setRGB(LED4, random(100, 200), random(100, 200), random(100, 255));  // Random explosive colors
-      delay(100);
-    }
-  }
+  Serial.println("ROCKET FIRED - explosive backlight effect");
+  triggerActivity();
+  startBattleEffect("rocket", dfPlayer, audioTrack);
 }
 
-// Unit kill effect - victory celebration
+// Unit kill effect - victory celebration (NON-BLOCKING)
 void unitKillEffect(DFRobotDFPlayerMini* dfPlayer, int audioTrack) {
-  
-  if (dfPlayerConnected && dfPlayer != nullptr) {
-    // Stop current audio and play victory sound
-    dfPlayer->stop();
-    delay(100);
-    dfPlayer->play(audioTrack);
-    dfPlayerPlaying = true;
-    currentTrack = audioTrack;
-    Serial.println("ENEMY ELIMINATED - victory sequence");
-    
-    // Victory effect while audio plays
-    while (dfPlayerPlaying && currentTrack == audioTrack) {
-      
-      // Console success indicator - steady green glow
-      setRGB(LED4, 0, 200, 0);  // Green success
-      
-      // Victory flash sequence on all systems
-      for (int flash = 0; flash < 2; flash++) {
-        // Brief synchronized flash
-        setLED(LED1, 255);
-        setLED(LED2, 255);
-        setLED(LED3, 255);
-        setLED(LED7, 255);
-        setLED(LED8, 255);
-        delay(150);
-        
-        // Brief dim
-        setLED(LED1, 50);
-        setLED(LED2, 50);
-        setLED(LED3, 50);
-        setLED(LED7, 50);
-        setLED(LED8, 50);
-        delay(150);
-      }
-      
-      // Check if audio finished
-      if (dfPlayer->available()) {
-        printDetail(dfPlayer->readType(), dfPlayer->read());
-      }
-      
-      delay(500);
-    }
-    
-    Serial.println("Victory effect finished");
-  } else {
-    // Fallback effect
-    Serial.println("No audio - doing fallback victory effect");
-    for (int cycle = 0; cycle < 3; cycle++) {
-      // Synchronized victory flashes
-      setLED(LED1, 255);
-      setLED(LED2, 255);
-      setLED(LED3, 255);
-      setRGB(LED4, 0, 255, 0);  // Green victory
-      setLED(LED7, 255);
-      setLED(LED8, 255);
-      delay(200);
-      
-      setLED(LED1, 0);
-      setLED(LED2, 0);
-      setLED(LED3, 0);
-      setRGB(LED4, 0, 0, 0);  // Turn off RGB
-      setLED(LED7, 0);
-      setLED(LED8, 0);
-      delay(200);
-    }
-  }
+  Serial.println("ENEMY ELIMINATED - victory sequence");
+  triggerActivity();
+  startBattleEffect("unit-kill", dfPlayer, audioTrack);
 }

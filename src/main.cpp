@@ -59,7 +59,7 @@ bool checkForUpdates(String &newVersion, String &downloadUrl, String &changelog)
 
 void setup() {
   Serial.begin(9600);
-  delay(1000);
+  // Remove initial delay - not needed
   Serial.println("=== BattleAura ===");
   
   // Load device configuration
@@ -90,15 +90,15 @@ void setup() {
     Serial.println("DFPlayer serial initialized, testing communication...");
     
     // Test actual communication by trying to read current state
-    delay(1000);  // Give DFPlayer time to initialize
+    delay(1000);  // CRITICAL: DFPlayer initialization - keep this one
     
     // Try to set and verify volume to test bidirectional communication  
     currentVolume = deviceConfig.defaultVolume;
     dfPlayer.volume(currentVolume);
-    delay(500);
+    delay(500); // CRITICAL: DFPlayer volume setting - keep this one
     
     int readVolume = dfPlayer.readVolume();
-    delay(100);
+    delay(100); // CRITICAL: DFPlayer communication - keep this one
     
     if (readVolume > 0 && readVolume <= 30) {
       Serial.print("DFPlayer connected! Volume: ");
@@ -164,6 +164,9 @@ void loop() {
   // Update non-blocking weapon effects
   updateWeaponEffects(&dfPlayer);
   
+  // Update non-blocking battle effects
+  updateBattleEffect(&dfPlayer);
+  
   // Handle web server requests
   server.handleClient();
 
@@ -180,7 +183,7 @@ void checkDFPlayerStatus() {
   // Only check if we think it's connected, or if it was disconnected and we want to retry
   if (dfPlayerConnected || dfPlayerStatus == "No Response" || dfPlayerStatus == "Serial Init Failed") {
     int volume = dfPlayer.readVolume();
-    delay(100);
+    delay(100); // CRITICAL: DFPlayer communication - keep this one
     
     if (volume > 0 && volume <= 30) {
       if (!dfPlayerConnected) {
@@ -403,7 +406,7 @@ void handleWiFiReset() {
   server.send(200, "text/html", 
     F("<html><body><h1>WiFi Reset</h1><p>WiFi settings cleared. Device restarting...</p></body></html>"));
   
-  delay(1000);
+  // Remove delay - not needed for web response
   
   // Clear WiFi settings
   wifiManager.resetSettings();
@@ -418,7 +421,7 @@ void handleFactoryReset() {
   server.send(200, "text/html",
     F("<html><body><h1>Factory Reset</h1><p>All settings cleared. Device restarting...</p></body></html>"));
   
-  delay(1000);
+  // Remove delay - not needed for web response
   
   // Clear WiFi settings
   wifiManager.resetSettings();
@@ -469,14 +472,14 @@ void handleReconnectDFPlayer() {
   
   // Attempt to reconnect DFPlayer
   dfPlayer.begin(audioSerial, false, false);
-  delay(1000);
+  delay(1000); // CRITICAL: DFPlayer initialization - keep this one
   
   // Test communication
   dfPlayer.volume(currentVolume);
-  delay(500);
+  delay(500); // CRITICAL: DFPlayer volume setting - keep this one
   
   int readVolume = dfPlayer.readVolume();
-  delay(100);
+  delay(100); // CRITICAL: DFPlayer communication - keep this one
   
   if (readVolume > 0 && readVolume <= 30) {
     Serial.println("DFPlayer reconnected successfully!");
@@ -509,7 +512,7 @@ void handleReboot() {
       "<script>setTimeout(function(){window.location.href='/';}, 10000);</script>"
       "</body></html>"));
   
-  delay(1000);
+  // Remove delay - not needed for web response
   Serial.println("Rebooting device...");
   ESP.restart();
 }
@@ -653,7 +656,7 @@ void handlePerformUpdate() {
   
   server.send(200, "text/html", updateHtml);
   
-  // Give time for response to send
+  // Give time for response to send - keep this one as it helps with OTA updates
   delay(1000);
   
   // Start the actual update process

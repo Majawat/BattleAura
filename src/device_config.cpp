@@ -14,6 +14,9 @@ WeaponEffectState weaponEffects[4] = {
   {false, 0, 0, 0, 0, 0}
 };
 
+// Battle effect state for non-blocking effects
+BattleEffectState battleEffect = {false, "", 0, 0, 0, 0, 0, false, 0};
+
 // Load default configuration values
 void loadDefaultConfig() {
   deviceConfig.deviceName = "BattleAura Device";
@@ -153,7 +156,7 @@ void startWeaponEffect(int effectId, DFRobotDFPlayerMini* dfPlayer, int ledPin, 
   // Start the audio
   if (dfPlayer && dfPlayerConnected) {
     dfPlayer->stop();
-    delay(100); // This one delay is needed for DFPlayer
+    delay(100); // CRITICAL: DFPlayer stop/play transition - keep this one
     dfPlayer->play(audioTrack);
     dfPlayerPlaying = true;
     currentTrack = audioTrack;
@@ -203,5 +206,240 @@ void updateWeaponEffects(DFRobotDFPlayerMini* dfPlayer) {
       setLED(effect.ledPin, 0);
       Serial.println("Weapon effect " + String(i) + " timed out");
     }
+  }
+}
+
+// Start a non-blocking battle effect
+void startBattleEffect(String effectType, DFRobotDFPlayerMini* dfPlayer, int audioTrack) {
+  battleEffect.active = true;
+  battleEffect.effectType = effectType;
+  battleEffect.startTime = millis();
+  battleEffect.lastUpdate = millis();
+  battleEffect.currentStep = 0;
+  battleEffect.currentCycle = 0;
+  battleEffect.audioTrack = audioTrack;
+  battleEffect.audioStarted = false;
+  
+  // Set max duration based on effect type
+  if (effectType == "taking-hits") {
+    battleEffect.maxDuration = 8000; // 8 seconds
+  } else if (effectType == "destroyed") {
+    battleEffect.maxDuration = 15000; // 15 seconds before final shutdown
+  } else if (effectType == "rocket") {
+    battleEffect.maxDuration = 6000; // 6 seconds
+  } else if (effectType == "unit-kill") {
+    battleEffect.maxDuration = 5000; // 5 seconds
+  } else {
+    battleEffect.maxDuration = 5000; // Default 5 seconds
+  }
+  
+  Serial.println("Started non-blocking battle effect: " + effectType);
+}
+
+// Update battle effect (call from main loop)
+void updateBattleEffect(DFRobotDFPlayerMini* dfPlayer) {
+  if (!battleEffect.active) return;
+  
+  unsigned long now = millis();
+  unsigned long elapsed = now - battleEffect.startTime;
+  
+  // Start audio if not already started
+  if (!battleEffect.audioStarted && dfPlayer && dfPlayerConnected) {
+    dfPlayer->stop();
+    // CRITICAL: DFPlayer stop/play transition - this is essential for hardware
+    delay(100);
+    dfPlayer->play(battleEffect.audioTrack);
+    dfPlayerPlaying = true;
+    currentTrack = battleEffect.audioTrack;
+    battleEffect.audioStarted = true;
+    Serial.println("Battle effect audio started");
+  }
+  
+  // Handle different battle effect types
+  if (battleEffect.effectType == "taking-hits") {
+    updateTakingHitsEffect(now, elapsed);
+  } else if (battleEffect.effectType == "destroyed") {
+    updateDestroyedEffect(now, elapsed);
+  } else if (battleEffect.effectType == "rocket") {
+    updateRocketEffect(now, elapsed);
+  } else if (battleEffect.effectType == "unit-kill") {
+    updateUnitKillEffect(now, elapsed);
+  }
+  
+  // Check for timeout
+  if (elapsed > battleEffect.maxDuration) {
+    battleEffect.active = false;
+    Serial.println("Battle effect finished: " + battleEffect.effectType);
+  }
+}
+
+// Taking hits effect - non-blocking implementation
+void updateTakingHitsEffect(unsigned long now, unsigned long elapsed) {
+  // State machine with different phases
+  if (elapsed < 2000) {
+    // Phase 1: Console critical alerts (0-2s)
+    if (now - battleEffect.lastUpdate >= 220) { // 80ms on + 60ms off + 80ms on + 60ms off + pause
+      battleEffect.lastUpdate = now;
+      
+      int step = battleEffect.currentStep % 7;
+      if (step == 0 || step == 2 || step == 4) {
+        setRGB(LED4, 255, 0, 0);  // Console RED alert
+      } else {
+        setRGB(LED4, 0, 0, 0);    // Off
+      }
+      
+      if (step == 6) {
+        battleEffect.currentCycle++;
+        battleEffect.currentStep = 0;
+      } else {
+        battleEffect.currentStep++;
+      }
+    }
+  } else if (elapsed < 4000) {
+    // Phase 2: Power fluctuation (2-4s)
+    if (now - battleEffect.lastUpdate >= 400) {
+      battleEffect.lastUpdate = now;
+      
+      if (battleEffect.currentStep % 2 == 0) {
+        globalBrightness = 30; // Dim to 30%
+      } else {
+        globalBrightness = deviceConfig.defaultBrightness; // Restore
+      }
+      battleEffect.currentStep++;
+    }
+  } else {
+    // Phase 3: Engine strain (4s+)
+    if (now - battleEffect.lastUpdate >= 400) {
+      battleEffect.lastUpdate = now;
+      
+      if (battleEffect.currentStep % 2 == 0) {
+        setLED(LED7, 50);  // Engines dim
+        setLED(LED8, 50);
+      } else {
+        setLED(LED7, 120); // Engines recover
+        setLED(LED8, 120);
+      }
+      battleEffect.currentStep++;
+    }
+  }
+}
+
+// Destroyed effect - non-blocking implementation
+void updateDestroyedEffect(unsigned long now, unsigned long elapsed) {
+  if (elapsed < 10000) {
+    // Phase 1: System failure (0-10s)
+    if (now - battleEffect.lastUpdate >= 200) {
+      battleEffect.lastUpdate = now;
+      
+      // Console critical failure - random warning colors
+      int r = random(100, 255);
+      int g = random(0, 100);  // Mostly red/yellow warning colors
+      setRGB(LED4, r, g, 0);
+      
+      // Candles dying - erratic flicker getting weaker over time
+      int maxIntensity = 100 - (elapsed / 100); // Gradually dim
+      for (int i = 0; i < 3; i++) {
+        int candleLed = LED1 + i;
+        int intensity = random(20, maxIntensity);
+        setLED(candleLed, intensity);
+      }
+      
+      // Engines violent death throes
+      setLED(LED7, random(0, 200));
+      setLED(LED8, random(0, 200));
+    }
+  } else {
+    // Phase 2: Final shutdown (10s+)
+    if (now - battleEffect.lastUpdate >= 200) {
+      battleEffect.lastUpdate = now;
+      
+      int fade = 100 - ((elapsed - 10000) / 50); // Fade over 5 seconds
+      if (fade > 0) {
+        globalBrightness = fade;
+      } else {
+        // Complete shutdown
+        globalBrightness = 0;
+        battleEffect.active = false;
+        
+        // Turn off all LEDs explicitly
+        setLED(LED1, 0);
+        setLED(LED2, 0);
+        setLED(LED3, 0);
+        setRGB(LED4, 0, 0, 0);  // Turn off RGB
+        setLED(LED5, 0);
+        setLED(LED6, 0);
+        setLED(LED7, 0);
+        setLED(LED8, 0);
+        
+        Serial.println("FINAL SHUTDOWN: All systems offline");
+        Serial.println("Unit destroyed. Entering deep sleep...");
+        
+        // Complete shutdown - device will need physical reset to wake
+        ESP.deepSleep(0);
+      }
+    }
+  }
+}
+
+// Rocket effect - non-blocking implementation
+void updateRocketEffect(unsigned long now, unsigned long elapsed) {
+  if (elapsed < 1000) {
+    // Phase 1: Massive explosion backlight (0-1s)
+    setLED(LED1, 255);
+    setLED(LED2, 255); 
+    setLED(LED3, 255);
+  } else if (elapsed < 2500) {
+    // Phase 2: Console overload flash (1-2.5s)
+    if (now - battleEffect.lastUpdate >= 200) {
+      battleEffect.lastUpdate = now;
+      
+      int step = battleEffect.currentStep % 4;
+      if (step == 0) {
+        setRGB(LED4, 255, 255, 255);  // Bright white flash
+      } else if (step == 2) {
+        setRGB(LED4, 200, 200, 255);  // Blue explosion glow
+      } else {
+        setRGB(LED4, 0, 0, 0);
+      }
+      battleEffect.currentStep++;
+    }
+  } else {
+    // Phase 3: Candles settle to intense glow (2.5s+)
+    if (now - battleEffect.lastUpdate >= 100) {
+      battleEffect.lastUpdate = now;
+      
+      setLED(LED1, random(180, 220));
+      setLED(LED2, random(180, 220));
+      setLED(LED3, random(180, 220));
+      setRGB(LED4, random(100, 200), random(100, 200), random(100, 255));  // Random explosive colors
+    }
+  }
+}
+
+// Unit kill effect - non-blocking implementation
+void updateUnitKillEffect(unsigned long now, unsigned long elapsed) {
+  // Console success indicator - steady green glow
+  setRGB(LED4, 0, 200, 0);  // Green success
+  
+  // Victory flash sequence on all systems
+  if (now - battleEffect.lastUpdate >= 300) {
+    battleEffect.lastUpdate = now;
+    
+    if (battleEffect.currentStep % 2 == 0) {
+      // Brief synchronized flash
+      setLED(LED1, 255);
+      setLED(LED2, 255);
+      setLED(LED3, 255);
+      setLED(LED7, 255);
+      setLED(LED8, 255);
+    } else {
+      // Brief dim
+      setLED(LED1, 50);
+      setLED(LED2, 50);
+      setLED(LED3, 50);
+      setLED(LED7, 50);
+      setLED(LED8, 50);
+    }
+    battleEffect.currentStep++;
   }
 }

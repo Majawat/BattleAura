@@ -5,8 +5,8 @@
 #include "DFRobotDFPlayerMini.h"
 
 // Firmware version
-#define FIRMWARE_VERSION "0.28.0"
-#define VERSION_FEATURE "Add RGB LED support for D3 console with colorful effects"
+#define FIRMWARE_VERSION "0.29.0"
+#define VERSION_FEATURE "Convert to fully non-blocking operation for responsive web interface"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Audio file mappings
@@ -98,8 +98,33 @@ struct WeaponEffectState {
 
 extern WeaponEffectState weaponEffects[4]; // Support up to 4 concurrent weapon effects
 
+// Battle effect state tracking
+struct BattleEffectState {
+  bool active;
+  String effectType; // "taking-hits", "destroyed", "rocket", "unit-kill"
+  unsigned long startTime;
+  unsigned long lastUpdate;
+  int currentStep;
+  int currentCycle;
+  int audioTrack;
+  bool audioStarted;
+  int maxDuration; // Maximum effect duration in ms
+};
+
+extern BattleEffectState battleEffect; // Single battle effect (they don't overlap)
+
 // Non-blocking weapon effects
 void startWeaponEffect(int effectId, DFRobotDFPlayerMini* dfPlayer, int ledPin, int audioTrack, String effectType);
 void updateWeaponEffects(DFRobotDFPlayerMini* dfPlayer);
+
+// Non-blocking battle effects
+void startBattleEffect(String effectType, DFRobotDFPlayerMini* dfPlayer, int audioTrack);
+void updateBattleEffect(DFRobotDFPlayerMini* dfPlayer);
+
+// Individual battle effect update functions
+void updateTakingHitsEffect(unsigned long now, unsigned long elapsed);
+void updateDestroyedEffect(unsigned long now, unsigned long elapsed);
+void updateRocketEffect(unsigned long now, unsigned long elapsed);
+void updateUnitKillEffect(unsigned long now, unsigned long elapsed);
 
 #endif
