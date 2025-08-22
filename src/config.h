@@ -5,8 +5,8 @@
 #include "DFRobotDFPlayerMini.h"
 
 // Firmware version
-#define FIRMWARE_VERSION "0.27.1"
-#define VERSION_FEATURE "Fix compilation errors with missing DFPlayer"
+#define FIRMWARE_VERSION "0.28.0"
+#define VERSION_FEATURE "Add RGB LED support for D3 console with colorful effects"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Audio file mappings

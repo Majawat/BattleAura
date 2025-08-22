@@ -73,11 +73,15 @@ void setup() {
   pinMode(LED1, OUTPUT);
   pinMode(LED2, OUTPUT);
   pinMode(LED3, OUTPUT);
-  pinMode(LED4, OUTPUT);
+  // LED4 (D3) is now RGB - initialized separately
   pinMode(LED5, OUTPUT);
   pinMode(LED6, OUTPUT); 
   pinMode(LED7, OUTPUT);
   pinMode(LED8, OUTPUT);
+  
+  // Initialize RGB LED strip (D3)
+  rgbStrip.begin();
+  rgbStrip.show(); // Initialize all pixels to 'off'
   
   // Initialize DFPlayer
   audioSerial.begin(9600);
@@ -839,9 +843,9 @@ void handleConfig() {
   html += F("<h2>Background Effects</h2>");
   html += F("<table><tr><th>Pin</th><th>Effect Type</th><th>Label</th><th>Enabled</th></tr>");
   
-  // Generate background effects table
-  const char* effectTypes[] = {"off", "candle", "pulse", "console", "static"};
-  const char* pinNames[] = {"D0", "D1", "D2", "D3", "D4", "D5", "D8", "D9"};
+  // Generate background effects table with RGB options for D3
+  const char* effectTypes[] = {"off", "candle", "pulse", "console", "static", "rgb_blue", "rgb_red", "rgb_green", "rgb_pulse_blue", "rgb_pulse_red"};
+  const char* pinNames[] = {"D0", "D1", "D2", "D3 (RGB)", "D4", "D5", "D8", "D9"};
   
   for (int i = 0; i < 8; i++) {
     html += F("<tr><td>");
@@ -850,7 +854,7 @@ void handleConfig() {
     html += String(i);
     html += F("'>");
     
-    for (int j = 0; j < 5; j++) {
+    for (int j = 0; j < 10; j++) {
       html += F("<option value='");
       html += effectTypes[j];
       html += F("'");

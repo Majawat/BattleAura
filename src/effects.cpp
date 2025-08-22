@@ -1,7 +1,12 @@
 #include "effects.h"
 #include "dfplayer.h"
-
 #include "config.h"
+
+// For RGB LED support (WS2812/addressable LEDs)
+#include <Adafruit_NeoPixel.h>
+
+// RGB LED strip object for D3 console
+Adafruit_NeoPixel rgbStrip(RGB_LED_COUNT, RGB_LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // Global LED settings
 bool ledsEnabled = true;
@@ -10,13 +15,30 @@ int globalBrightness = 100; // Will be set from device config
 // Helper function to set LED with global brightness and on/off control
 void setLED(int ledPin, int brightness) {
   if (!ledsEnabled) {
-    setLED(ledPin, 0);
+    analogWrite(ledPin, 0);
     return;
   }
   
   // Apply global brightness percentage
   int adjustedBrightness = (brightness * globalBrightness) / 100;
   analogWrite(ledPin, constrain(adjustedBrightness, 0, 255));
+}
+
+// Helper function to set RGB LED with global brightness and on/off control
+void setRGB(int rgbPin, uint8_t r, uint8_t g, uint8_t b) {
+  if (!ledsEnabled) {
+    rgbStrip.setPixelColor(0, 0, 0, 0);
+    rgbStrip.show();
+    return;
+  }
+  
+  // Apply global brightness percentage
+  r = (r * globalBrightness) / 100;
+  g = (g * globalBrightness) / 100;
+  b = (b * globalBrightness) / 100;
+  
+  rgbStrip.setPixelColor(0, r, g, b);
+  rgbStrip.show();
 }
 
 // Candle flicker effect
@@ -107,6 +129,67 @@ void consoleDataStream(int ledPin) {
     setLED(ledPin, brightness);
     nextPulseTime[pinIndex] = millis() + random(100, 400);
   }
+}
+
+// RGB Console data stream effect - colorful data scrolling
+void consoleDataStreamRGB(int rgbPin) {
+  static unsigned long nextPulseTime = 0;
+  static int currentMode = 0;
+  
+  // Fast, irregular pulses with different colors for different data types
+  if (millis() >= nextPulseTime) {
+    int mode = random(0, 4);
+    
+    switch (mode) {
+      case 0: // System data - blue
+        setRGB(rgbPin, 0, random(50, 100), random(100, 200));
+        break;
+      case 1: // Warning data - yellow/orange
+        setRGB(rgbPin, random(150, 255), random(100, 150), 0);
+        break;
+      case 2: // Tactical data - green
+        setRGB(rgbPin, 0, random(100, 200), random(0, 50));
+        break;
+      case 3: // Low activity - dim white
+        setRGB(rgbPin, random(20, 60), random(20, 60), random(20, 60));
+        break;
+    }
+    
+    nextPulseTime = millis() + random(100, 500);
+  }
+}
+
+// Static RGB color
+void rgbStaticColor(int rgbPin, uint8_t r, uint8_t g, uint8_t b) {
+  setRGB(rgbPin, r, g, b);
+}
+
+// RGB Flash effect
+void rgbFlash(int rgbPin, uint8_t r, uint8_t g, uint8_t b, int duration) {
+  static unsigned long flashStart = 0;
+  static bool flashActive = false;
+  
+  if (!flashActive) {
+    flashStart = millis();
+    flashActive = true;
+    setRGB(rgbPin, r, g, b);
+  } else if (millis() - flashStart >= duration) {
+    flashActive = false;
+    setRGB(rgbPin, 0, 0, 0);
+  }
+}
+
+// RGB Pulse effect - breathing
+void rgbPulse(int rgbPin, uint8_t r, uint8_t g, uint8_t b) {
+  // Use sine wave for smooth breathing
+  float angle = millis() * 0.003;  // Slow breathing
+  float intensity = (sin(angle) + 1) / 2;  // Range 0-1
+  
+  uint8_t pulsedR = r * intensity;
+  uint8_t pulsedG = g * intensity;
+  uint8_t pulsedB = b * intensity;
+  
+  setRGB(rgbPin, pulsedR, pulsedG, pulsedB);
 }
 
 // Machine gun effect - burst fire with configurable LED and audio
@@ -264,9 +347,9 @@ void takingHitsEffect(DFRobotDFPlayerMini* dfPlayer, int audioTrack) {
       
       // Console critical alerts - rapid red warning flashes
       for (int flash = 0; flash < 3; flash++) {
-        setLED(LED4, 255);  // Console full brightness
+        setRGB(LED4, 255, 0, 0);  // Console RED alert
         delay(80);
-        setLED(LED4, 0);    // Off
+        setRGB(LED4, 0, 0, 0);    // Off
         delay(60);
       }
       
@@ -297,9 +380,9 @@ void takingHitsEffect(DFRobotDFPlayerMini* dfPlayer, int audioTrack) {
     for (int cycle = 0; cycle < 5; cycle++) {
       // Console warning flashes
       for (int i = 0; i < 3; i++) {
-        setLED(LED4, 255);
+        setRGB(LED4, 255, 0, 0);  // Red warning
         delay(80);
-        setLED(LED4, 0);
+        setRGB(LED4, 0, 0, 0);
         delay(60);
       }
       delay(400);
@@ -323,10 +406,12 @@ void destroyedEffect(DFRobotDFPlayerMini* dfPlayer, int audioTrack) {
     unsigned long effectStart = millis();
     while (dfPlayerPlaying && currentTrack == audioTrack && (millis() - effectStart < 10000)) {
       
-      // Console critical failure
-      setLED(LED4, random(100, 255));
+      // Console critical failure - random warning colors
+      int r = random(100, 255);
+      int g = random(0, 100);  // Mostly red/yellow warning colors
+      setRGB(LED4, r, g, 0);
       delay(random(50, 150));
-      setLED(LED4, 0);
+      setRGB(LED4, 0, 0, 0);
       delay(random(100, 300));
       
       // Candles dying - erratic flicker getting weaker
@@ -361,7 +446,7 @@ void destroyedEffect(DFRobotDFPlayerMini* dfPlayer, int audioTrack) {
     setLED(LED1, 0);
     setLED(LED2, 0);
     setLED(LED3, 0);
-    setLED(LED4, 0);
+    setRGB(LED4, 0, 0, 0);  // Turn off RGB
     setLED(LED5, 0);
     setLED(LED6, 0);
     setLED(LED7, 0);
@@ -386,7 +471,7 @@ void destroyedEffect(DFRobotDFPlayerMini* dfPlayer, int audioTrack) {
       setLED(LED1, random(0, 100));
       setLED(LED2, random(0, 100));
       setLED(LED3, random(0, 100));
-      setLED(LED4, random(0, 150));
+      setRGB(LED4, random(0, 150), random(0, 100), 0);  // Dying RGB console
       setLED(LED7, random(0, 100));
       setLED(LED8, random(0, 100));
       delay(300);
@@ -418,14 +503,14 @@ void rocketEffect(DFRobotDFPlayerMini* dfPlayer, int audioTrack) {
       setLED(LED3, 255);
       delay(200);
       
-      // Console overload flash
-      setLED(LED4, 255);
+      // Console overload flash - bright white/blue explosion effect
+      setRGB(LED4, 255, 255, 255);  // Bright white flash
       delay(100);
-      setLED(LED4, 0);
+      setRGB(LED4, 0, 0, 0);
       delay(100);
-      setLED(LED4, 255);
+      setRGB(LED4, 200, 200, 255);  // Blue explosion glow
       delay(100);
-      setLED(LED4, 0);
+      setRGB(LED4, 0, 0, 0);
       
       // Candles settle to intense glow
       setLED(LED1, random(180, 220));
@@ -447,7 +532,7 @@ void rocketEffect(DFRobotDFPlayerMini* dfPlayer, int audioTrack) {
     setLED(LED1, 255);
     setLED(LED2, 255);
     setLED(LED3, 255);
-    setLED(LED4, 255);
+    setRGB(LED4, 255, 255, 255);  // Bright white explosion
     delay(300);
     
     // Intense flickering
@@ -455,7 +540,7 @@ void rocketEffect(DFRobotDFPlayerMini* dfPlayer, int audioTrack) {
       setLED(LED1, random(150, 255));
       setLED(LED2, random(150, 255));
       setLED(LED3, random(150, 255));
-      setLED(LED4, random(100, 200));
+      setRGB(LED4, random(100, 200), random(100, 200), random(100, 255));  // Random explosive colors
       delay(100);
     }
   }
@@ -476,8 +561,8 @@ void unitKillEffect(DFRobotDFPlayerMini* dfPlayer, int audioTrack) {
     // Victory effect while audio plays
     while (dfPlayerPlaying && currentTrack == audioTrack) {
       
-      // Console success indicator - steady bright glow
-      setLED(LED4, 200);
+      // Console success indicator - steady green glow
+      setRGB(LED4, 0, 200, 0);  // Green success
       
       // Victory flash sequence on all systems
       for (int flash = 0; flash < 2; flash++) {
@@ -515,7 +600,7 @@ void unitKillEffect(DFRobotDFPlayerMini* dfPlayer, int audioTrack) {
       setLED(LED1, 255);
       setLED(LED2, 255);
       setLED(LED3, 255);
-      setLED(LED4, 255);
+      setRGB(LED4, 0, 255, 0);  // Green victory
       setLED(LED7, 255);
       setLED(LED8, 255);
       delay(200);
@@ -523,7 +608,7 @@ void unitKillEffect(DFRobotDFPlayerMini* dfPlayer, int audioTrack) {
       setLED(LED1, 0);
       setLED(LED2, 0);
       setLED(LED3, 0);
-      setLED(LED4, 0);
+      setRGB(LED4, 0, 0, 0);  // Turn off RGB
       setLED(LED7, 0);
       setLED(LED8, 0);
       delay(200);

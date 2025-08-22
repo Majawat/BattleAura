@@ -90,11 +90,50 @@ void runEffect(int ledPin, String effectType) {
   } else if (effectType == "pulse") {
     enginePulseSmooth(ledPin, 0);
   } else if (effectType == "console") {
-    consoleDataStream(ledPin);
+    // Check if this is the RGB pin (D3)
+    if (ledPin == D3) {
+      consoleDataStreamRGB(ledPin);
+    } else {
+      consoleDataStream(ledPin);
+    }
+  } else if (effectType == "rgb_blue") {
+    if (ledPin == D3) {
+      rgbStaticColor(ledPin, 0, 0, 255);
+    } else {
+      setLED(ledPin, 255); // Fallback to white for non-RGB pins
+    }
+  } else if (effectType == "rgb_red") {
+    if (ledPin == D3) {
+      rgbStaticColor(ledPin, 255, 0, 0);
+    } else {
+      setLED(ledPin, 255); // Fallback to white for non-RGB pins
+    }
+  } else if (effectType == "rgb_green") {
+    if (ledPin == D3) {
+      rgbStaticColor(ledPin, 0, 255, 0);
+    } else {
+      setLED(ledPin, 255); // Fallback to white for non-RGB pins
+    }
+  } else if (effectType == "rgb_pulse_blue") {
+    if (ledPin == D3) {
+      rgbPulse(ledPin, 0, 0, 255);
+    } else {
+      enginePulseSmooth(ledPin, 0); // Fallback to regular pulse
+    }
+  } else if (effectType == "rgb_pulse_red") {
+    if (ledPin == D3) {
+      rgbPulse(ledPin, 255, 0, 0);
+    } else {
+      enginePulseSmooth(ledPin, 0); // Fallback to regular pulse
+    }
   } else if (effectType == "static") {
     setLED(ledPin, 255); // Full brightness static
   } else if (effectType == "off") {
-    setLED(ledPin, 0); // Off
+    if (ledPin == D3) {
+      setRGB(ledPin, 0, 0, 0); // Turn off RGB
+    } else {
+      setLED(ledPin, 0); // Turn off regular LED
+    }
   }
   // Add more effect types as needed
 }
