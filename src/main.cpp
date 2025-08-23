@@ -77,17 +77,16 @@ void audioTask(void* parameter) {
   }
 }
 
-// Web Server Task - handles WebSocket and async operations
+// Web Server Task - handles async operations
 void webTask(void* parameter) {
   Serial.println("Web task started on core " + String(xPortGetCoreID()));
   
   for(;;) {
     // ESPAsyncWebServer handles requests automatically
-    // This task can handle WebSocket cleanup and periodic operations
-    ws.cleanupClients();
+    // Minimal task for web server maintenance
     
-    // Run at 10Hz - WebSocket cleanup doesn't need high frequency
-    vTaskDelay(100 / portTICK_PERIOD_MS);
+    // Run at low frequency
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
 }
 

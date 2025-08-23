@@ -4,7 +4,6 @@
 
 // Global instances
 AsyncWebServer server(80);
-AsyncWebSocket ws("/ws");
 
 void initWebInterface() {
   // Initialize SPIFFS for serving static files
@@ -13,18 +12,12 @@ void initWebInterface() {
     return;
   }
 
-  setupWebSocket();
   setupWebRoutes();
   
   server.begin();
-  Serial.println("Modern web interface started on port 80");
-  Serial.println("Access at: http://battlearua.local or http://[device-ip]");
+  Serial.println("Web interface started on port 80");
 }
 
-void setupWebSocket() {
-  ws.onEvent(onWsEvent);
-  server.addHandler(&ws);
-}
 
 void setupWebRoutes() {
   // Serve static files from SPIFFS
@@ -44,13 +37,12 @@ void setupWebRoutes() {
         deviceConfig.defaultVolume = volume;
         dfPlayer.volume(volume);
         saveDeviceConfig();
-        broadcastConfigUpdated();
         request->send(200, "application/json", "{\"status\":\"success\"}");
       } else {
-        request->send(400, "application/json", "{\"error\":\"Volume must be between 0 and 30\"}");
+        request->send(400, "application/json", "{\"error\":\"Invalid volume\"}");
       }
     } else {
-      request->send(400, "application/json", "{\"error\":\"Missing volume parameter\"}");
+      request->send(400, "application/json", "{\"error\":\"Missing volume\"}");
     }
   });
   
@@ -61,13 +53,12 @@ void setupWebRoutes() {
         deviceConfig.defaultBrightness = brightness;
         globalBrightness = brightness;
         saveDeviceConfig();
-        broadcastConfigUpdated();
         request->send(200, "application/json", "{\"status\":\"success\"}");
       } else {
-        request->send(400, "application/json", "{\"error\":\"Brightness must be between 0 and 100\"}");
+        request->send(400, "application/json", "{\"error\":\"Invalid brightness\"}");
       }
     } else {
-      request->send(400, "application/json", "{\"error\":\"Missing brightness parameter\"}");
+      request->send(400, "application/json", "{\"error\":\"Missing brightness\"}");
     }
   });
   
@@ -78,10 +69,9 @@ void setupWebRoutes() {
       deviceConfig.hasLEDs = enabled;
       ledsEnabled = enabled;
       saveDeviceConfig();
-      broadcastConfigUpdated();
       request->send(200, "application/json", "{\"status\":\"success\"}");
     } else {
-      request->send(400, "application/json", "{\"error\":\"Missing enabled parameter\"}");
+      request->send(400, "application/json", "{\"error\":\"Missing enabled\"}");
     }
   });
   
@@ -129,7 +119,6 @@ void setupWebRoutes() {
     }
     
     if (success) {
-      broadcastEffectStarted(effectId);
       request->send(200, "application/json", "{\"status\":\"success\"}");
     } else {
       request->send(404, "application/json", "{\"error\":\"Unknown effect\"}");
@@ -146,35 +135,19 @@ void handleGetConfig(AsyncWebServerRequest *request) {
 }
 
 void handleSystemInfo(AsyncWebServerRequest *request) {
-  JsonDocument doc;
-  
-  doc["deviceName"] = deviceConfig.deviceName;
-  doc["firmwareVersion"] = FIRMWARE_VERSION;
-  doc["versionFeature"] = VERSION_FEATURE;
-  doc["buildDate"] = BUILD_DATE;
-  doc["uptime"] = millis() / 1000;
-  doc["freeHeap"] = ESP.getFreeHeap();
-  doc["chipModel"] = ESP.getChipModel();
-  doc["chipRevision"] = ESP.getChipRevision();
-  doc["flashSize"] = ESP.getFlashChipSize();
-  doc["activePins"] = deviceConfig.activePins;
-  doc["activeAudioTracks"] = deviceConfig.activeAudioTracks;
-  doc["activeEffects"] = deviceConfig.activeEffects;
-  
-  String response;
-  serializeJson(doc, response);
+  String response = "{\"deviceName\":\"" + deviceConfig.deviceName + 
+                   "\",\"firmwareVersion\":\"" + String(FIRMWARE_VERSION) + 
+                   "\",\"buildDate\":\"" + String(BUILD_DATE) + 
+                   "\",\"uptime\":" + String(millis() / 1000) +
+                   ",\"freeHeap\":" + String(ESP.getFreeHeap()) +
+                   ",\"chipModel\":\"" + String(ESP.getChipModel()) +
+                   "\",\"flashSize\":" + String(ESP.getFlashChipSize()) + "}";
   request->send(200, "application/json", response);
 }
 
 void handleCheckUpdates(AsyncWebServerRequest *request) {
-  // Placeholder for update checking
-  JsonDocument doc;
-  doc["updateAvailable"] = false;
-  doc["currentVersion"] = FIRMWARE_VERSION;
-  doc["message"] = "Update checking not implemented yet";
-  
-  String response;
-  serializeJson(doc, response);
+  String response = "{\"updateAvailable\":false,\"currentVersion\":\"" + 
+                   String(FIRMWARE_VERSION) + "\",\"message\":\"No updates\"}";
   request->send(200, "application/json", response);
 }
 
@@ -191,81 +164,11 @@ void handleFactoryReset(AsyncWebServerRequest *request) {
   ESP.restart();
 }
 
-// WebSocket event handler
-void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
-  switch (type) {
-    case WS_EVT_CONNECT:
-      Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
-      // Send initial config to new client
-      client->text(serializeConfig());
-      break;
-      
-    case WS_EVT_DISCONNECT:
-      Serial.printf("WebSocket client #%u disconnected\n", client->id());
-      break;
-      
-    case WS_EVT_DATA: {
-      AwsFrameInfo *info = (AwsFrameInfo*)arg;
-      if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-        data[len] = 0; // Null terminate
-        String message = (char*)data;
-        Serial.println("WebSocket message: " + message);
-        
-        // Handle WebSocket commands here if needed
-        JsonDocument doc;
-        DeserializationError error = deserializeJson(doc, message);
-        if (!error && doc["command"].is<String>()) {
-          String command = doc["command"];
-          if (command == "ping") {
-            client->text("{\"type\":\"pong\"}");
-          }
-        }
-      }
-      break;
-    }
-      
-    case WS_EVT_PONG:
-    case WS_EVT_ERROR:
-      break;
-  }
-}
-
-void broadcastToWebSocket(const String& message) {
-  ws.textAll(message);
-}
-
-void broadcastEffectStarted(const String& effectId) {
-  JsonDocument doc;
-  doc["type"] = "effect-started";
-  doc["data"]["effectId"] = effectId;
-  doc["data"]["timestamp"] = millis();
-  
-  String message;
-  serializeJson(doc, message);
-  broadcastToWebSocket(message);
-}
-
-void broadcastConfigUpdated() {
-  JsonDocument doc;
-  doc["type"] = "config-updated";
-  doc["timestamp"] = millis();
-  
-  String message;
-  serializeJson(doc, message);
-  broadcastToWebSocket(message);
-}
 
 String serializeConfig() {
-  JsonDocument doc;
-  
-  // Only essential device info for simple UI
-  doc["deviceName"] = deviceConfig.deviceName;
-  doc["firmwareVersion"] = FIRMWARE_VERSION;
-  doc["defaultVolume"] = deviceConfig.defaultVolume;
-  doc["defaultBrightness"] = deviceConfig.defaultBrightness;
-  doc["hasLEDs"] = deviceConfig.hasLEDs;
-  
-  String result;
-  serializeJson(doc, result);
-  return result;
+  return "{\"deviceName\":\"" + deviceConfig.deviceName + 
+         "\",\"firmwareVersion\":\"" + String(FIRMWARE_VERSION) + 
+         "\",\"defaultVolume\":" + String(deviceConfig.defaultVolume) + 
+         ",\"defaultBrightness\":" + String(deviceConfig.defaultBrightness) + 
+         ",\"hasLEDs\":" + String(deviceConfig.hasLEDs ? "true" : "false") + "}";
 }
