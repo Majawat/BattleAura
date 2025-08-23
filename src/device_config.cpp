@@ -2,6 +2,8 @@
 #include "config.h"
 #include "effects.h"
 #include "dfplayer.h"
+#include <SPIFFS.h>
+#include <ArduinoJson.h>
 
 // Global device configuration
 DeviceConfig deviceConfig;
@@ -20,68 +22,367 @@ BattleEffectState battleEffect = {false, "", 0, 0, 0, 0, 0, false, 0};
 // Load default configuration values
 void loadDefaultConfig() {
   deviceConfig.deviceName = "BattleAura Device";
+  deviceConfig.deviceDescription = "Modular LED and Audio Controller";
   
-  // Hardware defaults
-  deviceConfig.hasAudio = true;
-  deviceConfig.hasLEDs = true;
-  
-  // Behavior defaults  
-  deviceConfig.autoStartIdle = true;
+  // Global settings defaults
   deviceConfig.defaultVolume = 20;
   deviceConfig.defaultBrightness = 100;
-  
-  // Power management defaults
   deviceConfig.idleTimeoutMs = IDLE_TIMEOUT_MS;
   deviceConfig.enableSleep = true;
+  deviceConfig.hasLEDs = true;
   
-  // Default background effects (Tank configuration)
-  deviceConfig.backgroundEffects[0] = EffectMapping(D0, "candle", "Candle 1", true);
-  deviceConfig.backgroundEffects[1] = EffectMapping(D1, "candle", "Candle 2", true);
-  deviceConfig.backgroundEffects[2] = EffectMapping(D2, "candle", "Brazier", true);
-  deviceConfig.backgroundEffects[3] = EffectMapping(D3, "console", "Console", true);
-  deviceConfig.backgroundEffects[4] = EffectMapping(D4, "off", "Unused", false);
-  deviceConfig.backgroundEffects[5] = EffectMapping(D5, "off", "Unused", false);
-  deviceConfig.backgroundEffects[6] = EffectMapping(D8, "pulse", "Engine 1", true);
-  deviceConfig.backgroundEffects[7] = EffectMapping(D9, "pulse", "Engine 2", true);
+  // Initialize pin configurations (D0-D10)
+  deviceConfig.pins[0] = PinConfig(D0, "led", "Candle 1");
+  deviceConfig.pins[0].effectType = "candle";
+  deviceConfig.pins[0].brightness = 120;
   
-  // Default trigger effects (Tank configuration)
-  deviceConfig.triggerEffects[0] = TriggerMapping("machine-gun", D4, AUDIO_WEAPON_FIRE_1, "Machine Gun", true);
-  deviceConfig.triggerEffects[1] = TriggerMapping("flamethrower", D5, AUDIO_WEAPON_FIRE_2, "Flamethrower", true);
-  deviceConfig.triggerEffects[2] = TriggerMapping("engine-rev", D8, AUDIO_ENGINE_REV, "Engine Rev", true);
-  deviceConfig.triggerEffects[3] = TriggerMapping("rocket", D0, AUDIO_LIMITED_WEAPON, "Rocket", true);
-  deviceConfig.triggerEffects[4] = TriggerMapping("taking-hits", D3, AUDIO_TAKING_HITS, "Taking Hits", true);
-  deviceConfig.triggerEffects[5] = TriggerMapping("destroyed", 0, AUDIO_DESTROYED, "Destroyed", true);
-  deviceConfig.triggerEffects[6] = TriggerMapping("unit-kill", D3, AUDIO_UNIT_KILL, "Unit Kill", true);
-  deviceConfig.triggerEffects[7] = TriggerMapping(); // Empty slot
+  deviceConfig.pins[1] = PinConfig(D1, "led", "Candle 2");
+  deviceConfig.pins[1].effectType = "candle";
+  deviceConfig.pins[1].brightness = 120;
+  
+  deviceConfig.pins[2] = PinConfig(D2, "led", "Brazier");
+  deviceConfig.pins[2].effectType = "candle";
+  deviceConfig.pins[2].brightness = 150;
+  
+  deviceConfig.pins[3] = PinConfig(D3, "rgb", "Console Screen");
+  deviceConfig.pins[3].effectType = "console";
+  deviceConfig.pins[3].defaultR = 0;
+  deviceConfig.pins[3].defaultG = 100;
+  deviceConfig.pins[3].defaultB = 200;
+  
+  deviceConfig.pins[4] = PinConfig(D4, "led", "Weapon 1");
+  deviceConfig.pins[4].effectType = "off";
+  deviceConfig.pins[4].enabled = false;
+  
+  deviceConfig.pins[5] = PinConfig(D5, "led", "Weapon 2");
+  deviceConfig.pins[5].effectType = "off";
+  deviceConfig.pins[5].enabled = false;
+  
+  deviceConfig.pins[6] = PinConfig(); // D6 reserved for DFPlayer TX
+  deviceConfig.pins[6].type = "unused";
+  deviceConfig.pins[6].enabled = false;
+  
+  deviceConfig.pins[7] = PinConfig(); // D7 reserved for DFPlayer RX
+  deviceConfig.pins[7].type = "unused";
+  deviceConfig.pins[7].enabled = false;
+  
+  deviceConfig.pins[8] = PinConfig(D8, "led", "Engine 1");
+  deviceConfig.pins[8].effectType = "pulse";
+  deviceConfig.pins[8].brightness = 100;
+  
+  deviceConfig.pins[9] = PinConfig(D9, "led", "Engine 2");
+  deviceConfig.pins[9].effectType = "pulse";
+  deviceConfig.pins[9].brightness = 100;
+  
+  deviceConfig.pins[10] = PinConfig(D10, "led", "Spare");
+  deviceConfig.pins[10].effectType = "off";
+  deviceConfig.pins[10].enabled = false;
+  
+  // Initialize audio tracks with numbered filenames for DFPlayer
+  deviceConfig.audioTracks[0] = AudioTrack(1, "0001.mp3", "Reserved", "system");
+  deviceConfig.audioTracks[0].enabled = false;
+  
+  deviceConfig.audioTracks[1] = AudioTrack(AUDIO_IDLE, "0002.mp3", "Engine Idle", "ambient");
+  deviceConfig.audioTracks[1].loops = true;
+  deviceConfig.audioTracks[1].volume = 15;
+  
+  deviceConfig.audioTracks[2] = AudioTrack(AUDIO_WEAPON_FIRE_1, "0003.mp3", "Machine Gun", "weapon");
+  deviceConfig.audioTracks[2].volume = 25;
+  
+  deviceConfig.audioTracks[3] = AudioTrack(AUDIO_WEAPON_FIRE_2, "0004.mp3", "Flamethrower", "weapon");
+  deviceConfig.audioTracks[3].volume = 22;
+  
+  deviceConfig.audioTracks[4] = AudioTrack(AUDIO_TAKING_HITS, "0005.mp3", "Taking Damage", "damage");
+  deviceConfig.audioTracks[4].volume = 28;
+  
+  deviceConfig.audioTracks[5] = AudioTrack(AUDIO_ENGINE_REV, "0006.mp3", "Engine Rev", "ambient");
+  deviceConfig.audioTracks[5].volume = 20;
+  
+  deviceConfig.audioTracks[6] = AudioTrack(AUDIO_DESTROYED, "0007.mp3", "Destruction", "damage");
+  deviceConfig.audioTracks[6].volume = 30;
+  
+  deviceConfig.audioTracks[7] = AudioTrack(AUDIO_LIMITED_WEAPON, "0008.mp3", "Rocket Fire", "weapon");
+  deviceConfig.audioTracks[7].volume = 27;
+  
+  deviceConfig.audioTracks[8] = AudioTrack(AUDIO_UNIT_KILL, "0009.mp3", "Victory", "victory");
+  deviceConfig.audioTracks[8].volume = 25;
+  
+  // Initialize trigger effects
+  deviceConfig.effects[0] = TriggerEffect();
+  deviceConfig.effects[0].effectId = "weapon1";
+  deviceConfig.effects[0].label = "Machine Gun";
+  deviceConfig.effects[0].primaryPin = D4;
+  deviceConfig.effects[0].audioTrack = AUDIO_WEAPON_FIRE_1;
+  deviceConfig.effects[0].effectPattern = "flash";
+  deviceConfig.effects[0].duration = 1500;
+  deviceConfig.effects[0].enabled = true;
+  
+  deviceConfig.effects[1] = TriggerEffect();
+  deviceConfig.effects[1].effectId = "weapon2";
+  deviceConfig.effects[1].label = "Flamethrower";
+  deviceConfig.effects[1].primaryPin = D5;
+  deviceConfig.effects[1].audioTrack = AUDIO_WEAPON_FIRE_2;
+  deviceConfig.effects[1].effectPattern = "pulse";
+  deviceConfig.effects[1].duration = 2000;
+  deviceConfig.effects[1].enabled = true;
+  
+  deviceConfig.effects[2] = TriggerEffect();
+  deviceConfig.effects[2].effectId = "engine-rev";
+  deviceConfig.effects[2].label = "Engine Rev";
+  deviceConfig.effects[2].primaryPin = D8;
+  deviceConfig.effects[2].secondaryPin = D9;
+  deviceConfig.effects[2].audioTrack = AUDIO_ENGINE_REV;
+  deviceConfig.effects[2].effectPattern = "pulse";
+  deviceConfig.effects[2].duration = 3000;
+  deviceConfig.effects[2].enabled = true;
+  
+  // Set active counts
+  deviceConfig.activePins = 6; // D0, D1, D2, D3, D8, D9
+  deviceConfig.activeAudioTracks = 8;
+  deviceConfig.activeEffects = 3;
   
   Serial.println("Loaded default device configuration");
   Serial.println("Device: " + deviceConfig.deviceName);
-  Serial.println("Background effects configured: 8");
-  Serial.println("Trigger effects configured: 7");
+  Serial.println("Active pins: " + String(deviceConfig.activePins));
+  Serial.println("Active audio tracks: " + String(deviceConfig.activeAudioTracks));
+  Serial.println("Active effects: " + String(deviceConfig.activeEffects));
 }
 
-// Load device-specific configuration (placeholder for future EEPROM/JSON loading)
+// Load device-specific configuration from SPIFFS
 void loadDeviceConfig() {
-  // For now, just load defaults
-  // Future: Load from EEPROM, SPIFFS, or web configuration
-  loadDefaultConfig();
+  if (!SPIFFS.begin(true)) {
+    Serial.println("SPIFFS mount failed, using defaults");
+    loadDefaultConfig();
+    return;
+  }
   
-  // Device-specific overrides could go here
-  // Example: if (deviceType == "Artillery") { ledCount = 12; }
+  if (!SPIFFS.exists("/config.json")) {
+    Serial.println("No saved configuration found, creating defaults");
+    loadDefaultConfig();
+    saveDeviceConfig(); // Save defaults for next time
+    return;
+  }
+  
+  File configFile = SPIFFS.open("/config.json", "r");
+  if (!configFile) {
+    Serial.println("Failed to open config file, using defaults");
+    loadDefaultConfig();
+    return;
+  }
+  
+  DynamicJsonDocument doc(8192); // 8KB should be enough for our config
+  DeserializationError error = deserializeJson(doc, configFile);
+  configFile.close();
+  
+  if (error) {
+    Serial.println("Failed to parse config JSON, using defaults");
+    Serial.println("JSON Error: " + String(error.c_str()));
+    loadDefaultConfig();
+    return;
+  }
+  
+  // Load basic settings
+  deviceConfig.deviceName = doc["deviceName"] | "BattleAura Device";
+  deviceConfig.deviceDescription = doc["deviceDescription"] | "Modular LED and Audio Controller";
+  deviceConfig.defaultVolume = doc["defaultVolume"] | 20;
+  deviceConfig.defaultBrightness = doc["defaultBrightness"] | 100;
+  deviceConfig.idleTimeoutMs = doc["idleTimeoutMs"] | IDLE_TIMEOUT_MS;
+  deviceConfig.enableSleep = doc["enableSleep"] | true;
+  deviceConfig.hasLEDs = doc["hasLEDs"] | true;
+  
+  // Load pin configurations
+  JsonArray pinsArray = doc["pins"];
+  for (int i = 0; i < 11 && i < pinsArray.size(); i++) {
+    JsonObject pin = pinsArray[i];
+    deviceConfig.pins[i].pin = pin["pin"] | (D0 + i);
+    deviceConfig.pins[i].type = pin["type"] | "unused";
+    deviceConfig.pins[i].label = pin["label"] | "";
+    deviceConfig.pins[i].enabled = pin["enabled"] | false;
+    deviceConfig.pins[i].effectType = pin["effectType"] | "off";
+    deviceConfig.pins[i].brightness = pin["brightness"] | 255;
+    deviceConfig.pins[i].defaultR = pin["defaultR"] | 255;
+    deviceConfig.pins[i].defaultG = pin["defaultG"] | 255;
+    deviceConfig.pins[i].defaultB = pin["defaultB"] | 255;
+  }
+  
+  // Load audio tracks
+  JsonArray audioArray = doc["audioTracks"];
+  for (int i = 0; i < 20 && i < audioArray.size(); i++) {
+    JsonObject track = audioArray[i];
+    deviceConfig.audioTracks[i].id = track["id"] | 0;
+    deviceConfig.audioTracks[i].filename = track["filename"] | "";
+    deviceConfig.audioTracks[i].label = track["label"] | "";
+    deviceConfig.audioTracks[i].category = track["category"] | "other";
+    deviceConfig.audioTracks[i].loops = track["loops"] | false;
+    deviceConfig.audioTracks[i].volume = track["volume"] | 20;
+    deviceConfig.audioTracks[i].enabled = track["enabled"] | false;
+  }
+  
+  // Load trigger effects
+  JsonArray effectsArray = doc["effects"];
+  for (int i = 0; i < 12 && i < effectsArray.size(); i++) {
+    JsonObject effect = effectsArray[i];
+    deviceConfig.effects[i].effectId = effect["effectId"] | "";
+    deviceConfig.effects[i].label = effect["label"] | "";
+    deviceConfig.effects[i].description = effect["description"] | "";
+    deviceConfig.effects[i].enabled = effect["enabled"] | false;
+    deviceConfig.effects[i].primaryPin = effect["primaryPin"] | -1;
+    deviceConfig.effects[i].secondaryPin = effect["secondaryPin"] | -1;
+    deviceConfig.effects[i].audioTrack = effect["audioTrack"] | 0;
+    deviceConfig.effects[i].effectPattern = effect["effectPattern"] | "flash";
+    deviceConfig.effects[i].duration = effect["duration"] | 0;
+    deviceConfig.effects[i].intensity = effect["intensity"] | 100;
+  }
+  
+  // Count active items
+  deviceConfig.activePins = 0;
+  for (int i = 0; i < 11; i++) {
+    if (deviceConfig.pins[i].enabled) deviceConfig.activePins++;
+  }
+  
+  deviceConfig.activeAudioTracks = 0;
+  for (int i = 0; i < 20; i++) {
+    if (deviceConfig.audioTracks[i].enabled) deviceConfig.activeAudioTracks++;
+  }
+  
+  deviceConfig.activeEffects = 0;
+  for (int i = 0; i < 12; i++) {
+    if (deviceConfig.effects[i].enabled) deviceConfig.activeEffects++;
+  }
+  
+  Serial.println("Configuration loaded from SPIFFS");
+  Serial.println("Device: " + deviceConfig.deviceName);
+  Serial.println("Active pins: " + String(deviceConfig.activePins));
+  Serial.println("Active audio tracks: " + String(deviceConfig.activeAudioTracks));
+  Serial.println("Active effects: " + String(deviceConfig.activeEffects));
 }
 
-// Save device configuration (placeholder for future EEPROM/JSON saving)
+// Save device configuration to SPIFFS
 void saveDeviceConfig() {
-  // Future: Save to EEPROM or SPIFFS
-  Serial.println("Device configuration saved (placeholder)");
+  if (!SPIFFS.begin(true)) {
+    Serial.println("SPIFFS mount failed, cannot save configuration");
+    return;
+  }
+  
+  DynamicJsonDocument doc(8192); // 8KB JSON document
+  
+  // Save basic settings
+  doc["deviceName"] = deviceConfig.deviceName;
+  doc["deviceDescription"] = deviceConfig.deviceDescription;
+  doc["defaultVolume"] = deviceConfig.defaultVolume;
+  doc["defaultBrightness"] = deviceConfig.defaultBrightness;
+  doc["idleTimeoutMs"] = deviceConfig.idleTimeoutMs;
+  doc["enableSleep"] = deviceConfig.enableSleep;
+  doc["hasLEDs"] = deviceConfig.hasLEDs;
+  
+  // Save pin configurations
+  JsonArray pinsArray = doc.createNestedArray("pins");
+  for (int i = 0; i < 11; i++) {
+    JsonObject pin = pinsArray.createNestedObject();
+    pin["pin"] = deviceConfig.pins[i].pin;
+    pin["type"] = deviceConfig.pins[i].type;
+    pin["label"] = deviceConfig.pins[i].label;
+    pin["enabled"] = deviceConfig.pins[i].enabled;
+    pin["effectType"] = deviceConfig.pins[i].effectType;
+    pin["brightness"] = deviceConfig.pins[i].brightness;
+    pin["defaultR"] = deviceConfig.pins[i].defaultR;
+    pin["defaultG"] = deviceConfig.pins[i].defaultG;
+    pin["defaultB"] = deviceConfig.pins[i].defaultB;
+  }
+  
+  // Save audio tracks
+  JsonArray audioArray = doc.createNestedArray("audioTracks");
+  for (int i = 0; i < 20; i++) {
+    JsonObject track = audioArray.createNestedObject();
+    track["id"] = deviceConfig.audioTracks[i].id;
+    track["filename"] = deviceConfig.audioTracks[i].filename;
+    track["label"] = deviceConfig.audioTracks[i].label;
+    track["category"] = deviceConfig.audioTracks[i].category;
+    track["loops"] = deviceConfig.audioTracks[i].loops;
+    track["volume"] = deviceConfig.audioTracks[i].volume;
+    track["enabled"] = deviceConfig.audioTracks[i].enabled;
+  }
+  
+  // Save trigger effects
+  JsonArray effectsArray = doc.createNestedArray("effects");
+  for (int i = 0; i < 12; i++) {
+    JsonObject effect = effectsArray.createNestedObject();
+    effect["effectId"] = deviceConfig.effects[i].effectId;
+    effect["label"] = deviceConfig.effects[i].label;
+    effect["description"] = deviceConfig.effects[i].description;
+    effect["enabled"] = deviceConfig.effects[i].enabled;
+    effect["primaryPin"] = deviceConfig.effects[i].primaryPin;
+    effect["secondaryPin"] = deviceConfig.effects[i].secondaryPin;
+    effect["audioTrack"] = deviceConfig.effects[i].audioTrack;
+    effect["effectPattern"] = deviceConfig.effects[i].effectPattern;
+    effect["duration"] = deviceConfig.effects[i].duration;
+    effect["intensity"] = deviceConfig.effects[i].intensity;
+  }
+  
+  File configFile = SPIFFS.open("/config.json", "w");
+  if (!configFile) {
+    Serial.println("Failed to open config file for writing");
+    return;
+  }
+  
+  if (serializeJson(doc, configFile) == 0) {
+    Serial.println("Failed to write config to file");
+  } else {
+    Serial.println("Configuration saved to SPIFFS (" + String(configFile.size()) + " bytes)");
+  }
+  
+  configFile.close();
+}
+
+// Helper functions for dynamic pin management
+int getPinByLabel(const String& label) {
+  for (int i = 0; i < 11; i++) {
+    if (deviceConfig.pins[i].enabled && deviceConfig.pins[i].label == label) {
+      return deviceConfig.pins[i].pin;
+    }
+  }
+  return -1; // Not found
+}
+
+int getPinByType(const String& type) {
+  for (int i = 0; i < 11; i++) {
+    if (deviceConfig.pins[i].enabled && deviceConfig.pins[i].type == type) {
+      return deviceConfig.pins[i].pin;
+    }
+  }
+  return -1; // Not found
+}
+
+int getRGBPin() {
+  return getPinByType("rgb");
+}
+
+bool isRGBPin(int pin) {
+  for (int i = 0; i < 11; i++) {
+    if (deviceConfig.pins[i].enabled && 
+        deviceConfig.pins[i].pin == pin && 
+        deviceConfig.pins[i].type == "rgb") {
+      return true;
+    }
+  }
+  return false;
+}
+
+TriggerEffect* getEffectById(const String& effectId) {
+  for (int i = 0; i < 12; i++) {
+    if (deviceConfig.effects[i].enabled && 
+        deviceConfig.effects[i].effectId == effectId) {
+      return &deviceConfig.effects[i];
+    }
+  }
+  return nullptr;
 }
 
 // Run all enabled background effects based on configuration
 void runBackgroundEffects() {
-  for (int i = 0; i < 8; i++) {
-    if (deviceConfig.backgroundEffects[i].enabled) {
-      runEffect(deviceConfig.backgroundEffects[i].ledPin, 
-                deviceConfig.backgroundEffects[i].effectType);
+  for (int i = 0; i < 11; i++) {
+    if (deviceConfig.pins[i].enabled) {
+      runEffect(deviceConfig.pins[i].pin, deviceConfig.pins[i].effectType);
     }
   }
 }
@@ -93,38 +394,38 @@ void runEffect(int ledPin, String effectType) {
   } else if (effectType == "pulse") {
     enginePulseSmooth(ledPin, 0);
   } else if (effectType == "console") {
-    // Check if this is the RGB pin (D3)
-    if (ledPin == D3) {
+    // Check if this is an RGB pin dynamically
+    if (isRGBPin(ledPin)) {
       consoleDataStreamRGB(ledPin);
     } else {
       consoleDataStream(ledPin);
     }
   } else if (effectType == "rgb_blue") {
-    if (ledPin == D3) {
+    if (isRGBPin(ledPin)) {
       rgbStaticColor(ledPin, 0, 0, 255);
     } else {
       setLED(ledPin, 255); // Fallback to white for non-RGB pins
     }
   } else if (effectType == "rgb_red") {
-    if (ledPin == D3) {
+    if (isRGBPin(ledPin)) {
       rgbStaticColor(ledPin, 255, 0, 0);
     } else {
       setLED(ledPin, 255); // Fallback to white for non-RGB pins
     }
   } else if (effectType == "rgb_green") {
-    if (ledPin == D3) {
+    if (isRGBPin(ledPin)) {
       rgbStaticColor(ledPin, 0, 255, 0);
     } else {
       setLED(ledPin, 255); // Fallback to white for non-RGB pins
     }
   } else if (effectType == "rgb_pulse_blue") {
-    if (ledPin == D3) {
+    if (isRGBPin(ledPin)) {
       rgbPulse(ledPin, 0, 0, 255);
     } else {
       enginePulseSmooth(ledPin, 0); // Fallback to regular pulse
     }
   } else if (effectType == "rgb_pulse_red") {
-    if (ledPin == D3) {
+    if (isRGBPin(ledPin)) {
       rgbPulse(ledPin, 255, 0, 0);
     } else {
       enginePulseSmooth(ledPin, 0); // Fallback to regular pulse
@@ -132,7 +433,7 @@ void runEffect(int ledPin, String effectType) {
   } else if (effectType == "static") {
     setLED(ledPin, 255); // Full brightness static
   } else if (effectType == "off") {
-    if (ledPin == D3) {
+    if (isRGBPin(ledPin)) {
       setRGB(ledPin, 0, 0, 0); // Turn off RGB
     } else {
       setLED(ledPin, 0); // Turn off regular LED
@@ -282,10 +583,13 @@ void updateTakingHitsEffect(unsigned long now, unsigned long elapsed) {
       battleEffect.lastUpdate = now;
       
       int step = battleEffect.currentStep % 7;
-      if (step == 0 || step == 2 || step == 4) {
-        setRGB(LED4, 255, 0, 0);  // Console RED alert
-      } else {
-        setRGB(LED4, 0, 0, 0);    // Off
+      int consolePin = getRGBPin();
+      if (consolePin != -1) {
+        if (step == 0 || step == 2 || step == 4) {
+          setRGB(consolePin, 255, 0, 0);  // Console RED alert
+        } else {
+          setRGB(consolePin, 0, 0, 0);    // Off
+        }
       }
       
       if (step == 6) {
@@ -312,12 +616,16 @@ void updateTakingHitsEffect(unsigned long now, unsigned long elapsed) {
     if (now - battleEffect.lastUpdate >= 400) {
       battleEffect.lastUpdate = now;
       
+      // Find engine pins by labels
+      int engine1Pin = getPinByLabel("Engine 1");
+      int engine2Pin = getPinByLabel("Engine 2");
+      
       if (battleEffect.currentStep % 2 == 0) {
-        setLED(LED7, 50);  // Engines dim
-        setLED(LED8, 50);
+        if (engine1Pin != -1) setLED(engine1Pin, 50);  // Engines dim
+        if (engine2Pin != -1) setLED(engine2Pin, 50);
       } else {
-        setLED(LED7, 120); // Engines recover
-        setLED(LED8, 120);
+        if (engine1Pin != -1) setLED(engine1Pin, 120); // Engines recover
+        if (engine2Pin != -1) setLED(engine2Pin, 120);
       }
       battleEffect.currentStep++;
     }
@@ -332,21 +640,28 @@ void updateDestroyedEffect(unsigned long now, unsigned long elapsed) {
       battleEffect.lastUpdate = now;
       
       // Console critical failure - random warning colors
-      int r = random(100, 255);
-      int g = random(0, 100);  // Mostly red/yellow warning colors
-      setRGB(LED4, r, g, 0);
+      int consolePin = getRGBPin();
+      if (consolePin != -1) {
+        int r = random(100, 255);
+        int g = random(0, 100);  // Mostly red/yellow warning colors
+        setRGB(consolePin, r, g, 0);
+      }
       
       // Candles dying - erratic flicker getting weaker over time
       int maxIntensity = 100 - (elapsed / 100); // Gradually dim
-      for (int i = 0; i < 3; i++) {
-        int candleLed = LED1 + i;
-        int intensity = random(20, maxIntensity);
-        setLED(candleLed, intensity);
-      }
+      int candle1Pin = getPinByLabel("Candle 1");
+      int candle2Pin = getPinByLabel("Candle 2");
+      int brazierPin = getPinByLabel("Brazier");
+      
+      if (candle1Pin != -1) setLED(candle1Pin, random(20, maxIntensity));
+      if (candle2Pin != -1) setLED(candle2Pin, random(20, maxIntensity));
+      if (brazierPin != -1) setLED(brazierPin, random(20, maxIntensity));
       
       // Engines violent death throes
-      setLED(LED7, random(0, 200));
-      setLED(LED8, random(0, 200));
+      int engine1Pin = getPinByLabel("Engine 1");
+      int engine2Pin = getPinByLabel("Engine 2");
+      if (engine1Pin != -1) setLED(engine1Pin, random(0, 200));
+      if (engine2Pin != -1) setLED(engine2Pin, random(0, 200));
     }
   } else {
     // Phase 2: Final shutdown (10s+)
@@ -362,14 +677,15 @@ void updateDestroyedEffect(unsigned long now, unsigned long elapsed) {
         battleEffect.active = false;
         
         // Turn off all LEDs explicitly
-        setLED(LED1, 0);
-        setLED(LED2, 0);
-        setLED(LED3, 0);
-        setRGB(LED4, 0, 0, 0);  // Turn off RGB
-        setLED(LED5, 0);
-        setLED(LED6, 0);
-        setLED(LED7, 0);
-        setLED(LED8, 0);
+        for (int i = 0; i < 11; i++) {
+          if (deviceConfig.pins[i].enabled) {
+            if (deviceConfig.pins[i].type == "rgb") {
+              setRGB(deviceConfig.pins[i].pin, 0, 0, 0);
+            } else if (deviceConfig.pins[i].type == "led") {
+              setLED(deviceConfig.pins[i].pin, 0);
+            }
+          }
+        }
         
         Serial.println("FINAL SHUTDOWN: All systems offline");
         Serial.println("Unit destroyed. Entering deep sleep...");
@@ -385,21 +701,28 @@ void updateDestroyedEffect(unsigned long now, unsigned long elapsed) {
 void updateRocketEffect(unsigned long now, unsigned long elapsed) {
   if (elapsed < 1000) {
     // Phase 1: Massive explosion backlight (0-1s)
-    setLED(LED1, 255);
-    setLED(LED2, 255); 
-    setLED(LED3, 255);
+    int candle1Pin = getPinByLabel("Candle 1");
+    int candle2Pin = getPinByLabel("Candle 2");
+    int brazierPin = getPinByLabel("Brazier");
+    
+    if (candle1Pin != -1) setLED(candle1Pin, 255);
+    if (candle2Pin != -1) setLED(candle2Pin, 255);
+    if (brazierPin != -1) setLED(brazierPin, 255);
   } else if (elapsed < 2500) {
     // Phase 2: Console overload flash (1-2.5s)
     if (now - battleEffect.lastUpdate >= 200) {
       battleEffect.lastUpdate = now;
       
-      int step = battleEffect.currentStep % 4;
-      if (step == 0) {
-        setRGB(LED4, 255, 255, 255);  // Bright white flash
-      } else if (step == 2) {
-        setRGB(LED4, 200, 200, 255);  // Blue explosion glow
-      } else {
-        setRGB(LED4, 0, 0, 0);
+      int consolePin = getRGBPin();
+      if (consolePin != -1) {
+        int step = battleEffect.currentStep % 4;
+        if (step == 0) {
+          setRGB(consolePin, 255, 255, 255);  // Bright white flash
+        } else if (step == 2) {
+          setRGB(consolePin, 200, 200, 255);  // Blue explosion glow
+        } else {
+          setRGB(consolePin, 0, 0, 0);
+        }
       }
       battleEffect.currentStep++;
     }
@@ -408,10 +731,15 @@ void updateRocketEffect(unsigned long now, unsigned long elapsed) {
     if (now - battleEffect.lastUpdate >= 100) {
       battleEffect.lastUpdate = now;
       
-      setLED(LED1, random(180, 220));
-      setLED(LED2, random(180, 220));
-      setLED(LED3, random(180, 220));
-      setRGB(LED4, random(100, 200), random(100, 200), random(100, 255));  // Random explosive colors
+      int candle1Pin = getPinByLabel("Candle 1");
+      int candle2Pin = getPinByLabel("Candle 2");
+      int brazierPin = getPinByLabel("Brazier");
+      int consolePin = getRGBPin();
+      
+      if (candle1Pin != -1) setLED(candle1Pin, random(180, 220));
+      if (candle2Pin != -1) setLED(candle2Pin, random(180, 220));
+      if (brazierPin != -1) setLED(brazierPin, random(180, 220));
+      if (consolePin != -1) setRGB(consolePin, random(100, 200), random(100, 200), random(100, 255));  // Random explosive colors
     }
   }
 }
@@ -419,26 +747,36 @@ void updateRocketEffect(unsigned long now, unsigned long elapsed) {
 // Unit kill effect - non-blocking implementation
 void updateUnitKillEffect(unsigned long now, unsigned long elapsed) {
   // Console success indicator - steady green glow
-  setRGB(LED4, 0, 200, 0);  // Green success
+  int consolePin = getRGBPin();
+  if (consolePin != -1) {
+    setRGB(consolePin, 0, 200, 0);  // Green success
+  }
   
   // Victory flash sequence on all systems
   if (now - battleEffect.lastUpdate >= 300) {
     battleEffect.lastUpdate = now;
     
+    // Get all relevant pins
+    int candle1Pin = getPinByLabel("Candle 1");
+    int candle2Pin = getPinByLabel("Candle 2");
+    int brazierPin = getPinByLabel("Brazier");
+    int engine1Pin = getPinByLabel("Engine 1");
+    int engine2Pin = getPinByLabel("Engine 2");
+    
     if (battleEffect.currentStep % 2 == 0) {
       // Brief synchronized flash
-      setLED(LED1, 255);
-      setLED(LED2, 255);
-      setLED(LED3, 255);
-      setLED(LED7, 255);
-      setLED(LED8, 255);
+      if (candle1Pin != -1) setLED(candle1Pin, 255);
+      if (candle2Pin != -1) setLED(candle2Pin, 255);
+      if (brazierPin != -1) setLED(brazierPin, 255);
+      if (engine1Pin != -1) setLED(engine1Pin, 255);
+      if (engine2Pin != -1) setLED(engine2Pin, 255);
     } else {
       // Brief dim
-      setLED(LED1, 50);
-      setLED(LED2, 50);
-      setLED(LED3, 50);
-      setLED(LED7, 50);
-      setLED(LED8, 50);
+      if (candle1Pin != -1) setLED(candle1Pin, 50);
+      if (candle2Pin != -1) setLED(candle2Pin, 50);
+      if (brazierPin != -1) setLED(brazierPin, 50);
+      if (engine1Pin != -1) setLED(engine1Pin, 50);
+      if (engine2Pin != -1) setLED(engine2Pin, 50);
     }
     battleEffect.currentStep++;
   }

@@ -5,8 +5,8 @@
 #include "DFRobotDFPlayerMini.h"
 
 // Firmware version
-#define FIRMWARE_VERSION "0.29.0"
-#define VERSION_FEATURE "Convert to fully non-blocking operation for responsive web interface"
+#define FIRMWARE_VERSION "0.31.0"
+#define VERSION_FEATURE "Fully modular pin/audio configuration with persistent storage"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Audio file mappings
@@ -24,54 +24,92 @@
 #define STATUS_CHECK_INTERVAL_MS  10000  // 10 seconds
 #define LED_UPDATE_DELAY_MS  50   // 50ms LED update cycle
 
-// Effect mapping for continuous background effects
-struct EffectMapping {
-  int ledPin;
-  String effectType;  // "candle", "pulse", "console", "static", "off"
-  String label;       // User-friendly name
-  bool enabled;
+// Modular pin configuration
+struct PinConfig {
+  int pin;                    // Physical pin number (D0-D10)
+  String type;               // "led", "rgb", "audio", "unused"
+  String label;              // User-friendly name like "Front Weapon", "Engine Glow"
+  bool enabled;              // Is this pin active
   
-  // Constructor for easy initialization
-  EffectMapping() : ledPin(0), effectType("off"), label(""), enabled(false) {}
-  EffectMapping(int pin, String type, String lbl, bool en) : 
-    ledPin(pin), effectType(type), label(lbl), enabled(en) {}
+  // LED-specific settings
+  String effectType;         // "candle", "pulse", "console", "static", "off", "rgb_*"
+  int brightness;            // Default brightness 0-255
+  
+  // RGB-specific settings (if type="rgb")
+  int defaultR, defaultG, defaultB;  // Default RGB values
+  
+  // Constructor
+  PinConfig() : pin(0), type("unused"), label(""), enabled(false), 
+                effectType("off"), brightness(255), defaultR(255), defaultG(255), defaultB(255) {}
+  PinConfig(int p, String t, String lbl) : pin(p), type(t), label(lbl), enabled(true),
+                effectType("off"), brightness(255), defaultR(255), defaultG(255), defaultB(255) {}
 };
 
-// Trigger mapping for button-activated effects
-struct TriggerMapping {
-  String buttonId;    // "machine-gun", "flamethrower", etc.
-  int ledPin;
-  int audioTrack;
-  String label;       // User-friendly name
-  bool enabled;
+// Audio track configuration
+struct AudioTrack {
+  int id;                    // Track number (1-99)
+  String filename;           // MP3 filename on SD card
+  String label;              // User-friendly name like "Machine Gun", "Engine Idle"
+  String category;           // "weapon", "ambient", "damage", "victory"
+  bool loops;                // Should this track loop?
+  int volume;                // Track-specific volume (0-30)
+  bool enabled;              // Is this track available
   
-  // Constructor for easy initialization
-  TriggerMapping() : buttonId(""), ledPin(0), audioTrack(0), label(""), enabled(false) {}
-  TriggerMapping(String id, int pin, int audio, String lbl, bool en) :
-    buttonId(id), ledPin(pin), audioTrack(audio), label(lbl), enabled(en) {}
+  // Constructor
+  AudioTrack() : id(0), filename(""), label(""), category("other"), 
+                 loops(false), volume(20), enabled(false) {}
+  AudioTrack(int trackId, String file, String lbl, String cat) : 
+             id(trackId), filename(file), label(lbl), category(cat),
+             loops(false), volume(20), enabled(true) {}
+};
+
+// Trigger effect mapping - combines pins and audio
+struct TriggerEffect {
+  String effectId;           // "weapon1", "weapon2", "damage", "victory", etc.
+  String label;              // User-friendly name
+  String description;        // What this effect does
+  bool enabled;              // Is this effect available
+  
+  // Pin assignments
+  int primaryPin;            // Main LED pin for this effect
+  int secondaryPin;          // Optional second LED pin (-1 if unused)
+  
+  // Audio assignment
+  int audioTrack;            // Which audio track to play (0 = none)
+  
+  // Effect parameters
+  String effectPattern;      // "flash", "pulse", "fade", "strobe", "custom"
+  int duration;              // Effect duration in ms (0 = until audio ends)
+  int intensity;             // Effect intensity 0-100%
+  
+  // Constructor
+  TriggerEffect() : effectId(""), label(""), description(""), enabled(false),
+                    primaryPin(-1), secondaryPin(-1), audioTrack(0),
+                    effectPattern("flash"), duration(0), intensity(100) {}
 };
 
 // Device configuration structure
 struct DeviceConfig {
   // Device identification
   String deviceName;
+  String deviceDescription;
   
-  // Hardware configuration
-  bool hasAudio;
-  bool hasLEDs;
+  // Global settings
+  int defaultVolume;           // Global volume setting
+  int defaultBrightness;       // Global brightness setting
+  int idleTimeoutMs;           // Idle audio timeout
+  bool enableSleep;            // Power management
+  bool hasLEDs;                // LED system enabled
   
-  // Behavior settings
-  bool autoStartIdle;
-  int defaultVolume;
-  int defaultBrightness;
+  // Modular configuration arrays
+  PinConfig pins[11];          // D0-D10 pin configurations
+  AudioTrack audioTracks[20];  // Up to 20 audio tracks
+  TriggerEffect effects[12];   // Up to 12 custom effects
   
-  // Power management
-  int idleTimeoutMs;
-  bool enableSleep;
-  
-  // Effect configuration (8 pins max for now)
-  EffectMapping backgroundEffects[8];
-  TriggerMapping triggerEffects[8];
+  // Active configuration counts
+  int activePins;
+  int activeAudioTracks;  
+  int activeEffects;
 };
 
 // Default device configuration
@@ -81,6 +119,13 @@ extern DeviceConfig deviceConfig;
 void loadDefaultConfig();
 void loadDeviceConfig();
 void saveDeviceConfig();
+
+// Helper functions for dynamic pin management
+int getPinByLabel(const String& label);
+int getPinByType(const String& type);
+int getRGBPin();
+bool isRGBPin(int pin);
+TriggerEffect* getEffectById(const String& effectId);
 
 // Effect execution functions
 void runBackgroundEffects();

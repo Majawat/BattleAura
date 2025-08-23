@@ -12,6 +12,11 @@
 #include "effects.h"
 #include "dfplayer.h"
 
+// RTOS Task handles
+TaskHandle_t audioTaskHandle = NULL;
+TaskHandle_t webTaskHandle = NULL;
+TaskHandle_t ledTaskHandle = NULL;
+
 SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
 DFRobotDFPlayerMini dfPlayer;
 
@@ -57,6 +62,87 @@ void handleConfigSave();
 int compareVersions(String current, String remote);
 bool checkForUpdates(String &newVersion, String &downloadUrl, String &changelog);
 
+// RTOS Task Functions
+void audioTask(void* parameter);
+void webTask(void* parameter);
+void ledTask(void* parameter);
+void printMemoryUsage();
+
+// Audio and Effects Task - handles all audio and LED effects
+void audioTask(void* parameter) {
+  Serial.println("Audio task started on core " + String(xPortGetCoreID()));
+  
+  for(;;) {
+    // DFPlayer message processing
+    if (dfPlayer.available()) {
+      printDetail(dfPlayer.readType(), dfPlayer.read());
+    }
+    
+    // Periodic DFPlayer status check (every 10 seconds)
+    checkDFPlayerStatus();
+    
+    // Check if idle audio should timeout to save battery
+    checkIdleTimeout();
+    
+    // Handle actual idle audio stopping
+    if (!idleAudioActive && dfPlayerConnected && dfPlayerPlaying && currentTrack == AUDIO_IDLE) {
+      dfPlayer.stop();
+      dfPlayerPlaying = false;
+      dfPlayerStatus = "Idle Timeout - Stopped";
+      Serial.println("Idle audio stopped - device now in low-power mode");
+    }
+    
+    // Update non-blocking weapon effects
+    updateWeaponEffects(&dfPlayer);
+    
+    // Update non-blocking battle effects
+    updateBattleEffect(&dfPlayer);
+    
+    // Run at 20Hz for smooth effects
+    vTaskDelay(50 / portTICK_PERIOD_MS);
+  }
+}
+
+// Web Server Task - handles HTTP requests
+void webTask(void* parameter) {
+  Serial.println("Web task started on core " + String(xPortGetCoreID()));
+  
+  for(;;) {
+    // Handle web server requests with high frequency for responsiveness
+    server.handleClient();
+    
+    // Run at 1000Hz for maximum web responsiveness
+    vTaskDelay(1 / portTICK_PERIOD_MS);
+  }
+}
+
+// LED Background Effects Task - handles candle flicker, etc.
+void ledTask(void* parameter) {
+  Serial.println("LED task started on core " + String(xPortGetCoreID()));
+  
+  unsigned long lastMemoryPrint = 0;
+  
+  for(;;) {
+    // Run all configured background effects dynamically
+    runBackgroundEffects();
+    
+    // Print memory usage every 30 seconds
+    if (millis() - lastMemoryPrint > 30000) {
+      printMemoryUsage();
+      lastMemoryPrint = millis();
+    }
+    
+    // Run at 20Hz for smooth LED effects
+    vTaskDelay(50 / portTICK_PERIOD_MS);
+  }
+}
+
+// Memory monitoring function
+void printMemoryUsage() {
+  Serial.printf("Free heap: %d bytes, Largest block: %d bytes, Min free: %d bytes\n", 
+                ESP.getFreeHeap(), ESP.getMaxAllocHeap(), ESP.getMinFreeHeap());
+}
+
 void setup() {
   Serial.begin(9600);
   // Remove initial delay - not needed
@@ -69,19 +155,26 @@ void setup() {
   globalBrightness = deviceConfig.defaultBrightness;
   ledsEnabled = deviceConfig.hasLEDs;
   
-  // Initialize LEDs
-  pinMode(LED1, OUTPUT);
-  pinMode(LED2, OUTPUT);
-  pinMode(LED3, OUTPUT);
-  // LED4 (D3) is now RGB - initialized separately
-  pinMode(LED5, OUTPUT);
-  pinMode(LED6, OUTPUT); 
-  pinMode(LED7, OUTPUT);
-  pinMode(LED8, OUTPUT);
+  // Initialize pins based on configuration
+  for (int i = 0; i < 11; i++) {
+    if (deviceConfig.pins[i].enabled) {
+      if (deviceConfig.pins[i].type == "led") {
+        pinMode(deviceConfig.pins[i].pin, OUTPUT);
+        Serial.println("Initialized LED pin " + String(deviceConfig.pins[i].pin) + " (" + deviceConfig.pins[i].label + ")");
+      } else if (deviceConfig.pins[i].type == "rgb") {
+        // RGB pins are handled by the NeoPixel library, no pinMode needed
+        Serial.println("Configured RGB pin " + String(deviceConfig.pins[i].pin) + " (" + deviceConfig.pins[i].label + ")");
+      }
+    }
+  }
   
-  // Initialize RGB LED strip (D3)
-  rgbStrip.begin();
-  rgbStrip.show(); // Initialize all pixels to 'off'
+  // Initialize RGB LED strip for any RGB pins
+  int rgbPin = getRGBPin();
+  if (rgbPin != -1) {
+    rgbStrip.begin();
+    rgbStrip.show(); // Initialize all pixels to 'off'
+    Serial.println("RGB LED strip initialized on pin " + String(rgbPin));
+  }
   
   // Initialize DFPlayer
   audioSerial.begin(9600);
@@ -132,44 +225,65 @@ void setup() {
   // Setup WiFi and web server
   setupWiFi();
   setupWebServer();
+  
+  // Print initial memory usage
+  printMemoryUsage();
+  
+  // Create RTOS tasks for better performance and responsiveness
+  Serial.println("Creating RTOS tasks...");
+  
+  // Audio and effects task on core 0 (same as main loop by default)
+  xTaskCreatePinnedToCore(
+    audioTask,           // Task function
+    "AudioTask",         // Task name
+    8192,               // Stack size (8KB)
+    NULL,               // Parameters
+    2,                  // Priority (higher than default)
+    &audioTaskHandle,   // Task handle
+    0                   // Core 0
+  );
+  
+  // Web server task on core 1 for maximum responsiveness
+  xTaskCreatePinnedToCore(
+    webTask,            // Task function  
+    "WebTask",          // Task name
+    4096,               // Stack size (4KB)
+    NULL,               // Parameters
+    3,                  // Priority (highest)
+    &webTaskHandle,     // Task handle
+    1                   // Core 1
+  );
+  
+  // LED background effects task on core 0
+  xTaskCreatePinnedToCore(
+    ledTask,            // Task function
+    "LEDTask",          // Task name  
+    4096,               // Stack size (4KB)
+    NULL,               // Parameters
+    1,                  // Priority (lower than audio)
+    &ledTaskHandle,     // Task handle
+    0                   // Core 0
+  );
+  
+  Serial.println("RTOS tasks created successfully!");
+  Serial.printf("Main loop running on core %d\n", xPortGetCoreID());
 }
 
 void loop() {
-  // Non-blocking timing for LED updates
-  static unsigned long lastLEDUpdate = 0;
-  if (millis() - lastLEDUpdate >= LED_UPDATE_DELAY_MS) {
-    lastLEDUpdate = millis();
-    
-    // Run all configured background effects dynamically
-    runBackgroundEffects();
-  }
-  if (dfPlayer.available()) {
-    printDetail(dfPlayer.readType(), dfPlayer.read()); //Print the detail message from DFPlayer to handle different errors and states.
-  }
+  // Main loop is now minimal - most work handled by RTOS tasks
+  // Just handle WiFi connection monitoring
+  static unsigned long lastWiFiCheck = 0;
   
-  // Periodic DFPlayer status check (every 10 seconds)
-  checkDFPlayerStatus();
-  
-  // Check if idle audio should timeout to save battery
-  checkIdleTimeout();
-  
-  // Handle actual idle audio stopping (dfPlayer is only accessible here)
-  if (!idleAudioActive && dfPlayerConnected && dfPlayerPlaying && currentTrack == AUDIO_IDLE) {
-    dfPlayer.stop();
-    dfPlayerPlaying = false;
-    dfPlayerStatus = "Idle Timeout - Stopped";
-    Serial.println("Idle audio stopped - device now in low-power mode");
+  if (millis() - lastWiFiCheck > 30000) { // Check every 30 seconds
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("WiFi disconnected, attempting reconnection...");
+      WiFi.reconnect();
+    }
+    lastWiFiCheck = millis();
   }
   
-  // Update non-blocking weapon effects
-  updateWeaponEffects(&dfPlayer);
-  
-  // Update non-blocking battle effects
-  updateBattleEffect(&dfPlayer);
-  
-  // Handle web server requests
-  server.handleClient();
-
+  // Small delay to prevent watchdog issues and allow other tasks to run
+  delay(100);
 }
 
 // Check DFPlayer status periodically
@@ -208,9 +322,14 @@ void checkDFPlayerStatus() {
   }
 }
 
-// WiFi setup with captive portal
+// WiFi setup with captive portal and performance optimizations
 void setupWiFi() {
   Serial.println(F("Setting up WiFi..."));
+  
+  // WiFi performance optimizations
+  WiFi.setAutoReconnect(true);
+  WiFi.persistent(false); // Reduce flash wear
+  WiFi.setSleep(WIFI_PS_NONE); // Disable power saving for responsiveness
   
   // Set custom AP name and password
   wifiManager.setAPCallback([](WiFiManager *myWiFiManager) {
@@ -439,7 +558,12 @@ void handleFactoryReset() {
 void handleMachineGun() {
   Serial.println("Machine gun triggered via web interface");
   triggerActivity();
-  startWeaponEffect(0, &dfPlayer, LED5, AUDIO_WEAPON_FIRE_1, "machine-gun");
+  TriggerEffect* effect = getEffectById("weapon1");
+  if (effect != nullptr) {
+    startWeaponEffect(0, &dfPlayer, effect->primaryPin, effect->audioTrack, "machine-gun");
+  } else {
+    Serial.println("Machine gun effect not configured");
+  }
   // Redirect back to main page
   server.sendHeader("Location", "/");
   server.send(302);
@@ -449,7 +573,12 @@ void handleMachineGun() {
 void handleFlamethrower() {
   Serial.println("Flamethrower triggered via web interface");
   triggerActivity();
-  startWeaponEffect(1, &dfPlayer, LED6, AUDIO_WEAPON_FIRE_2, "flamethrower");
+  TriggerEffect* effect = getEffectById("weapon2");
+  if (effect != nullptr) {
+    startWeaponEffect(1, &dfPlayer, effect->primaryPin, effect->audioTrack, "flamethrower");
+  } else {
+    Serial.println("Flamethrower effect not configured");
+  }
   // Redirect back to main page
   server.sendHeader("Location", "/");
   server.send(302);
@@ -459,7 +588,12 @@ void handleFlamethrower() {
 void handleEngineRev() {
   Serial.println("Engine rev triggered via web interface");
   triggerActivity();
-  startWeaponEffect(2, &dfPlayer, LED7, AUDIO_ENGINE_REV, "engine-rev");
+  TriggerEffect* effect = getEffectById("engine-rev");
+  if (effect != nullptr) {
+    startWeaponEffect(2, &dfPlayer, effect->primaryPin, effect->audioTrack, "engine-rev");
+  } else {
+    Serial.println("Engine rev effect not configured");
+  }
   // Redirect back to main page
   server.sendHeader("Location", "/");
   server.send(302);
@@ -811,7 +945,7 @@ void handleDestroyed() {
 void handleRocket() {
   Serial.println("Rocket fired via web interface");
   triggerActivity();
-  startWeaponEffect(3, &dfPlayer, LED1, AUDIO_LIMITED_WEAPON, "rocket");
+  rocketEffect(&dfPlayer, AUDIO_LIMITED_WEAPON);
   server.sendHeader("Location", "/");
   server.send(302);
 }
@@ -861,7 +995,7 @@ void handleConfig() {
       html += F("<option value='");
       html += effectTypes[j];
       html += F("'");
-      if (deviceConfig.backgroundEffects[i].effectType == effectTypes[j]) {
+      if (deviceConfig.pins[i].effectType == effectTypes[j]) {
         html += F(" selected");
       }
       html += F(">");
@@ -872,11 +1006,11 @@ void handleConfig() {
     html += F("</select></td><td><input type='text' name='bg_label_");
     html += String(i);
     html += F("' value='");
-    html += deviceConfig.backgroundEffects[i].label;
+    html += deviceConfig.pins[i].label;
     html += F("' placeholder='Label'></td><td><input type='checkbox' name='bg_enabled_");
     html += String(i);
     html += F("'");
-    if (deviceConfig.backgroundEffects[i].enabled) {
+    if (deviceConfig.pins[i].enabled) {
       html += F(" checked");
     }
     html += F("></td></tr>");
@@ -901,16 +1035,16 @@ void handleConfigSave() {
     String enabledParam = "bg_enabled_" + String(i);
     
     if (server.hasArg(effectParam)) {
-      deviceConfig.backgroundEffects[i].effectType = server.arg(effectParam);
+      deviceConfig.pins[i].effectType = server.arg(effectParam);
     }
     if (server.hasArg(labelParam)) {
-      deviceConfig.backgroundEffects[i].label = server.arg(labelParam);
+      deviceConfig.pins[i].label = server.arg(labelParam);
     }
-    deviceConfig.backgroundEffects[i].enabled = server.hasArg(enabledParam);
+    deviceConfig.pins[i].enabled = server.hasArg(enabledParam);
     
-    Serial.println("Pin " + String(i) + ": " + deviceConfig.backgroundEffects[i].effectType + 
-                   " (" + deviceConfig.backgroundEffects[i].label + ") " + 
-                   (deviceConfig.backgroundEffects[i].enabled ? "ON" : "OFF"));
+    Serial.println("Pin " + String(i) + ": " + deviceConfig.pins[i].effectType + 
+                   " (" + deviceConfig.pins[i].label + ") " + 
+                   (deviceConfig.pins[i].enabled ? "ON" : "OFF"));
   }
   
   // Save configuration (placeholder for now)

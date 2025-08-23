@@ -4,22 +4,9 @@
 #include "Arduino.h"
 #include <Adafruit_NeoPixel.h>
 
-// LED pin definitions
-#define LED1 D0 // Candle fiber optics 1
-#define LED2 D1 // Candle fiber optics 2
-#define LED3 D2 // Brazier
-#define LED4 D3 // Console screen (single pin - now will be RGB)
-#define LED5 D4 // Weapon 1 - machine gun
-#define LED6 D5 // Weapon 2 - flamethrower
-#define LED7 D8 // Engine stack 1
-#define LED8 D9 // Engine stack 2
-#define LED9 D10 // Unused currently
-
-// RGB LED support for D3 console screen
-// Note: ESP32 supports RGB LEDs via multiple PWM channels on single pin
-// For addressable RGB (WS2812), we use the pin as data line
-#define RGB_LED_PIN D3 // Same as LED4, but for RGB operations
-#define RGB_LED_COUNT 1 // Number of RGB LEDs on D3
+// RGB LED support for addressable LEDs (WS2812) 
+#define RGB_LED_PIN D3 // Default RGB pin (will be dynamic in future)
+#define RGB_LED_COUNT 1 // Maximum RGB LEDs supported per pin
 
 // Global LED settings
 extern bool ledsEnabled;
