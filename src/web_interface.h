@@ -20,6 +20,7 @@ void setupWebRoutes();
 void handleGetConfig(AsyncWebServerRequest *request);
 void handleSystemInfo(AsyncWebServerRequest *request);
 void handleCheckUpdates(AsyncWebServerRequest *request);
+void handlePerformUpdate(AsyncWebServerRequest *request);
 void handleFactoryReset(AsyncWebServerRequest *request);
 
 // Utility functions

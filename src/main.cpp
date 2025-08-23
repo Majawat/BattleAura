@@ -3,6 +3,10 @@
 #include "DFRobotDFPlayerMini.h"
 #include <WiFi.h>
 #include <WiFiManager.h>
+#include <Update.h>
+#include <ESPmDNS.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
 #include "config.h"
 #include "effects.h"
 #include "dfplayer.h"
@@ -29,6 +33,8 @@ void checkDFPlayerStatus();
 void setupWiFi();
 void setupWebServer();
 void resumeIdleAudio();
+int compareVersions(String current, String remote);
+bool checkForUpdates(String &newVersion, String &downloadUrl, String &changelog);
 
 // RTOS Task Functions
 void audioTask(void* parameter);
@@ -321,7 +327,15 @@ void setupWiFi() {
   Serial.print(F("IP address: "));
   Serial.println(WiFi.localIP());
   
-  Serial.println(F("WiFi connected successfully"));
+  // Start mDNS with custom hostname
+  String hostname = custom_hostname.getValue();
+  if (hostname.length() == 0) hostname = "battletank";
+  
+  if (MDNS.begin(hostname.c_str())) {
+    Serial.print(F("mDNS started: "));
+    Serial.print(hostname);
+    Serial.println(F(".local"));
+  }
 }
 
 // Initialize modern web interface
@@ -338,6 +352,48 @@ void resumeIdleAudio() {
     idleAudioActive = true;
     triggerActivity();
     Serial.println("Auto-resumed idle audio after weapon effect");
+  }
+}
+
+// Compare two version strings (returns 1 if remote > current, 0 if equal, -1 if current > remote)
+int compareVersions(String current, String remote) {
+  // Remove 'v' prefix if present
+  if (current.startsWith("v")) current = current.substring(1);
+  if (remote.startsWith("v")) remote = remote.substring(1);
+  
+  // Simple string comparison works for semantic versioning like 0.16.6
+  if (remote > current) return 1;
+  if (remote == current) return 0;
+  return -1;
+}
+
+// Check for firmware updates from battlesync.me
+bool checkForUpdates(String &newVersion, String &downloadUrl, String &changelog) {
+  HTTPClient http;
+  http.begin("https://battlesync.me/api/battleaura/firmware/latest");
+  http.addHeader("User-Agent", "BattleAura/" + String(FIRMWARE_VERSION));
+  
+  int httpCode = http.GET();
+  
+  if (httpCode == HTTP_CODE_OK) {
+    String payload = http.getString();
+    Serial.println("Update check response: " + payload);
+    
+    JsonDocument doc;
+    deserializeJson(doc, payload);
+    
+    newVersion = doc["version"].as<String>();
+    downloadUrl = doc["download_url"].as<String>();
+    changelog = doc["changelog"].as<String>();
+    
+    http.end();
+    
+    // Compare versions
+    return compareVersions(FIRMWARE_VERSION, newVersion) > 0;
+  } else {
+    Serial.println("Update check failed: " + String(httpCode));
+    http.end();
+    return false;
   }
 }
 

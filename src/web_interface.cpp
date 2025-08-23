@@ -27,6 +27,7 @@ void setupWebRoutes() {
   server.on("/api/config", HTTP_GET, handleGetConfig);
   server.on("/api/system/info", HTTP_GET, handleSystemInfo);
   server.on("/api/system/check-updates", HTTP_GET, handleCheckUpdates);
+  server.on("/api/system/perform-update", HTTP_POST, handlePerformUpdate);
   server.on("/api/system/factory-reset", HTTP_POST, handleFactoryReset);
   
   // Simple POST routes with URL parameters
@@ -146,9 +147,68 @@ void handleSystemInfo(AsyncWebServerRequest *request) {
 }
 
 void handleCheckUpdates(AsyncWebServerRequest *request) {
-  String response = "{\"updateAvailable\":false,\"currentVersion\":\"" + 
-                   String(FIRMWARE_VERSION) + "\",\"message\":\"No updates\"}";
+  // Check for updates from server
+  String newVersion, downloadUrl, changelog;
+  bool updateAvailable = checkForUpdates(newVersion, downloadUrl, changelog);
+  
+  String response = "{\"updateAvailable\":" + String(updateAvailable ? "true" : "false") +
+                   ",\"currentVersion\":\"" + String(FIRMWARE_VERSION) + "\"";
+  if (updateAvailable) {
+    response += ",\"newVersion\":\"" + newVersion + "\"";
+    response += ",\"downloadUrl\":\"" + downloadUrl + "\"";  
+    response += ",\"changelog\":\"" + changelog + "\"";
+  }
+  response += "}";
+  
   request->send(200, "application/json", response);
+}
+
+void handlePerformUpdate(AsyncWebServerRequest *request) {
+  String updateUrl = "";
+  if (request->hasParam("url", true)) {
+    updateUrl = request->getParam("url", true)->value();
+  }
+  
+  if (updateUrl.length() == 0) {
+    request->send(400, "application/json", "{\"error\":\"Missing update URL\"}");
+    return;
+  }
+  
+  request->send(200, "application/json", "{\"status\":\"Update started\"}");
+  
+  // Delay to allow response to be sent
+  delay(500);
+  
+  // Perform OTA update
+  HTTPClient http;
+  http.begin(updateUrl);
+  
+  int httpCode = http.GET();
+  if (httpCode == HTTP_CODE_OK) {
+    int contentLength = http.getSize();
+    
+    if (contentLength > 0) {
+      bool canBegin = Update.begin(contentLength);
+      
+      if (canBegin) {
+        WiFiClient * client = http.getStreamPtr();
+        size_t written = Update.writeStream(*client);
+        
+        if (written == contentLength) {
+          Serial.println("OTA update written successfully");
+        }
+        
+        if (Update.end()) {
+          if (Update.isFinished()) {
+            Serial.println("OTA update completed! Restarting...");
+            ESP.restart();
+          }
+        }
+      }
+    }
+  }
+  
+  http.end();
 }
 
 void handleFactoryReset(AsyncWebServerRequest *request) {

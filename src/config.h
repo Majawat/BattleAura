@@ -5,8 +5,8 @@
 #include "DFRobotDFPlayerMini.h"
 
 // Firmware version
-#define FIRMWARE_VERSION "0.32.3"
-#define VERSION_FEATURE "Removed update/HTTP client libraries to free flash space"
+#define FIRMWARE_VERSION "0.32.4"
+#define VERSION_FEATURE "Restored OTA updates and mDNS functionality"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Audio file mappings
