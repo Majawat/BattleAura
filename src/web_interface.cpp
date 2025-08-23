@@ -88,8 +88,6 @@ void setupWebRoutes() {
   // Trigger effect endpoints
   server.on("^\\/api\\/trigger\\/(.+)$", HTTP_POST, [](AsyncWebServerRequest *request) {
     String effectId = request->pathArg(0);
-    Serial.println("API trigger effect: " + effectId);
-    
     bool success = false;
     
     if (effectId == "weapon1") {
@@ -132,16 +130,14 @@ void setupWebRoutes() {
     
     if (success) {
       broadcastEffectStarted(effectId);
-      request->send(200, "application/json", "{\"status\":\"success\",\"effect\":\"" + effectId + "\"}");
+      request->send(200, "application/json", "{\"status\":\"success\"}");
     } else {
-      request->send(404, "application/json", "{\"error\":\"Unknown or disabled effect\"}");
+      request->send(404, "application/json", "{\"error\":\"Unknown effect\"}");
     }
   });
 
-  // CORS headers for development
+  // CORS headers
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
-  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
 void handleGetConfig(AsyncWebServerRequest *request) {
@@ -262,60 +258,12 @@ void broadcastConfigUpdated() {
 String serializeConfig() {
   JsonDocument doc;
   
-  // Basic device info
+  // Only essential device info for simple UI
   doc["deviceName"] = deviceConfig.deviceName;
-  doc["deviceDescription"] = deviceConfig.deviceDescription;
   doc["firmwareVersion"] = FIRMWARE_VERSION;
   doc["defaultVolume"] = deviceConfig.defaultVolume;
   doc["defaultBrightness"] = deviceConfig.defaultBrightness;
   doc["hasLEDs"] = deviceConfig.hasLEDs;
-  doc["activePins"] = deviceConfig.activePins;
-  doc["activeAudioTracks"] = deviceConfig.activeAudioTracks;
-  doc["activeEffects"] = deviceConfig.activeEffects;
-  
-  // Pins configuration
-  JsonArray pinsArray = doc["pins"].to<JsonArray>();
-  for (int i = 0; i < 11; i++) {
-    JsonObject pin = pinsArray.add<JsonObject>();
-    pin["pin"] = deviceConfig.pins[i].pin;
-    pin["type"] = deviceConfig.pins[i].type;
-    pin["label"] = deviceConfig.pins[i].label;
-    pin["enabled"] = deviceConfig.pins[i].enabled;
-    pin["effectType"] = deviceConfig.pins[i].effectType;
-    pin["brightness"] = deviceConfig.pins[i].brightness;
-    pin["defaultR"] = deviceConfig.pins[i].defaultR;
-    pin["defaultG"] = deviceConfig.pins[i].defaultG;
-    pin["defaultB"] = deviceConfig.pins[i].defaultB;
-  }
-  
-  // Audio tracks configuration
-  JsonArray audioArray = doc["audioTracks"].to<JsonArray>();
-  for (int i = 0; i < 20; i++) {
-    JsonObject track = audioArray.add<JsonObject>();
-    track["id"] = deviceConfig.audioTracks[i].id;
-    track["filename"] = deviceConfig.audioTracks[i].filename;
-    track["label"] = deviceConfig.audioTracks[i].label;
-    track["category"] = deviceConfig.audioTracks[i].category;
-    track["loops"] = deviceConfig.audioTracks[i].loops;
-    track["volume"] = deviceConfig.audioTracks[i].volume;
-    track["enabled"] = deviceConfig.audioTracks[i].enabled;
-  }
-  
-  // Effects configuration
-  JsonArray effectsArray = doc["effects"].to<JsonArray>();
-  for (int i = 0; i < 12; i++) {
-    JsonObject effect = effectsArray.add<JsonObject>();
-    effect["effectId"] = deviceConfig.effects[i].effectId;
-    effect["label"] = deviceConfig.effects[i].label;
-    effect["description"] = deviceConfig.effects[i].description;
-    effect["enabled"] = deviceConfig.effects[i].enabled;
-    effect["primaryPin"] = deviceConfig.effects[i].primaryPin;
-    effect["secondaryPin"] = deviceConfig.effects[i].secondaryPin;
-    effect["audioTrack"] = deviceConfig.effects[i].audioTrack;
-    effect["effectPattern"] = deviceConfig.effects[i].effectPattern;
-    effect["duration"] = deviceConfig.effects[i].duration;
-    effect["intensity"] = deviceConfig.effects[i].intensity;
-  }
   
   String result;
   serializeJson(doc, result);

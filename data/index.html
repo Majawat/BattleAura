@@ -1,166 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BattleAura Control Center</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>BattleAura</title>
+<link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <header class="header">
-        <div class="container">
-            <h1><i class="fas fa-cogs"></i> BattleAura Control Center</h1>
-            <div class="status-indicator" id="status">
-                <i class="fas fa-circle"></i> <span>Connecting...</span>
-            </div>
-        </div>
-    </header>
+<header class="header">
+<div class="container">
+<h1>BattleAura</h1>
+<div class="status">
+<div class="status-item">v<span id="version">-</span></div>
+<div class="status-item">
+<span class="status-indicator" id="status-indicator"></span>
+<span id="status-text">Connecting...</span>
+</div>
+</div>
+</div>
+</header>
 
-    <nav class="nav-tabs">
-        <div class="container">
-            <button class="tab-btn active" data-tab="control">Control</button>
-            <button class="tab-btn" data-tab="pins">Pin Config</button>
-            <button class="tab-btn" data-tab="audio">Audio</button>
-            <button class="tab-btn" data-tab="effects">Effects</button>
-            <button class="tab-btn" data-tab="system">System</button>
-        </div>
-    </nav>
+<nav class="nav-tabs">
+<div class="container">
+<button class="tab-btn active" data-tab="control">Control</button>
+<button class="tab-btn" data-tab="system">System</button>
+</div>
+</nav>
 
-    <main class="main-content">
-        <div class="container">
-            <!-- Control Tab -->
-            <div class="tab-content active" id="control">
-                <div class="card-grid">
-                    <div class="card">
-                        <h3><i class="fas fa-crosshairs"></i> Weapon Systems</h3>
-                        <div class="button-group">
-                            <button class="btn btn-danger" onclick="triggerEffect('weapon1')">
-                                <i class="fas fa-gun"></i> Machine Gun
-                            </button>
-                            <button class="btn btn-warning" onclick="triggerEffect('weapon2')">
-                                <i class="fas fa-fire"></i> Flamethrower
-                            </button>
-                            <button class="btn btn-info" onclick="triggerEffect('rocket')">
-                                <i class="fas fa-rocket"></i> Rocket
-                            </button>
-                        </div>
-                    </div>
+<main class="main">
+<div class="container">
 
-                    <div class="card">
-                        <h3><i class="fas fa-car"></i> Vehicle Systems</h3>
-                        <div class="button-group">
-                            <button class="btn btn-primary" onclick="triggerEffect('engine-rev')">
-                                <i class="fas fa-tachometer-alt"></i> Engine Rev
-                            </button>
-                        </div>
-                    </div>
+<div id="control" class="tab-content active">
+<div class="grid grid-2">
+<div class="card">
+<h3>Weapons</h3>
+<div class="btn-grid">
+<button class="btn btn-danger" onclick="app.triggerEffect('weapon1')">Machine Gun</button>
+<button class="btn btn-warning" onclick="app.triggerEffect('weapon2')">Flamethrower</button>
+<button class="btn btn-primary" onclick="app.triggerEffect('rocket')">Rocket</button>
+<button class="btn btn-success" onclick="app.triggerEffect('engine-rev')">Engine Rev</button>
+</div>
+</div>
 
-                    <div class="card">
-                        <h3><i class="fas fa-exclamation-triangle"></i> Battle Events</h3>
-                        <div class="button-group">
-                            <button class="btn btn-danger" onclick="triggerEffect('taking-hits')">
-                                <i class="fas fa-shield-alt"></i> Taking Hits
-                            </button>
-                            <button class="btn btn-dark" onclick="triggerEffect('destroyed')">
-                                <i class="fas fa-skull"></i> Destroyed
-                            </button>
-                            <button class="btn btn-success" onclick="triggerEffect('unit-kill')">
-                                <i class="fas fa-trophy"></i> Unit Kill
-                            </button>
-                        </div>
-                    </div>
+<div class="card">
+<h3>Battle Events</h3>
+<div class="btn-grid">
+<button class="btn btn-warning" onclick="app.triggerEffect('taking-hits')">Taking Hits</button>
+<button class="btn btn-danger" onclick="app.triggerEffect('destroyed')">Destroyed</button>
+<button class="btn btn-success" onclick="app.triggerEffect('unit-kill')">Unit Kill</button>
+</div>
+</div>
+</div>
 
-                    <div class="card">
-                        <h3><i class="fas fa-sliders-h"></i> System Controls</h3>
-                        <div class="control-group">
-                            <div class="slider-group">
-                                <label>Volume: <span id="volume-value">20</span></label>
-                                <input type="range" id="volume-slider" min="0" max="30" value="20" 
-                                       oninput="updateVolume(this.value)">
-                            </div>
-                            <div class="slider-group">
-                                <label>Brightness: <span id="brightness-value">100%</span></label>
-                                <input type="range" id="brightness-slider" min="0" max="100" value="100"
-                                       oninput="updateBrightness(this.value)">
-                            </div>
-                            <div class="button-group">
-                                <button class="btn btn-secondary" onclick="toggleLEDs()">
-                                    <i class="fas fa-lightbulb" id="led-icon"></i> <span id="led-text">LEDs ON</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<div class="grid grid-3">
+<div class="card">
+<h3>Audio Control</h3>
+<div class="form-group">
+<label for="volume">Volume</label>
+<input type="range" id="volume" class="form-control" min="0" max="30" onchange="app.setVolume(this.value)">
+</div>
+</div>
 
-            <!-- Pin Configuration Tab -->
-            <div class="tab-content" id="pins">
-                <div class="card">
-                    <h3><i class="fas fa-microchip"></i> Pin Configuration</h3>
-                    <div class="pin-grid" id="pin-config">
-                        <!-- Pin configuration will be loaded here -->
-                    </div>
-                    <button class="btn btn-success" onclick="savePinConfig()">
-                        <i class="fas fa-save"></i> Save Pin Configuration
-                    </button>
-                </div>
-            </div>
+<div class="card">
+<h3>LED Control</h3>
+<div class="form-group">
+<label for="brightness">Brightness</label>
+<input type="range" id="brightness" class="form-control" min="0" max="100" onchange="app.setBrightness(this.value)">
+</div>
+<div class="form-group">
+<label>
+<input type="checkbox" id="leds-enabled" onchange="app.toggleLEDs(this.checked)"> LEDs Enabled
+</label>
+</div>
+</div>
 
-            <!-- Audio Tab -->
-            <div class="tab-content" id="audio">
-                <div class="card">
-                    <h3><i class="fas fa-music"></i> Audio Track Management</h3>
-                    <div class="audio-tracks" id="audio-tracks">
-                        <!-- Audio tracks will be loaded here -->
-                    </div>
-                    <button class="btn btn-success" onclick="saveAudioConfig()">
-                        <i class="fas fa-save"></i> Save Audio Configuration
-                    </button>
-                </div>
-            </div>
+<div class="card">
+<h3>System Status</h3>
+<div id="system-info">
+<p><strong>Device:</strong> <span id="device-name">-</span></p>
+<p><strong>Uptime:</strong> <span id="uptime">-</span></p>
+<p><strong>Free Memory:</strong> <span id="free-heap">-</span></p>
+</div>
+</div>
+</div>
+</div>
 
-            <!-- Effects Tab -->
-            <div class="tab-content" id="effects">
-                <div class="card">
-                    <h3><i class="fas fa-magic"></i> Trigger Effects Configuration</h3>
-                    <div class="effects-grid" id="effects-config">
-                        <!-- Effects configuration will be loaded here -->
-                    </div>
-                    <button class="btn btn-success" onclick="saveEffectsConfig()">
-                        <i class="fas fa-save"></i> Save Effects Configuration
-                    </button>
-                </div>
-            </div>
+<div id="system" class="tab-content">
+<div class="grid grid-2">
+<div class="card">
+<h3>Device Information</h3>
+<table class="table">
+<tr><td>Firmware Version</td><td id="firmware-version">-</td></tr>
+<tr><td>Build Date</td><td id="build-date">-</td></tr>
+<tr><td>Chip Model</td><td id="chip-model">-</td></tr>
+<tr><td>Flash Size</td><td id="flash-size">-</td></tr>
+</table>
+</div>
 
-            <!-- System Tab -->
-            <div class="tab-content" id="system">
-                <div class="card-grid">
-                    <div class="card">
-                        <h3><i class="fas fa-info-circle"></i> System Information</h3>
-                        <div class="info-grid" id="system-info">
-                            <!-- System info will be loaded here -->
-                        </div>
-                    </div>
-                    <div class="card">
-                        <h3><i class="fas fa-download"></i> Updates</h3>
-                        <button class="btn btn-info" onclick="checkUpdates()">
-                            <i class="fas fa-sync"></i> Check for Updates
-                        </button>
-                        <button class="btn btn-warning" onclick="factoryReset()">
-                            <i class="fas fa-undo"></i> Factory Reset
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
+<div class="card">
+<h3>System Controls</h3>
+<div class="btn-grid">
+<button class="btn btn-danger" onclick="app.factoryReset()">Factory Reset</button>
+</div>
+</div>
+</div>
+</div>
 
-    <div class="loading-overlay" id="loading">
-        <div class="spinner"></div>
-        <p>Processing...</p>
-    </div>
+</div>
+</main>
 
-    <script src="app.js"></script>
+<div id="toast" class="toast">
+<div id="toast-content"></div>
+</div>
+
+<script src="/app.js"></script>
 </body>
 </html>
