@@ -5,8 +5,8 @@
 #include "DFRobotDFPlayerMini.h"
 
 // Firmware version
-#define FIRMWARE_VERSION "0.32.0"
-#define VERSION_FEATURE "Modern web interface with JSON API and real-time WebSocket updates"
+#define FIRMWARE_VERSION "0.32.1"
+#define VERSION_FEATURE "Optimized web interface - reduced flash usage"
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // Audio file mappings
