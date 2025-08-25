@@ -4,7 +4,7 @@
 #include <Update.h>
 
 // Application constants
-const char* VERSION = "0.2.0-dev";
+const char* VERSION = "0.2.1-dev";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -100,7 +100,7 @@ void setupWebServer() {
     
     // Status endpoint
     server.on("/status", HTTP_GET, []() {
-        server.send(200, "text/plain", "OK");
+        server.send(200, "text/plain", F("OK"));
     });
     
     // Favicon handler (prevents 404 errors)
@@ -111,12 +111,12 @@ void setupWebServer() {
     // OTA update page
     server.on("/update", HTTP_GET, handleUpdate);
     server.on("/update", HTTP_POST, []() {
-        server.send(200, "text/html", 
+        server.send(200, F("text/html; charset=utf-8"), F(
             "<html><body style='font-family:Arial; background:#1a1a2e; color:white; text-align:center; padding:50px;'>"
             "<h1>✅ Update Successful!</h1>"
             "<p>Device will restart in 3 seconds...</p>"
             "<script>setTimeout(function(){ window.location='/'; }, 5000);</script>"
-            "</body></html>");
+            "</body></html>"));
         delay(1000);
         ESP.restart();
     }, handleUpdateUpload);
@@ -128,7 +128,7 @@ void setupWebServer() {
     
     // 404 handler
     server.onNotFound([]() {
-        server.send(404, "text/plain", "Not found");
+        server.send(404, "text/plain", F("Not found"));
     });
     
     server.begin();
@@ -185,7 +185,7 @@ void handleRoot() {
              "</div>"
              "</body></html>");
     
-    server.send(200, "text/html", html);
+    server.send(200, F("text/html; charset=utf-8"), html);
 }
 
 void handleUpdate() {
@@ -224,7 +224,7 @@ void handleUpdate() {
                    "</div>"
                    "</body></html>");
     
-    server.send(200, "text/html", html);
+    server.send(200, F("text/html; charset=utf-8"), html);
 }
 
 void handleUpdateUpload() {
@@ -275,7 +275,7 @@ void handleLedControl(bool state) {
     ledState = state;
     digitalWrite(TEST_LED_PIN, ledState ? HIGH : LOW);
     Serial.printf("GPIO %d: %s\n", TEST_LED_PIN, ledState ? "ON" : "OFF");
-    server.send(200, "text/plain", ledState ? "LED ON" : "LED OFF");
+    server.send(200, "text/plain", ledState ? F("LED ON") : F("LED OFF"));
 }
 
 void printSystemInfo() {
