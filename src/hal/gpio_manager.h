@@ -13,8 +13,8 @@ enum class PinMode {
 };
 
 enum class PinState {
-    LOW = 0,
-    HIGH = 1
+    PIN_LOW = 0,
+    PIN_HIGH = 1
 };
 
 class GPIOManager {

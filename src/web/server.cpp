@@ -261,7 +261,7 @@ void WebServerManager::handlePinState() {
     bool state = doc["state"];
     
     GPIOManager& gpio = GPIOManager::getInstance();
-    PinState pinState = state ? PinState::HIGH : PinState::LOW;
+    PinState pinState = state ? PinState::PIN_HIGH : PinState::PIN_LOW;
     
     if (gpio.digitalWrite(pin, pinState)) {
         Serial.printf("Pin state: GPIO %d = %s\n", pin, state ? "HIGH" : "LOW");

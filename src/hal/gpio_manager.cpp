@@ -64,14 +64,14 @@ bool GPIOManager::digitalWrite(uint8_t pin, PinState state) {
 }
 
 PinState GPIOManager::digitalRead(uint8_t pin) {
-    if (!isPinConfigured(pin)) return PinState::LOW;
+    if (!isPinConfigured(pin)) return PinState::PIN_LOW;
     
     PinMode mode = getPinMode(pin);
     if (mode != PinMode::INPUT_DIGITAL) {
-        return PinState::LOW;
+        return PinState::PIN_LOW;
     }
     
-    return ::digitalRead(pin) ? PinState::HIGH : PinState::LOW;
+    return ::digitalRead(pin) ? PinState::PIN_HIGH : PinState::PIN_LOW;
 }
 
 bool GPIOManager::analogWrite(uint8_t pin, uint8_t value) {
