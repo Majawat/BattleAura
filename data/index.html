@@ -1,1 +1,306 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BattleAura</title><link rel="stylesheet" href="/style.css"></head><body><header class="header"><div class="container"><h1>BattleAura</h1><div class="status"><div class="status-item">v<span id="version">-</span></div><div class="status-item"><span class="status-indicator" id="status-indicator"></span><span id="status-text">Connecting...</span></div></div></div></header><nav class="nav-tabs"><div class="container"><button class="tab-btn active" data-tab="control">Control</button><button class="tab-btn" data-tab="system">System</button></div></nav><main class="main"><div class="container"><div id="control" class="tab-content active"><div class="grid grid-2"><div class="card"><h3>Weapons</h3><div class="btn-grid"><button class="btn btn-danger" onclick="app.triggerEffect('weapon1')">Machine Gun</button><button class="btn btn-warning" onclick="app.triggerEffect('weapon2')">Flamethrower</button><button class="btn btn-primary" onclick="app.triggerEffect('rocket')">Rocket</button><button class="btn btn-success" onclick="app.triggerEffect('engine-rev')">Engine Rev</button></div></div><div class="card"><h3>Battle Events</h3><div class="btn-grid"><button class="btn btn-warning" onclick="app.triggerEffect('taking-hits')">Taking Hits</button><button class="btn btn-danger" onclick="app.triggerEffect('destroyed')">Destroyed</button><button class="btn btn-success" onclick="app.triggerEffect('unit-kill')">Unit Kill</button></div></div></div><div class="grid grid-3"><div class="card"><h3>Audio Control</h3><div class="form-group"><label for="volume">Volume</label><input type="range" id="volume" class="form-control" min="0" max="30" onchange="app.setVolume(this.value)"></div></div><div class="card"><h3>LED Control</h3><div class="form-group"><label for="brightness">Brightness</label><input type="range" id="brightness" class="form-control" min="0" max="100" onchange="app.setBrightness(this.value)"></div><div class="form-group"><label><input type="checkbox" id="leds-enabled" onchange="app.toggleLEDs(this.checked)"> LEDs Enabled</label></div></div><div class="card"><h3>System Status</h3><div id="system-info"><p><strong>Device:</strong> <span id="device-name">-</span></p><p><strong>Uptime:</strong> <span id="uptime">-</span></p><p><strong>Free Memory:</strong> <span id="free-heap">-</span></p></div></div></div></div><div id="system" class="tab-content"><div class="grid grid-2"><div class="card"><h3>Device Information</h3><table class="table"><tr><td>Firmware Version</td><td id="firmware-version">-</td></tr><tr><td>Build Date</td><td id="build-date">-</td></tr><tr><td>Chip Model</td><td id="chip-model">-</td></tr><tr><td>Flash Size</td><td id="flash-size">-</td></tr></table></div><div class="card"><h3>System Controls</h3><div class="btn-grid"><button class="btn btn-primary" onclick="app.checkUpdates()">Check for Updates</button><button class="btn btn-danger" onclick="app.factoryReset()">Factory Reset</button></div><div id="update-info" style="display:none;margin-top:1rem;"><p><strong>Update Available:</strong> <span id="new-version">-</span></p><button class="btn btn-success" onclick="app.performUpdate()">Install Update</button></div></div></div></div></div></main><div id="toast" class="toast"><div id="toast-content"></div></div><script src="/app.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BattleAura Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            color: #ff6b35;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+        }
+        
+        .status {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .status-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 5px;
+            min-width: 150px;
+            text-align: center;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .control-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-section h3 {
+            color: #ff6b35;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .pin-config {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+        
+        .pin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .pin-name {
+            font-weight: bold;
+            color: #ffffff;
+        }
+        
+        .pin-number {
+            background: #ff6b35;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+        
+        .effect-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #ff6b35;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #e55a2b;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #4a90e2;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #357abd;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 0.8em;
+        }
+        
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .volume-slider {
+            flex: 1;
+            height: 5px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .slider-container label {
+            min-width: 80px;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            height: 5px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+        }
+        
+        .color-picker {
+            width: 40px;
+            height: 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        
+        .connected {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .disconnected {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .status {
+                flex-direction: column;
+            }
+            
+            .effect-buttons {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">Disconnected</div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>⚔️ BattleAura Control ⚔️</h1>
+            <p>Tactical Lighting & Audio System</p>
+        </div>
+        
+        <div class="status">
+            <div class="status-item">
+                <strong>Device:</strong> <span id="deviceName">Loading...</span>
+            </div>
+            <div class="status-item">
+                <strong>Version:</strong> <span id="version">Loading...</span>
+            </div>
+            <div class="status-item">
+                <strong>WiFi:</strong> <span id="wifiStatus">Loading...</span>
+            </div>
+            <div class="status-item">
+                <strong>Audio:</strong> <span id="audioStatus">Loading...</span>
+            </div>
+            <div class="status-item">
+                <strong>Active Pins:</strong> <span id="activePins">0</span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-section">
+                <h3>🎯 Pin Configuration</h3>
+                <div id="pinConfigs">
+                    <!-- Pin configurations will be loaded here -->
+                </div>
+            </div>
+            
+            <div class="control-section">
+                <h3>🔊 Audio Control</h3>
+                <div class="audio-controls">
+                    <button class="btn btn-secondary" onclick="playAudio(1)">Tank Idle</button>
+                    <button class="btn btn-secondary" onclick="playAudio(3)">Machine Gun</button>
+                    <button class="btn btn-secondary" onclick="playAudio(4)">Flamethrower</button>
+                    <button class="btn btn-danger" onclick="stopAudio()">Stop All</button>
+                </div>
+                
+                <div class="slider-container">
+                    <label>Volume:</label>
+                    <input type="range" id="volumeSlider" min="0" max="30" value="15" onchange="setVolume(this.value)">
+                    <span id="volumeValue">15</span>
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <h4>Quick Audio Files:</h4>
+                    <div class="effect-buttons">
+                        <button class="btn btn-small btn-secondary" onclick="playAudio(2)">Tank Idle 2</button>
+                        <button class="btn btn-small btn-secondary" onclick="playAudio(5)">Taking Hits</button>
+                        <button class="btn btn-small btn-secondary" onclick="playAudio(6)">Engine Rev</button>
+                        <button class="btn btn-small btn-danger" onclick="playAudio(7)">Explosion</button>
+                        <button class="btn btn-small btn-secondary" onclick="playAudio(8)">Rocket</button>
+                        <button class="btn btn-small btn-primary" onclick="playAudio(9)">Kill Confirmed</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="control-section">
+                <h3>💡 Global Effects</h3>
+                <div class="effect-buttons">
+                    <button class="btn btn-primary" onclick="triggerGlobalEffect('explosion')">💥 Global Explosion</button>
+                    <button class="btn btn-secondary" onclick="triggerGlobalEffect('damage')">🎯 Taking Damage</button>
+                    <button class="btn btn-danger" onclick="stopAllEffects()">🛑 Stop All Effects</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,399 +1,285 @@
-#include "Arduino.h"
-#include <SoftwareSerial.h>
-#include "DFRobotDFPlayerMini.h"
+#include <Arduino.h>
 #include <WiFi.h>
-#include <WiFiManager.h>
-#include <Update.h>
-#include <ESPmDNS.h>
-#include <HTTPClient.h>
-#include <ArduinoJson.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <ArduinoOTA.h>
+#include <SPIFFS.h>
 #include "config.h"
 #include "effects.h"
-#include "dfplayer.h"
-#include "web_interface.h"
+#include "audio.h"
 
-// RTOS Task handles
-TaskHandle_t audioTaskHandle = NULL;
-TaskHandle_t webTaskHandle = NULL;
-TaskHandle_t ledTaskHandle = NULL;
+AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
 
-SoftwareSerial audioSerial(D7, D6); // RX=D7(GPIO20), TX=D6(GPIO21)
-DFRobotDFPlayerMini dfPlayer;
-
-// Firmware version constants now in config.h
-
-// WiFi manager
-WiFiManager wifiManager;
-
-// Audio file constants now in config.h
-
-// Function declarations
-void printDetail(uint8_t type, int value);
-void checkDFPlayerStatus();
 void setupWiFi();
 void setupWebServer();
-void resumeIdleAudio();
-int compareVersions(String current, String remote);
-bool checkForUpdates(String &newVersion, String &downloadUrl, String &changelog);
-
-// RTOS Task Functions
-void audioTask(void* parameter);
-void webTask(void* parameter);
-void ledTask(void* parameter);
-void printMemoryUsage();
-
-// Audio and Effects Task - handles all audio and LED effects
-void audioTask(void* parameter) {
-  Serial.println("Audio task started on core " + String(xPortGetCoreID()));
-  
-  for(;;) {
-    // DFPlayer message processing
-    if (dfPlayer.available()) {
-      printDetail(dfPlayer.readType(), dfPlayer.read());
-    }
-    
-    // Periodic DFPlayer status check (every 10 seconds)
-    checkDFPlayerStatus();
-    
-    // Check if idle audio should timeout to save battery
-    checkIdleTimeout();
-    
-    // Handle actual idle audio stopping
-    if (!idleAudioActive && dfPlayerConnected && dfPlayerPlaying && currentTrack == AUDIO_IDLE) {
-      dfPlayer.stop();
-      dfPlayerPlaying = false;
-      dfPlayerStatus = "Idle Timeout - Stopped";
-      Serial.println("Idle audio stopped - device now in low-power mode");
-    }
-    
-    // Update non-blocking weapon effects
-    updateWeaponEffects(&dfPlayer);
-    
-    // Update non-blocking battle effects
-    updateBattleEffect(&dfPlayer);
-    
-    // Run at 20Hz for smooth effects
-    vTaskDelay(50 / portTICK_PERIOD_MS);
-  }
-}
-
-// Web Server Task - handles async operations
-void webTask(void* parameter) {
-  Serial.println("Web task started on core " + String(xPortGetCoreID()));
-  
-  for(;;) {
-    // ESPAsyncWebServer handles requests automatically
-    // Minimal task for web server maintenance
-    
-    // Run at low frequency
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-  }
-}
-
-// LED Background Effects Task - handles candle flicker, etc.
-void ledTask(void* parameter) {
-  Serial.println("LED task started on core " + String(xPortGetCoreID()));
-  
-  unsigned long lastMemoryPrint = 0;
-  
-  for(;;) {
-    // Run all configured background effects dynamically
-    runBackgroundEffects();
-    
-    // Print memory usage every 30 seconds
-    if (millis() - lastMemoryPrint > 30000) {
-      printMemoryUsage();
-      lastMemoryPrint = millis();
-    }
-    
-    // Run at 20Hz for smooth LED effects
-    vTaskDelay(50 / portTICK_PERIOD_MS);
-  }
-}
-
-// Memory monitoring function
-void printMemoryUsage() {
-  Serial.printf("Free heap: %d bytes, Largest block: %d bytes, Min free: %d bytes\n", 
-                ESP.getFreeHeap(), ESP.getMaxAllocHeap(), ESP.getMinFreeHeap());
-}
+void setupOTA();
+void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len);
 
 void setup() {
-  Serial.begin(9600);
-  // Remove initial delay - not needed
-  Serial.println("BattleAura Init");
+  Serial.begin(115200);
+  delay(1000);
   
-  // Load device configuration
-  loadDeviceConfig();
+  Serial.println(F("BattleAura Starting..."));
+  Serial.print(F("Version: ")); Serial.println(F(BATTLEARUA_VERSION));
+  Serial.print(F("Build: ")); Serial.println(F(BATTLEARUA_BUILD_DATE));
   
-  // Apply device configuration
-  globalBrightness = deviceConfig.defaultBrightness;
-  ledsEnabled = deviceConfig.hasLEDs;
-  
-  // Initialize pins based on configuration
-  for (int i = 0; i < 11; i++) {
-    if (deviceConfig.pins[i].enabled) {
-      if (deviceConfig.pins[i].type == "led") {
-        pinMode(deviceConfig.pins[i].pin, OUTPUT);
-        Serial.println("Initialized LED pin " + String(deviceConfig.pins[i].pin) + " (" + deviceConfig.pins[i].label + ")");
-      } else if (deviceConfig.pins[i].type == "rgb") {
-        // RGB pins are handled by the NeoPixel library, no pinMode needed
-        Serial.println("Configured RGB pin " + String(deviceConfig.pins[i].pin) + " (" + deviceConfig.pins[i].label + ")");
-      }
-    }
+  if (!ConfigManager::getInstance().begin()) {
+    Serial.println(F("Config init failed"));
+    return;
   }
   
-  // Initialize RGB LED strip for any RGB pins
-  int rgbPin = getRGBPin();
-  if (rgbPin != -1) {
-    rgbStrip.begin();
-    rgbStrip.show(); // Initialize all pixels to 'off'
-    Serial.println("RGB LED strip initialized on pin " + String(rgbPin));
+  EffectManager::getInstance().begin();
+  
+  if (!AudioManager::getInstance().begin()) {
+    Serial.println(F("Audio init failed"));
   }
   
-  // Initialize DFPlayer
-  audioSerial.begin(9600);
-  
-  if (dfPlayer.begin(audioSerial, false, false)) {
-    Serial.println("DFPlayer serial initialized, testing communication...");
-    
-    // Test actual communication by trying to read current state
-    delay(1000);  // CRITICAL: DFPlayer initialization - keep this one
-    
-    // Try to set and verify volume to test bidirectional communication  
-    currentVolume = deviceConfig.defaultVolume;
-    dfPlayer.volume(currentVolume);
-    delay(500); // CRITICAL: DFPlayer volume setting - keep this one
-    
-    int readVolume = dfPlayer.readVolume();
-    delay(100); // CRITICAL: DFPlayer communication - keep this one
-    
-    if (readVolume > 0 && readVolume <= 30) {
-      Serial.print("DFPlayer connected! Volume: ");
-      Serial.println(readVolume);
-      currentVolume = readVolume;
-      dfPlayerConnected = true;
-      dfPlayerStatus = "Connected";
-      
-      // Start looping idle sound
-      dfPlayer.loop(AUDIO_IDLE);
-      currentTrack = AUDIO_IDLE;
-      dfPlayerPlaying = true;
-      idleAudioActive = true;
-      triggerActivity();
-      
-      Serial.println("Playing IDLE file in loop with candle flicker...");
-    } else {
-      Serial.println("DFPlayer communication test failed - no response");
-      dfPlayerConnected = false;
-      dfPlayerStatus = "No Response";
-    }
-  } else {
-    Serial.println("DFPlayer serial initialization failed!");
-    dfPlayerConnected = false;
-    dfPlayerStatus = "Serial Init Failed";
-  }
-  
-  // Setup callback for resuming idle audio after weapon effects
-  setResumeIdleCallback(resumeIdleAudio);
-  
-  // Setup WiFi and web server
   setupWiFi();
   setupWebServer();
+  setupOTA();
   
-  // Print initial memory usage
-  printMemoryUsage();
-  
-  // Create RTOS tasks for better performance and responsiveness
-  Serial.println("Creating RTOS tasks...");
-  
-  // Audio and effects task on core 0 (same as main loop by default)
-  xTaskCreatePinnedToCore(
-    audioTask,           // Task function
-    "AudioTask",         // Task name
-    8192,               // Stack size (8KB)
-    NULL,               // Parameters
-    2,                  // Priority (higher than default)
-    &audioTaskHandle,   // Task handle
-    0                   // Core 0
-  );
-  
-  // Web server task on core 1 for maximum responsiveness
-  xTaskCreatePinnedToCore(
-    webTask,            // Task function  
-    "WebTask",          // Task name
-    4096,               // Stack size (4KB)
-    NULL,               // Parameters
-    3,                  // Priority (highest)
-    &webTaskHandle,     // Task handle
-    1                   // Core 1
-  );
-  
-  // LED background effects task on core 0
-  xTaskCreatePinnedToCore(
-    ledTask,            // Task function
-    "LEDTask",          // Task name  
-    4096,               // Stack size (4KB)
-    NULL,               // Parameters
-    1,                  // Priority (lower than audio)
-    &ledTaskHandle,     // Task handle
-    0                   // Core 0
-  );
-  
-  Serial.println("RTOS tasks created successfully!");
-  Serial.printf("Main loop running on core %d\n", xPortGetCoreID());
+  Serial.println(F("Ready!"));
+  SystemConfig& config = ConfigManager::getInstance().getConfig();
+  Serial.print(F("Device: ")); Serial.println(config.deviceName);
+  Serial.print(F("IP: ")); Serial.println(WiFi.localIP());
 }
 
 void loop() {
-  // Main loop is now minimal - most work handled by RTOS tasks
-  // Just handle WiFi connection monitoring
-  static unsigned long lastWiFiCheck = 0;
+  ArduinoOTA.handle();
+  AudioManager::getInstance().update();
+  EffectManager::getInstance().update();
+  ws.cleanupClients();
   
-  if (millis() - lastWiFiCheck > 30000) { // Check every 30 seconds
-    if (WiFi.status() != WL_CONNECTED) {
-      Serial.println("WiFi disconnected, attempting reconnection...");
-      WiFi.reconnect();
-    }
-    lastWiFiCheck = millis();
-  }
-  
-  // Small delay to prevent watchdog issues and allow other tasks to run
-  delay(100);
+  delay(10);
 }
 
-// Check DFPlayer status periodically
-void checkDFPlayerStatus() {
-  // Check every 10 seconds
-  if (millis() - lastStatusCheck < STATUS_CHECK_INTERVAL_MS) {
+void setupWiFi() {
+  ConfigManager& configMgr = ConfigManager::getInstance();
+  SystemConfig& config = configMgr.getConfig();
+  
+  if (!config.wifiEnabled || config.wifiSSID.length() == 0) {
+    Serial.println("Starting AP mode for configuration");
+    WiFi.softAP(config.deviceName.c_str(), "battlesync");
+    Serial.printf("AP IP: %s\n", WiFi.softAPIP().toString().c_str());
     return;
   }
-  lastStatusCheck = millis();
   
-  // Only check if we think it's connected, or if it was disconnected and we want to retry
-  if (dfPlayerConnected || dfPlayerStatus == "No Response" || dfPlayerStatus == "Serial Init Failed") {
-    int volume = dfPlayer.readVolume();
-    delay(100); // CRITICAL: DFPlayer communication - keep this one
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(config.wifiSSID.c_str(), config.wifiPassword.c_str());
+  
+  Serial.printf("Connecting to %s", config.wifiSSID.c_str());
+  
+  uint32_t startTime = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - startTime < 30000) {
+    delay(500);
+    Serial.print(".");
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.printf("\nConnected to WiFi: %s\n", WiFi.localIP().toString().c_str());
+  } else {
+    Serial.println("\nFailed to connect, starting AP mode");
+    WiFi.softAP(config.deviceName.c_str(), "battlesync");
+    Serial.printf("AP IP: %s\n", WiFi.softAPIP().toString().c_str());
+  }
+}
+
+void setupWebServer() {
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(SPIFFS, "/index.html", "text/html");
+  });
+  
+  server.on("/app.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(SPIFFS, "/app.js", "application/javascript");
+  });
+  
+  server.on("/config", HTTP_GET, [](AsyncWebServerRequest *request) {
+    SystemConfig& config = ConfigManager::getInstance().getConfig();
     
-    if (volume > 0 && volume <= 30) {
-      if (!dfPlayerConnected) {
-        Serial.println("DFPlayer reconnected!");
-        dfPlayerConnected = true;
-        dfPlayerStatus = "Connected";
-        // Restart idle loop if it was disconnected
-        if (!dfPlayerPlaying) {
-          dfPlayer.loop(AUDIO_IDLE);
-          currentTrack = AUDIO_IDLE;
-          dfPlayerPlaying = true;
-        }
+    JsonDocument doc;
+    doc["version"] = BATTLEARUA_VERSION;
+    doc["buildDate"] = BATTLEARUA_BUILD_DATE;
+    doc["deviceName"] = config.deviceName;
+    doc["wifiSSID"] = config.wifiSSID;
+    doc["wifiEnabled"] = config.wifiEnabled;
+    doc["volume"] = config.volume;
+    doc["audioEnabled"] = config.audioEnabled;
+    doc["activePins"] = config.activePins;
+    
+    JsonArray pinsArray = doc["pins"].to<JsonArray>();
+    for (int i = 0; i < MAX_PINS; i++) {
+      JsonObject pinObj = pinsArray.add<JsonObject>();
+      pinObj["pin"] = config.pins[i].pin;
+      pinObj["type"] = static_cast<int>(config.pins[i].type);
+      pinObj["effect"] = static_cast<int>(config.pins[i].effect);
+      pinObj["name"] = config.pins[i].name;
+      pinObj["audioFile"] = config.pins[i].audioFile;
+      pinObj["enabled"] = config.pins[i].enabled;
+      pinObj["brightness"] = config.pins[i].brightness;
+      pinObj["color"] = config.pins[i].color;
+    }
+    
+    String response;
+    serializeJson(doc, response);
+    request->send(200, "application/json", response);
+  });
+  
+  server.on("/config", HTTP_POST, [](AsyncWebServerRequest *request) {
+    // Handle config updates
+    request->send(200, "text/plain", "Config updated");
+  });
+  
+  server.on("/trigger", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("pin") && request->hasParam("effect")) {
+      uint8_t pin = request->getParam("pin")->value().toInt();
+      uint8_t effectType = request->getParam("effect")->value().toInt();
+      uint32_t duration = request->hasParam("duration") ? 
+                         request->getParam("duration")->value().toInt() : 0;
+      
+      EffectManager::getInstance().triggerEffect(pin, static_cast<EffectType>(effectType), duration);
+      
+      if (request->hasParam("audio")) {
+        uint8_t audioFile = request->getParam("audio")->value().toInt();
+        AudioManager::getInstance().playFile(audioFile);
       }
+      
+      request->send(200, "text/plain", "Effect triggered");
     } else {
-      if (dfPlayerConnected) {
-        Serial.println("DFPlayer connection lost!");
-        dfPlayerConnected = false;
-        dfPlayerStatus = "Connection Lost";
-        dfPlayerPlaying = false;
+      request->send(400, "text/plain", "Missing parameters");
+    }
+  });
+  
+  server.on("/audio", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("action")) {
+      String action = request->getParam("action")->value();
+      
+      if (action == "play" && request->hasParam("file")) {
+        uint8_t file = request->getParam("file")->value().toInt();
+        bool loop = request->hasParam("loop") && request->getParam("loop")->value() == "true";
+        AudioManager::getInstance().playFile(file, loop);
+      } else if (action == "stop") {
+        AudioManager::getInstance().stopPlaying();
+      } else if (action == "pause") {
+        AudioManager::getInstance().pausePlayback();
+      } else if (action == "resume") {
+        AudioManager::getInstance().resumePlayback();
+      } else if (action == "volume" && request->hasParam("level")) {
+        uint8_t volume = request->getParam("level")->value().toInt();
+        AudioManager::getInstance().setVolume(volume);
       }
+      
+      request->send(200, "text/plain", "Audio command processed");
+    } else {
+      request->send(400, "text/plain", "Missing action");
+    }
+  });
+  
+  ws.onEvent(onWsEvent);
+  server.addHandler(&ws);
+  
+  server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
+  server.begin();
+  
+  Serial.println("Web server started");
+}
+
+void setupOTA() {
+  ConfigManager& configMgr = ConfigManager::getInstance();
+  SystemConfig& config = configMgr.getConfig();
+  
+  ArduinoOTA.setHostname(config.deviceName.c_str());
+  ArduinoOTA.setPassword("battlesync");
+  
+  ArduinoOTA.onStart([]() {
+    String type = (ArduinoOTA.getCommand() == U_FLASH) ? "sketch" : "filesystem";
+    Serial.println("Start updating " + type);
+    EffectManager::getInstance().stopAllEffects();
+    AudioManager::getInstance().stopPlaying();
+  });
+  
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nEnd");
+  });
+  
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) {
+      Serial.println("Auth Failed");
+    } else if (error == OTA_BEGIN_ERROR) {
+      Serial.println("Begin Failed");
+    } else if (error == OTA_CONNECT_ERROR) {
+      Serial.println("Connect Failed");
+    } else if (error == OTA_RECEIVE_ERROR) {
+      Serial.println("Receive Failed");
+    } else if (error == OTA_END_ERROR) {
+      Serial.println("End Failed");
+    }
+  });
+  
+  ArduinoOTA.begin();
+  Serial.println("OTA ready");
+}
+
+void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
+               void *arg, uint8_t *data, size_t len) {
+  switch (type) {
+    case WS_EVT_CONNECT:
+      Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+      break;
+    case WS_EVT_DISCONNECT:
+      Serial.printf("WebSocket client #%u disconnected\n", client->id());
+      break;
+    case WS_EVT_DATA:
+      handleWebSocketMessage(arg, data, len);
+      break;
+    case WS_EVT_PONG:
+    case WS_EVT_ERROR:
+      break;
+  }
+}
+
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
+  AwsFrameInfo *info = (AwsFrameInfo*)arg;
+  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
+    data[len] = 0;
+    String message = (char*)data;
+    
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, message);
+    
+    if (error) {
+      Serial.println("Failed to parse WebSocket message");
+      return;
+    }
+    
+    String command = doc["command"];
+    
+    if (command == "trigger_effect") {
+      uint8_t pin = doc["pin"];
+      uint8_t effect = doc["effect"];
+      uint32_t duration = doc["duration"] | 0;
+      
+      EffectManager::getInstance().triggerEffect(pin, static_cast<EffectType>(effect), duration);
+      
+      if (doc["audio"].is<uint8_t>()) {
+        uint8_t audioFile = doc["audio"];
+        AudioManager::getInstance().playFile(audioFile);
+      }
+    } else if (command == "stop_effect") {
+      uint8_t pin = doc["pin"];
+      EffectManager::getInstance().stopEffect(pin);
+    } else if (command == "play_audio") {
+      uint8_t file = doc["file"];
+      bool loop = doc["loop"] | false;
+      AudioManager::getInstance().playFile(file, loop);
+    } else if (command == "stop_audio") {
+      AudioManager::getInstance().stopPlaying();
     }
   }
 }
-
-// WiFi setup with captive portal and performance optimizations
-void setupWiFi() {
-  Serial.println(F("Setting up WiFi..."));
-  
-  // WiFi performance optimizations
-  WiFi.setAutoReconnect(true);
-  WiFi.persistent(false); // Reduce flash wear
-  WiFi.setSleep(WIFI_PS_NONE); // Disable power saving for responsiveness
-  
-  // Set custom AP name and password
-  wifiManager.setAPCallback([](WiFiManager *myWiFiManager) {
-    Serial.println(F("Entered config mode"));
-    Serial.print(F("AP: "));
-    Serial.println(myWiFiManager->getConfigPortalSSID());
-  });
-  
-  // Custom hostname parameter
-  WiFiManagerParameter custom_hostname("hostname", "Device Hostname", "battletank", 20);
-  wifiManager.addParameter(&custom_hostname);
-  
-  // Try to connect, if failed start captive portal
-  if (!wifiManager.autoConnect("BattleAura-Setup")) {
-    Serial.println(F("Failed to connect and hit timeout"));
-    ESP.restart();
-  }
-  
-  // Connected to WiFi
-  Serial.println(F("WiFi connected!"));
-  Serial.print(F("IP address: "));
-  Serial.println(WiFi.localIP());
-  
-  // Start mDNS with custom hostname
-  String hostname = custom_hostname.getValue();
-  if (hostname.length() == 0) hostname = "battletank";
-  
-  if (MDNS.begin(hostname.c_str())) {
-    Serial.print(F("mDNS started: "));
-    Serial.print(hostname);
-    Serial.println(F(".local"));
-  }
-}
-
-// Initialize modern web interface
-void setupWebServer() {
-  initWebInterface();
-}
-
-// Resume idle audio after weapon effects finish
-void resumeIdleAudio() {
-  if (dfPlayerConnected) {
-    dfPlayer.loop(AUDIO_IDLE);
-    currentTrack = AUDIO_IDLE;
-    dfPlayerPlaying = true;
-    idleAudioActive = true;
-    triggerActivity();
-    Serial.println("Auto-resumed idle audio after weapon effect");
-  }
-}
-
-// Compare two version strings (returns 1 if remote > current, 0 if equal, -1 if current > remote)
-int compareVersions(String current, String remote) {
-  // Remove 'v' prefix if present
-  if (current.startsWith("v")) current = current.substring(1);
-  if (remote.startsWith("v")) remote = remote.substring(1);
-  
-  // Simple string comparison works for semantic versioning like 0.16.6
-  if (remote > current) return 1;
-  if (remote == current) return 0;
-  return -1;
-}
-
-// Check for firmware updates from battlesync.me
-bool checkForUpdates(String &newVersion, String &downloadUrl, String &changelog) {
-  HTTPClient http;
-  http.begin("https://battlesync.me/api/battleaura/firmware/latest");
-  http.addHeader("User-Agent", "BattleAura/" + String(FIRMWARE_VERSION));
-  
-  int httpCode = http.GET();
-  
-  if (httpCode == HTTP_CODE_OK) {
-    String payload = http.getString();
-    Serial.println("Update check response: " + payload);
-    
-    JsonDocument doc;
-    deserializeJson(doc, payload);
-    
-    newVersion = doc["version"].as<String>();
-    downloadUrl = doc["download_url"].as<String>();
-    changelog = doc["changelog"].as<String>();
-    
-    http.end();
-    
-    // Compare versions
-    return compareVersions(FIRMWARE_VERSION, newVersion) > 0;
-  } else {
-    Serial.println("Update check failed: " + String(httpCode));
-    http.end();
-    return false;
-  }
-}
-

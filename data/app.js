@@ -1,15 +1,334 @@
-class BattleAuraApp{constructor(){this.config=null;this.updateInfo=null;this.init()}
-async init(){this.setupTabs();await this.loadConfig();this.updateStatus();setInterval(()=>this.updateStatus(),30000)}
-setupTabs(){document.querySelectorAll('.tab-btn').forEach(btn=>{btn.onclick=()=>{document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));btn.classList.add('active');document.getElementById(btn.dataset.tab).classList.add('active')}})}
-async loadConfig(){try{const response=await fetch('/api/config');this.config=await response.json();this.updateUI();document.getElementById('status-text').textContent='Connected';document.getElementById('status-indicator').className='status-indicator status-connected'}catch(e){this.showToast('Failed to load config','error');document.getElementById('status-text').textContent='Error';document.getElementById('status-indicator').className='status-indicator status-disconnected'}}
-updateUI(){if(!this.config)return;document.getElementById('version').textContent=this.config.firmwareVersion;document.getElementById('device-name').textContent=this.config.deviceName;document.getElementById('volume').value=this.config.defaultVolume;document.getElementById('brightness').value=this.config.defaultBrightness;document.getElementById('leds-enabled').checked=this.config.hasLEDs}
-async updateStatus(){try{const response=await fetch('/api/system/info');const data=await response.json();document.getElementById('firmware-version').textContent=data.firmwareVersion;document.getElementById('build-date').textContent=data.buildDate;document.getElementById('chip-model').textContent=data.chipModel;document.getElementById('flash-size').textContent=`${Math.round(data.flashSize/1024)}KB`;document.getElementById('uptime').textContent=`${Math.round(data.uptime/60)}m`;document.getElementById('free-heap').textContent=`${Math.round(data.freeHeap/1024)}KB`}catch(e){console.error('Status update failed',e)}}
-async triggerEffect(effectId){try{const response=await fetch(`/api/trigger/${effectId}`,{method:'POST'});const result=await response.json();if(result.status==='success')this.showToast(`${effectId} triggered`,'success');else this.showToast(result.error||'Effect failed','error')}catch(e){this.showToast('Request failed','error')}}
-async setVolume(value){try{await fetch('/api/config/volume',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`volume=${value}`})}catch(e){this.showToast('Volume update failed','error')}}
-async setBrightness(value){try{await fetch('/api/config/brightness',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`brightness=${value}`})}catch(e){this.showToast('Brightness update failed','error')}}
-async toggleLEDs(enabled){try{await fetch('/api/config/leds',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`enabled=${enabled}`})}catch(e){this.showToast('LEDs toggle failed','error')}}
-async checkUpdates(){try{this.showToast('Checking for updates...','success');const response=await fetch('/api/system/check-updates');const result=await response.json();if(result.updateAvailable){this.updateInfo=result;document.getElementById('new-version').textContent=result.newVersion;document.getElementById('update-info').style.display='block';this.showToast(`Update available: ${result.newVersion}`,'success')}else{this.showToast('No updates available','success')}}catch(e){this.showToast('Update check failed','error')}}
-async performUpdate(){if(!this.updateInfo||!this.updateInfo.downloadUrl){this.showToast('No update URL available','error');return}if(!confirm(`Install update ${this.updateInfo.newVersion}? Device will restart.`))return;try{this.showToast('Starting update...','success');await fetch('/api/system/perform-update',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`url=${encodeURIComponent(this.updateInfo.downloadUrl)}`});this.showToast('Update started - device will restart','success')}catch(e){this.showToast('Update failed','error')}}
-async factoryReset(){if(confirm('Factory reset will erase all settings. Continue?')){try{await fetch('/api/system/factory-reset',{method:'POST'});this.showToast('Factory reset initiated','success')}catch(e){this.showToast('Reset failed','error')}}}
-showToast(message,type='success'){const toast=document.getElementById('toast');const content=document.getElementById('toast-content');content.textContent=message;toast.className=`toast toast-${type} show`;setTimeout(()=>toast.classList.remove('show'),3000)}}
-const app=new BattleAuraApp();
+class BattleAuraController {
+    constructor() {
+        this.ws = null;
+        this.config = null;
+        this.reconnectInterval = null;
+        this.init();
+    }
+    
+    init() {
+        this.connectWebSocket();
+        this.loadConfig();
+        this.setupEventListeners();
+    }
+    
+    connectWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
+        
+        try {
+            this.ws = new WebSocket(wsUrl);
+            
+            this.ws.onopen = () => {
+                console.log('WebSocket connected');
+                this.updateConnectionStatus(true);
+                if (this.reconnectInterval) {
+                    clearInterval(this.reconnectInterval);
+                    this.reconnectInterval = null;
+                }
+            };
+            
+            this.ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                this.updateConnectionStatus(false);
+                this.scheduleReconnect();
+            };
+            
+            this.ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                this.updateConnectionStatus(false);
+            };
+            
+            this.ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    this.handleWebSocketMessage(data);
+                } catch (e) {
+                    console.error('Failed to parse WebSocket message:', e);
+                }
+            };
+        } catch (error) {
+            console.error('Failed to create WebSocket:', error);
+            this.updateConnectionStatus(false);
+            this.scheduleReconnect();
+        }
+    }
+    
+    scheduleReconnect() {
+        if (!this.reconnectInterval) {
+            this.reconnectInterval = setInterval(() => {
+                console.log('Attempting to reconnect...');
+                this.connectWebSocket();
+            }, 5000);
+        }
+    }
+    
+    updateConnectionStatus(connected) {
+        const statusEl = document.getElementById('connectionStatus');
+        if (connected) {
+            statusEl.textContent = 'Connected';
+            statusEl.className = 'connection-status connected';
+        } else {
+            statusEl.textContent = 'Disconnected';
+            statusEl.className = 'connection-status disconnected';
+        }
+    }
+    
+    async loadConfig() {
+        try {
+            const response = await fetch('/config');
+            this.config = await response.json();
+            this.updateUI();
+        } catch (error) {
+            console.error('Failed to load config:', error);
+        }
+    }
+    
+    updateUI() {
+        if (!this.config) return;
+        
+        // Update status display
+        document.getElementById('deviceName').textContent = this.config.deviceName;
+        document.getElementById('version').textContent = this.config.version || '1.0.0';
+        document.getElementById('wifiStatus').textContent = this.config.wifiEnabled ? 'Connected' : 'AP Mode';
+        document.getElementById('audioStatus').textContent = this.config.audioEnabled ? 'Enabled' : 'Disabled';
+        document.getElementById('activePins').textContent = this.config.activePins;
+        
+        // Update volume slider
+        document.getElementById('volumeSlider').value = this.config.volume;
+        document.getElementById('volumeValue').textContent = this.config.volume;
+        
+        // Update pin configurations
+        this.updatePinConfigs();
+    }
+    
+    updatePinConfigs() {
+        const container = document.getElementById('pinConfigs');
+        container.innerHTML = '';
+        
+        const enabledPins = this.config.pins.filter(pin => pin.enabled);
+        
+        if (enabledPins.length === 0) {
+            container.innerHTML = '<p>No pins configured. Use the configuration API to set up pins.</p>';
+            return;
+        }
+        
+        enabledPins.forEach(pin => {
+            const pinDiv = document.createElement('div');
+            pinDiv.className = 'pin-config';
+            
+            const effectName = this.getEffectName(pin.effect);
+            const pinType = this.getPinTypeName(pin.type);
+            
+            pinDiv.innerHTML = `
+                <div class="pin-header">
+                    <span class="pin-name">${pin.name}</span>
+                    <span class="pin-number">Pin ${pin.pin}</span>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <small>Type: ${pinType} | Effect: ${effectName}</small>
+                </div>
+                <div class="effect-buttons">
+                    <button class="btn btn-small btn-primary" onclick="app.triggerPinEffect(${pin.pin}, ${pin.effect})">
+                        Trigger Effect
+                    </button>
+                    <button class="btn btn-small btn-secondary" onclick="app.stopPinEffect(${pin.pin})">
+                        Stop
+                    </button>
+                    ${pin.type === 2 ? `
+                        <input type="color" class="color-picker" value="#${pin.color.toString(16).padStart(6, '0')}" 
+                               onchange="app.setPinColor(${pin.pin}, this.value)">
+                    ` : ''}
+                </div>
+                ${pin.brightness !== undefined ? `
+                    <div class="slider-container" style="margin-top: 10px;">
+                        <label>Brightness:</label>
+                        <input type="range" min="0" max="255" value="${pin.brightness}" 
+                               onchange="app.setPinBrightness(${pin.pin}, this.value)">
+                        <span>${pin.brightness}</span>
+                    </div>
+                ` : ''}
+            `;
+            
+            container.appendChild(pinDiv);
+        });
+    }
+    
+    getEffectName(effectType) {
+        const effects = {
+            0: 'None',
+            1: 'Candle Flicker',
+            2: 'Engine Pulse',
+            3: 'Machine Gun',
+            4: 'Flamethrower',
+            5: 'Rocket Launcher',
+            6: 'Taking Damage',
+            7: 'Explosion',
+            8: 'Console RGB',
+            9: 'Static On',
+            10: 'Static Off'
+        };
+        return effects[effectType] || 'Unknown';
+    }
+    
+    getPinTypeName(pinType) {
+        const types = {
+            0: 'Disabled',
+            1: 'Standard LED',
+            2: 'WS2812B RGB',
+            3: 'Analog Input',
+            4: 'Digital Input'
+        };
+        return types[pinType] || 'Unknown';
+    }
+    
+    setupEventListeners() {
+        // Volume slider
+        const volumeSlider = document.getElementById('volumeSlider');
+        volumeSlider.addEventListener('input', (e) => {
+            document.getElementById('volumeValue').textContent = e.target.value;
+        });
+    }
+    
+    sendWebSocketMessage(message) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify(message));
+        } else {
+            console.warn('WebSocket not connected, falling back to HTTP');
+            // Fallback to HTTP requests if WebSocket is not available
+            this.sendHttpRequest(message);
+        }
+    }
+    
+    async sendHttpRequest(message) {
+        try {
+            const command = message.command;
+            
+            if (command === 'trigger_effect') {
+                await fetch('/trigger', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        pin: message.pin,
+                        effect: message.effect,
+                        duration: message.duration || 0,
+                        ...(message.audio && { audio: message.audio })
+                    })
+                });
+            } else if (command === 'play_audio') {
+                await fetch('/audio', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        action: 'play',
+                        file: message.file,
+                        loop: message.loop ? 'true' : 'false'
+                    })
+                });
+            } else if (command === 'stop_audio') {
+                await fetch('/audio', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ action: 'stop' })
+                });
+            }
+        } catch (error) {
+            console.error('HTTP request failed:', error);
+        }
+    }
+    
+    handleWebSocketMessage(data) {
+        console.log('Received WebSocket message:', data);
+        // Handle incoming WebSocket messages here
+    }
+    
+    triggerPinEffect(pin, effect, duration = 0) {
+        this.sendWebSocketMessage({
+            command: 'trigger_effect',
+            pin: pin,
+            effect: effect,
+            duration: duration
+        });
+    }
+    
+    stopPinEffect(pin) {
+        this.sendWebSocketMessage({
+            command: 'stop_effect',
+            pin: pin
+        });
+    }
+    
+    setPinBrightness(pin, brightness) {
+        // This would need to be implemented on the server side
+        console.log(`Setting pin ${pin} brightness to ${brightness}`);
+    }
+    
+    setPinColor(pin, color) {
+        // Convert hex color to integer
+        const colorInt = parseInt(color.substring(1), 16);
+        console.log(`Setting pin ${pin} color to ${colorInt}`);
+        // This would need to be implemented on the server side
+    }
+}
+
+// Global functions for HTML onclick events
+function playAudio(file, loop = false) {
+    app.sendWebSocketMessage({
+        command: 'play_audio',
+        file: file,
+        loop: loop
+    });
+}
+
+function stopAudio() {
+    app.sendWebSocketMessage({
+        command: 'stop_audio'
+    });
+}
+
+function setVolume(volume) {
+    fetch('/audio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            action: 'volume',
+            level: volume
+        })
+    });
+    document.getElementById('volumeValue').textContent = volume;
+}
+
+function triggerGlobalEffect(effectType) {
+    if (!app.config) return;
+    
+    const enabledPins = app.config.pins.filter(pin => pin.enabled);
+    
+    enabledPins.forEach(pin => {
+        if (effectType === 'explosion') {
+            app.triggerPinEffect(pin.pin, 7, 2000); // Explosion effect for 2 seconds
+        } else if (effectType === 'damage') {
+            app.triggerPinEffect(pin.pin, 6, 1000); // Taking damage effect for 1 second
+        }
+    });
+    
+    // Play corresponding audio
+    if (effectType === 'explosion') {
+        playAudio(7); // Explosion sound
+    } else if (effectType === 'damage') {
+        playAudio(5); // Taking hits sound
+    }
+}
+
+function stopAllEffects() {
+    if (!app.config) return;
+    
+    const enabledPins = app.config.pins.filter(pin => pin.enabled);
+    enabledPins.forEach(pin => {
+        app.stopPinEffect(pin.pin);
+    });
+    
+    stopAudio();
+}
+
+// Initialize the app
+const app = new BattleAuraController();
