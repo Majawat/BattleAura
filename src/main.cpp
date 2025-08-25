@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
-#include <ArduinoOTA.h>
+#include <Update.h>
 
 // Application constants
 const char* VERSION = "0.1.1-dev";
@@ -20,8 +20,9 @@ const unsigned long HEARTBEAT_INTERVAL = 10000; // 10 seconds
 // Forward declarations
 void setupWiFiAP();
 void setupWebServer();
-void setupOTA();
 void handleRoot();
+void handleUpdate();
+void handleUpdateUpload();
 void printSystemInfo();
 
 void setup() {
@@ -44,10 +45,6 @@ void setup() {
     Serial.println("Setting up Web Server...");
     setupWebServer();
     
-    // Initialize OTA Updates
-    Serial.println("Setting up OTA Updates...");
-    setupOTA();
-    
     // Print final system info
     printSystemInfo();
     
@@ -60,9 +57,6 @@ void setup() {
 void loop() {
     // Handle web server requests (non-blocking)
     server.handleClient();
-    
-    // Handle OTA updates (non-blocking)
-    ArduinoOTA.handle();
     
     // Periodic heartbeat (non-blocking timing)
     unsigned long now = millis();
@@ -103,6 +97,10 @@ void setupWebServer() {
     server.on("/favicon.ico", HTTP_GET, []() {
         server.send(204); // No Content
     });
+    
+    // OTA update page
+    server.on("/update", HTTP_GET, handleUpdate);
+    server.on("/update", HTTP_POST, handleUpdateUpload);
     
     // 404 handler
     server.onNotFound([]() {
@@ -149,10 +147,10 @@ void handleRoot() {
     
     html += F("</div>"
              "<div class=\"status\">"
-             "<h3>OTA Updates</h3>"
-             "<p><strong>Hostname:</strong> BattleAura.local</p>"
-             "<p><strong>Password:</strong> battlesync</p>"
-             "<p>Use Arduino IDE: Tools → Port → Network Port</p>"
+             "<h3>Firmware Update</h3>"
+             "<p><a href=\"/update\" style=\"color: #ff6b35; text-decoration: none;\">Upload New Firmware (.bin file)</a></p>"
+             "<p>Build with: <code>platformio run</code><br>"
+             "Upload file: <code>.pio/build/seeed_xiao_esp32c3/firmware.bin</code></p>"
              "</div>"
              "<div class=\"status\">"
              "<h3>Quick Test</h3>"
@@ -163,47 +161,77 @@ void handleRoot() {
     server.send(200, "text/html", html);
 }
 
-void setupOTA() {
-    // OTA hostname and password
-    ArduinoOTA.setHostname("BattleAura");
-    ArduinoOTA.setPassword("battlesync");
+void handleUpdate() {
+    String html = F("<!DOCTYPE html>"
+                   "<html><head>"
+                   "<meta charset=\"UTF-8\">"
+                   "<title>BattleAura - Firmware Update</title>"
+                   "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+                   "<style>"
+                   "body { font-family: Arial; margin: 20px; background: #1a1a2e; color: white; }"
+                   ".header { text-align: center; margin-bottom: 20px; }"
+                   ".form { background: #16213e; padding: 20px; border-radius: 8px; max-width: 500px; margin: 0 auto; }"
+                   "input[type=file] { width: 100%; padding: 10px; margin: 10px 0; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 4px; }"
+                   "input[type=submit] { background: #ff6b35; color: white; border: none; padding: 12px 30px; border-radius: 5px; cursor: pointer; font-size: 16px; }"
+                   "input[type=submit]:hover { background: #e55a2b; }"
+                   ".warning { background: #7c2d12; padding: 10px; border-radius: 4px; margin: 10px 0; }"
+                   "</style>"
+                   "</head><body>"
+                   "<div class=\"header\">"
+                   "<h1>🎯 Firmware Update</h1>"
+                   "<p><a href=\"/\" style=\"color: #ff6b35;\">← Back to Control Panel</a></p>"
+                   "</div>"
+                   "<div class=\"form\">"
+                   "<div class=\"warning\">"
+                   "<strong>⚠️ Warning:</strong> Only upload firmware.bin files built for ESP32-C3!"
+                   "</div>"
+                   "<h3>Upload New Firmware</h3>"
+                   "<form method='POST' enctype='multipart/form-data'>"
+                   "<p><strong>1.</strong> Build firmware: <code>platformio run</code></p>"
+                   "<p><strong>2.</strong> Locate file: <code>.pio/build/seeed_xiao_esp32c3/firmware.bin</code></p>"
+                   "<p><strong>3.</strong> Select and upload:</p>"
+                   "<input type='file' name='update' accept='.bin' required>"
+                   "<br><br>"
+                   "<input type='submit' value='Upload Firmware'>"
+                   "</form>"
+                   "</div>"
+                   "</body></html>");
     
-    // OTA callbacks for status reporting
-    ArduinoOTA.onStart([]() {
-        String type;
-        if (ArduinoOTA.getCommand() == U_FLASH) {
-            type = "sketch";
-        } else { // U_SPIFFS
-            type = "filesystem";
+    server.send(200, "text/html", html);
+}
+
+void handleUpdateUpload() {
+    HTTPUpload& upload = server.upload();
+    
+    if (upload.status == UPLOAD_FILE_START) {
+        Serial.printf("Starting firmware update: %s\n", upload.filename.c_str());
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+            Update.printError(Serial);
+            server.send(500, "text/plain", "Update failed to start");
+            return;
         }
-        Serial.println("Start updating " + type);
-    });
-    
-    ArduinoOTA.onEnd([]() {
-        Serial.println("\nUpdate complete");
-    });
-    
-    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-        Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-    });
-    
-    ArduinoOTA.onError([](ota_error_t error) {
-        Serial.printf("Error[%u]: ", error);
-        if (error == OTA_AUTH_ERROR) {
-            Serial.println("Auth Failed");
-        } else if (error == OTA_BEGIN_ERROR) {
-            Serial.println("Begin Failed");
-        } else if (error == OTA_CONNECT_ERROR) {
-            Serial.println("Connect Failed");
-        } else if (error == OTA_RECEIVE_ERROR) {
-            Serial.println("Receive Failed");
-        } else if (error == OTA_END_ERROR) {
-            Serial.println("End Failed");
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+            Update.printError(Serial);
+            server.send(500, "text/plain", "Update write failed");
+            return;
         }
-    });
-    
-    ArduinoOTA.begin();
-    Serial.println("✓ OTA updates enabled");
+    } else if (upload.status == UPLOAD_FILE_END) {
+        if (Update.end(true)) {
+            Serial.printf("Update complete: %u bytes\n", upload.totalSize);
+            server.send(200, "text/html", 
+                "<html><body style='font-family:Arial; background:#1a1a2e; color:white; text-align:center; padding:50px;'>"
+                "<h1>✅ Update Successful!</h1>"
+                "<p>Device will restart in 3 seconds...</p>"
+                "<script>setTimeout(function(){ window.location='/'; }, 5000);</script>"
+                "</body></html>");
+            delay(1000);
+            ESP.restart();
+        } else {
+            Update.printError(Serial);
+            server.send(500, "text/plain", "Update failed to complete");
+        }
+    }
 }
 
 void printSystemInfo() {
@@ -212,8 +240,7 @@ void printSystemInfo() {
     Serial.printf("  WiFi AP: %s\n", AP_SSID);
     Serial.printf("  IP Address: %s\n", WiFi.softAPIP().toString().c_str());
     Serial.printf("  Web Interface: http://%s/\n", WiFi.softAPIP().toString().c_str());
-    Serial.printf("  OTA Hostname: BattleAura.local\n");
-    Serial.printf("  OTA Password: battlesync\n");
+    Serial.printf("  Firmware Updates: http://%s/update\n", WiFi.softAPIP().toString().c_str());
     Serial.printf("  Free heap: %d bytes\n", ESP.getFreeHeap());
     Serial.printf("  Flash size: %d bytes\n", ESP.getFlashChipSize());
 }
