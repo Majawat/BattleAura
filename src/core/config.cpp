@@ -166,9 +166,8 @@ bool ConfigManager::jsonToConfig(const JsonDocument& doc) {
     config.activePins = doc["activePins"] | 0;
     
     if (doc["pins"].is<JsonArray>()) {
-        JsonArray pinsArray = doc["pins"].as<JsonArray>();
-        for (uint8_t i = 0; i < 10 && i < pinsArray.size(); i++) {
-            JsonObject pinObj = pinsArray[i];
+        for (uint8_t i = 0; i < 10 && i < doc["pins"].size(); i++) {
+            JsonObject pinObj = doc["pins"][i];
             config.pins[i].pin = pinObj["pin"] | 0;
             config.pins[i].pinMode = static_cast<PinMode>(pinObj["pinMode"] | 0);
             config.pins[i].defaultEffect = static_cast<EffectType>(pinObj["defaultEffect"] | 0);
