@@ -15,29 +15,32 @@ This project uses **PlatformIO** for building and uploading to the ESP32:
 
 ## Essential Commands
 
+**IMPORTANT: PlatformIO is available at `~/.platformio/penv/bin/platformio` in this environment**
+
 ### Build and Upload
 ```bash
-# Build the project
-platformio run
+# Build the project (ALWAYS RUN THIS BEFORE COMMITTING)
+~/.platformio/penv/bin/platformio run
 
-# Upload to device (ensure device is connected)
-platformio run --target upload
+# Clean build
+~/.platformio/penv/bin/platformio run -t clean
 
-# Build and upload in one command
-platformio run -t upload
+# Build with verbose output  
+~/.platformio/penv/bin/platformio run -v
 
-# Upload filesystem (web interface files)
-platformio run --target uploadfs
-
-# Clean build artifacts
-platformio run -t clean
-
-# Open serial monitor
-platformio device monitor
-
-# Run tests (requires ESP32 connected)
-platformio test
+# Upload filesystem (SPIFFS files)
+~/.platformio/penv/bin/platformio run -t uploadfs
 ```
+
+### Build Targets
+- **Flash usage:** Keep under 70% (currently ~62%)
+- **RAM usage:** Keep under 50% (currently ~12%)
+- **Success indicator:** "[SUCCESS]" message at end
+
+### CRITICAL: Always Build Before Committing
+- Test compilation with `~/.platformio/penv/bin/platformio run`
+- Fix any errors BEFORE committing code
+- Never commit code that doesn't compile
 
 ### Development Workflow
 ```bash
@@ -196,6 +199,13 @@ MP3 files stored on SD card in `/audio_files/` directory:
 - Serial baud rate: 115200
 - Designed for 35mm H × 60mm W × 40mm D cavity constraint
 - Target completion: October 9th, 2025
+
+## ESP32 Framework Naming Conflicts (CRITICAL)
+**NEVER use these names in enums - they are Arduino/ESP32 macros:**
+- `DISABLED` → use `PIN_DISABLED`
+- `LOW` → use `PIN_LOW`
+- `HIGH` → use `PIN_HIGH`
+- Always check enum names against ESP32 framework before using
 
 ## Physical Constraints
 - **Battery Life**: 5-6 hours on 14500 Li-ion
