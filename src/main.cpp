@@ -6,7 +6,7 @@
 #include <ArduinoJson.h>
 
 // Application constants
-const char* VERSION = "0.3.0-dev";
+const char* VERSION = "0.4.0-dev";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -79,6 +79,8 @@ void setupGPIO();
 void handleRoot();
 void handleUpdate();
 void handleUpdateUpload();
+void handleConfig();
+void handleConfigSave();
 void handleLedControl(bool state);
 void printSystemInfo();
 
@@ -166,6 +168,10 @@ void setupWebServer() {
     server.on("/favicon.ico", HTTP_GET, []() {
         server.send(204); // No Content
     });
+    
+    // Configuration page
+    server.on("/config", HTTP_GET, handleConfig);
+    server.on("/config", HTTP_POST, handleConfigSave);
     
     // OTA update page
     server.on("/update", HTTP_GET, handleUpdate);
@@ -266,6 +272,11 @@ void handleRoot() {
     html += F("<button onclick=\"fetch('/led/on')\" style=\"background:#4CAF50; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">LED ON</button>"
              "<button onclick=\"fetch('/led/off')\" style=\"background:#f44336; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">LED OFF</button>"
              "<button onclick=\"fetch('/led/toggle'); setTimeout(function(){location.reload();}, 100);\" style=\"background:#ff6b35; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">TOGGLE</button>"
+             "</div>"
+             "<div class=\"status\">"
+             "<h3>Configuration</h3>"
+             "<p><a href=\"/config\" style=\"color: #4CAF50; text-decoration: none;\">⚙️ Device Configuration</a></p>"
+             "<p>Configure pins, WiFi, and system settings</p>"
              "</div>"
              "<div class=\"status\">"
              "<h3>Firmware Update</h3>"
@@ -513,6 +524,192 @@ void saveConfiguration() {
     Serial.printf("✓ Configuration saved (%d bytes)\n", bytesWritten);
 }
 
+void handleConfig() {
+    String html = F("<!DOCTYPE html>"
+                   "<html><head>"
+                   "<meta charset=\"UTF-8\">"
+                   "<title>BattleAura - Configuration</title>"
+                   "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+                   "<style>"
+                   "body { font-family: Arial; margin: 20px; background: #1a1a2e; color: white; }"
+                   ".header { text-align: center; margin-bottom: 20px; }"
+                   ".section { background: #16213e; padding: 20px; border-radius: 8px; margin-bottom: 20px; }"
+                   ".form-row { margin: 10px 0; display: flex; align-items: center; }"
+                   ".form-row label { min-width: 120px; }"
+                   "input, select { padding: 8px; margin-left: 10px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 4px; }"
+                   "input[type=submit] { background: #4CAF50; color: white; border: none; padding: 12px 30px; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 20px; }"
+                   "input[type=submit]:hover { background: #45a049; }"
+                   ".pin-config { border: 1px solid #334155; padding: 15px; margin: 10px 0; border-radius: 8px; }"
+                   "</style>"
+                   "</head><body>"
+                   "<div class=\"header\">"
+                   "<h1>⚙️ Device Configuration</h1>"
+                   "<p><a href=\"/\" style=\"color: #ff6b35;\">← Back to Control Panel</a></p>"
+                   "</div>"
+                   "<form method=\"POST\">"
+                   "<div class=\"section\">"
+                   "<h3>System Settings</h3>");
+    
+    html += F("<div class=\"form-row\">"
+             "<label>Device Name:</label>"
+             "<input type=\"text\" name=\"deviceName\" value=\"");
+    html += config.deviceName;
+    html += F("\" maxlength=\"32\">"
+             "</div>"
+             "<div class=\"form-row\">"
+             "<label>Audio Volume:</label>"
+             "<input type=\"number\" name=\"volume\" value=\"");
+    html += config.volume;
+    html += F("\" min=\"0\" max=\"30\">"
+             "</div>"
+             "<div class=\"form-row\">"
+             "<label>Audio Enabled:</label>"
+             "<input type=\"checkbox\" name=\"audioEnabled\"");
+    if (config.audioEnabled) html += F(" checked");
+    html += F("></div></div>");
+    
+    html += F("<div class=\"section\">"
+             "<h3>WiFi Settings</h3>"
+             "<div class=\"form-row\">"
+             "<label>WiFi SSID:</label>"
+             "<input type=\"text\" name=\"wifiSSID\" value=\"");
+    html += config.wifiSSID;
+    html += F("\" maxlength=\"32\">"
+             "</div>"
+             "<div class=\"form-row\">"
+             "<label>WiFi Password:</label>"
+             "<input type=\"password\" name=\"wifiPassword\" value=\"");
+    html += config.wifiPassword;
+    html += F("\" maxlength=\"64\">"
+             "</div>"
+             "<div class=\"form-row\">"
+             "<label>WiFi Enabled:</label>"
+             "<input type=\"checkbox\" name=\"wifiEnabled\"");
+    if (config.wifiEnabled) html += F(" checked");
+    html += F("></div></div>");
+    
+    // Pin configurations
+    html += F("<div class=\"section\">"
+             "<h3>Pin Configuration</h3>");
+    
+    for (uint8_t i = 0; i < MAX_PINS; i++) {
+        html += F("<div class=\"pin-config\">"
+                 "<h4>Pin Slot ");
+        html += i + 1;
+        html += F("</h4>"
+                 "<div class=\"form-row\">"
+                 "<label>GPIO Pin:</label>"
+                 "<input type=\"number\" name=\"gpio");
+        html += i;
+        html += F("\" value=\"");
+        html += config.pins[i].gpio;
+        html += F("\" min=\"0\" max=\"21\">"
+                 "</div>"
+                 "<div class=\"form-row\">"
+                 "<label>Pin Mode:</label>"
+                 "<select name=\"mode");
+        html += i;
+        html += F("\">");
+        
+        // Pin mode options
+        const char* modes[] = {"Disabled", "Digital Output", "PWM Output", "WS2812B RGB", "Digital Input", "Analog Input"};
+        for (int m = 0; m < 6; m++) {
+            html += F("<option value=\"");
+            html += m;
+            html += F("\"");
+            if (static_cast<int>(config.pins[i].mode) == m) html += F(" selected");
+            html += F(">");
+            html += modes[m];
+            html += F("</option>");
+        }
+        
+        html += F("</select>"
+                 "</div>"
+                 "<div class=\"form-row\">"
+                 "<label>Pin Name:</label>"
+                 "<input type=\"text\" name=\"name");
+        html += i;
+        html += F("\" value=\"");
+        html += config.pins[i].name;
+        html += F("\" maxlength=\"16\">"
+                 "</div>"
+                 "<div class=\"form-row\">"
+                 "<label>Enabled:</label>"
+                 "<input type=\"checkbox\" name=\"enabled");
+        html += i;
+        html += F("\"");
+        if (config.pins[i].enabled) html += F(" checked");
+        html += F("></div>"
+                 "</div>");
+    }
+    
+    html += F("</div>"
+             "<input type=\"submit\" value=\"Save Configuration\">"
+             "</form>"
+             "</body></html>");
+    
+    server.send(200, F("text/html; charset=utf-8"), html);
+}
+
+void handleConfigSave() {
+    // Parse form data and update configuration
+    if (server.hasArg("deviceName")) {
+        config.deviceName = server.arg("deviceName");
+    }
+    
+    if (server.hasArg("volume")) {
+        config.volume = constrain(server.arg("volume").toInt(), 0, 30);
+    }
+    
+    config.audioEnabled = server.hasArg("audioEnabled");
+    config.wifiEnabled = server.hasArg("wifiEnabled");
+    
+    if (server.hasArg("wifiSSID")) {
+        config.wifiSSID = server.arg("wifiSSID");
+    }
+    
+    if (server.hasArg("wifiPassword")) {
+        config.wifiPassword = server.arg("wifiPassword");
+    }
+    
+    // Update pin configurations
+    for (uint8_t i = 0; i < MAX_PINS; i++) {
+        String gpioArg = "gpio" + String(i);
+        String modeArg = "mode" + String(i);
+        String nameArg = "name" + String(i);
+        String enabledArg = "enabled" + String(i);
+        
+        if (server.hasArg(gpioArg)) {
+            config.pins[i].gpio = constrain(server.arg(gpioArg).toInt(), 0, 21);
+        }
+        
+        if (server.hasArg(modeArg)) {
+            config.pins[i].mode = static_cast<PinMode>(server.arg(modeArg).toInt());
+        }
+        
+        if (server.hasArg(nameArg)) {
+            config.pins[i].name = server.arg(nameArg);
+        }
+        
+        config.pins[i].enabled = server.hasArg(enabledArg);
+    }
+    
+    // Save configuration to file
+    saveConfiguration();
+    
+    // Send success response
+    server.send(200, F("text/html; charset=utf-8"), F(
+        "<html><body style='font-family:Arial; background:#1a1a2e; color:white; text-align:center; padding:50px;'>"
+        "<h1>✅ Configuration Saved!</h1>"
+        "<p>Settings have been saved to flash memory.</p>"
+        "<p>Some changes may require a restart to take effect.</p>"
+        "<p><a href=\"/config\" style=\"color: #4CAF50;\">← Back to Configuration</a></p>"
+        "<p><a href=\"/\" style=\"color: #ff6b35;\">← Back to Control Panel</a></p>"
+        "</body></html>"));
+    
+    Serial.println("Configuration updated via web interface");
+}
+
 void printSystemInfo() {
     Serial.println();
     Serial.println("System Configuration:");
@@ -520,6 +717,7 @@ void printSystemInfo() {
     Serial.printf("  WiFi AP: %s\n", AP_SSID);
     Serial.printf("  IP Address: %s\n", WiFi.softAPIP().toString().c_str());
     Serial.printf("  Web Interface: http://%s/\n", WiFi.softAPIP().toString().c_str());
+    Serial.printf("  Configuration: http://%s/config\n", WiFi.softAPIP().toString().c_str());
     Serial.printf("  Firmware Updates: http://%s/update\n", WiFi.softAPIP().toString().c_str());
     Serial.printf("  Config File: %s\n", configLoaded ? "Loaded" : "Using defaults");
     Serial.printf("  Free heap: %d bytes\n", ESP.getFreeHeap());
