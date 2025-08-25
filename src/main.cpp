@@ -110,7 +110,16 @@ void setupWebServer() {
     
     // OTA update page
     server.on("/update", HTTP_GET, handleUpdate);
-    server.on("/update", HTTP_POST, handleUpdateUpload);
+    server.on("/update", HTTP_POST, []() {
+        server.send(200, "text/html", 
+            "<html><body style='font-family:Arial; background:#1a1a2e; color:white; text-align:center; padding:50px;'>"
+            "<h1>✅ Update Successful!</h1>"
+            "<p>Device will restart in 3 seconds...</p>"
+            "<script>setTimeout(function(){ window.location='/'; }, 5000);</script>"
+            "</body></html>");
+        delay(1000);
+        ESP.restart();
+    }, handleUpdateUpload);
     
     // GPIO control endpoints
     server.on("/led/on", HTTP_GET, []() { handleLedControl(true); });
@@ -220,35 +229,38 @@ void handleUpdate() {
 
 void handleUpdateUpload() {
     HTTPUpload& upload = server.upload();
+    static bool updateError = false;
     
     if (upload.status == UPLOAD_FILE_START) {
-        Serial.printf("Starting firmware update: %s\n", upload.filename.c_str());
-        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+        Serial.printf("Starting firmware update: %s, size: %d\n", upload.filename.c_str(), upload.totalSize);
+        updateError = false;
+        
+        // Begin update with known size if available, otherwise use max available space
+        size_t maxSketchSpace = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
+        if (!Update.begin(maxSketchSpace)) {
+            Serial.println("Update.begin() failed");
             Update.printError(Serial);
-            server.send(500, "text/plain", "Update failed to start");
-            return;
+            updateError = true;
         }
-    } else if (upload.status == UPLOAD_FILE_WRITE) {
+    } else if (upload.status == UPLOAD_FILE_WRITE && !updateError) {
+        Serial.printf("Writing %d bytes...\n", upload.currentSize);
         if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+            Serial.println("Update.write() failed");
             Update.printError(Serial);
-            server.send(500, "text/plain", "Update write failed");
-            return;
+            updateError = true;
         }
     } else if (upload.status == UPLOAD_FILE_END) {
-        if (Update.end(true)) {
-            Serial.printf("Update complete: %u bytes\n", upload.totalSize);
-            server.send(200, "text/html", 
-                "<html><body style='font-family:Arial; background:#1a1a2e; color:white; text-align:center; padding:50px;'>"
-                "<h1>✅ Update Successful!</h1>"
-                "<p>Device will restart in 3 seconds...</p>"
-                "<script>setTimeout(function(){ window.location='/'; }, 5000);</script>"
-                "</body></html>");
-            delay(1000);
-            ESP.restart();
+        if (!updateError && Update.end(true)) {
+            Serial.printf("Update complete: %u bytes written\n", upload.totalSize);
         } else {
+            Serial.println("Update failed");
             Update.printError(Serial);
-            server.send(500, "text/plain", "Update failed to complete");
+            updateError = true;
         }
+    } else if (upload.status == UPLOAD_FILE_ABORTED) {
+        Serial.println("Update aborted");
+        Update.end();
+        updateError = true;
     }
 }
 
