@@ -1,9 +1,10 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <ArduinoOTA.h>
 
 // Application constants
-const char* VERSION = "0.1.0-dev";
+const char* VERSION = "0.1.1-dev";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -18,7 +19,8 @@ const unsigned long HEARTBEAT_INTERVAL = 10000; // 10 seconds
 
 // Forward declarations
 void setupWiFiAP();
-void setupWebServer(); 
+void setupWebServer();
+void setupOTA();
 void handleRoot();
 void printSystemInfo();
 
@@ -42,6 +44,10 @@ void setup() {
     Serial.println("Setting up Web Server...");
     setupWebServer();
     
+    // Initialize OTA Updates
+    Serial.println("Setting up OTA Updates...");
+    setupOTA();
+    
     // Print final system info
     printSystemInfo();
     
@@ -54,6 +60,9 @@ void setup() {
 void loop() {
     // Handle web server requests (non-blocking)
     server.handleClient();
+    
+    // Handle OTA updates (non-blocking)
+    ArduinoOTA.handle();
     
     // Periodic heartbeat (non-blocking timing)
     unsigned long now = millis();
@@ -140,6 +149,12 @@ void handleRoot() {
     
     html += F("</div>"
              "<div class=\"status\">"
+             "<h3>OTA Updates</h3>"
+             "<p><strong>Hostname:</strong> BattleAura.local</p>"
+             "<p><strong>Password:</strong> battlesync</p>"
+             "<p>Use Arduino IDE: Tools → Port → Network Port</p>"
+             "</div>"
+             "<div class=\"status\">"
              "<h3>Quick Test</h3>"
              "<p>If you can see this page, the basic system is working!</p>"
              "</div>"
@@ -148,12 +163,57 @@ void handleRoot() {
     server.send(200, "text/html", html);
 }
 
+void setupOTA() {
+    // OTA hostname and password
+    ArduinoOTA.setHostname("BattleAura");
+    ArduinoOTA.setPassword("battlesync");
+    
+    // OTA callbacks for status reporting
+    ArduinoOTA.onStart([]() {
+        String type;
+        if (ArduinoOTA.getCommand() == U_FLASH) {
+            type = "sketch";
+        } else { // U_SPIFFS
+            type = "filesystem";
+        }
+        Serial.println("Start updating " + type);
+    });
+    
+    ArduinoOTA.onEnd([]() {
+        Serial.println("\nUpdate complete");
+    });
+    
+    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+        Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    });
+    
+    ArduinoOTA.onError([](ota_error_t error) {
+        Serial.printf("Error[%u]: ", error);
+        if (error == OTA_AUTH_ERROR) {
+            Serial.println("Auth Failed");
+        } else if (error == OTA_BEGIN_ERROR) {
+            Serial.println("Begin Failed");
+        } else if (error == OTA_CONNECT_ERROR) {
+            Serial.println("Connect Failed");
+        } else if (error == OTA_RECEIVE_ERROR) {
+            Serial.println("Receive Failed");
+        } else if (error == OTA_END_ERROR) {
+            Serial.println("End Failed");
+        }
+    });
+    
+    ArduinoOTA.begin();
+    Serial.println("✓ OTA updates enabled");
+}
+
 void printSystemInfo() {
     Serial.println();
     Serial.println("System Configuration:");
     Serial.printf("  WiFi AP: %s\n", AP_SSID);
     Serial.printf("  IP Address: %s\n", WiFi.softAPIP().toString().c_str());
     Serial.printf("  Web Interface: http://%s/\n", WiFi.softAPIP().toString().c_str());
+    Serial.printf("  OTA Hostname: BattleAura.local\n");
+    Serial.printf("  OTA Password: battlesync\n");
     Serial.printf("  Free heap: %d bytes\n", ESP.getFreeHeap());
     Serial.printf("  Flash size: %d bytes\n", ESP.getFlashChipSize());
 }
