@@ -2,16 +2,63 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Update.h>
+#include <SPIFFS.h>
+#include <ArduinoJson.h>
 
 // Application constants
-const char* VERSION = "0.2.1-dev";
+const char* VERSION = "0.3.0-dev";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
 
-// GPIO configuration
-const int TEST_LED_PIN = 2;  // GPIO 2 for testing
-bool ledState = false;
+// Configuration constants
+#define CONFIG_FILE "/config.json"
+#define MAX_PINS 8
+
+// Pin mode types
+enum class PinMode {
+    DISABLED = 0,
+    OUTPUT_DIGITAL = 1,
+    OUTPUT_PWM = 2,
+    OUTPUT_WS2812B = 3,
+    INPUT_DIGITAL = 4,
+    INPUT_ANALOG = 5
+};
+
+// Pin configuration structure
+struct PinConfig {
+    uint8_t gpio;
+    PinMode mode;
+    String name;
+    uint8_t audioFile;
+    bool enabled;
+    uint8_t brightness;
+    uint32_t color;
+    
+    PinConfig() : gpio(0), mode(PinMode::DISABLED), name("Unused"), 
+                  audioFile(0), enabled(false), brightness(255), color(0xFFFFFF) {}
+};
+
+// System configuration
+struct SystemConfig {
+    String deviceName;
+    String wifiSSID;
+    String wifiPassword;
+    bool wifiEnabled;
+    uint8_t volume;
+    bool audioEnabled;
+    PinConfig pins[MAX_PINS];
+    
+    SystemConfig() : deviceName("BattleAura"), wifiSSID(""), wifiPassword(""),
+                     wifiEnabled(false), volume(15), audioEnabled(true) {}
+};
+
+// Global configuration
+SystemConfig config;
+bool configLoaded = false;
+
+// GPIO state tracking
+bool pinStates[MAX_PINS] = {false};
 
 // Global objects
 WebServer server(80);
@@ -22,6 +69,10 @@ unsigned long lastHeartbeat = 0;
 const unsigned long HEARTBEAT_INTERVAL = 10000; // 10 seconds
 
 // Forward declarations
+void setupSPIFFS();
+void loadConfiguration();
+void saveConfiguration();
+void initializeDefaults();
 void setupWiFiAP();
 void setupWebServer();
 void setupGPIO();
@@ -42,6 +93,14 @@ void setup() {
     Serial.printf("Chip: %s\n", ESP.getChipModel());
     Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
     Serial.printf("CPU frequency: %d MHz\n", ESP.getCpuFreqMHz());
+    
+    // Initialize SPIFFS
+    Serial.println("Setting up SPIFFS filesystem...");
+    setupSPIFFS();
+    
+    // Load configuration
+    Serial.println("Loading configuration...");
+    loadConfiguration();
     
     // Initialize GPIO pins
     Serial.println("Setting up GPIO pins...");
@@ -265,27 +324,175 @@ void handleUpdateUpload() {
 }
 
 void setupGPIO() {
-    pinMode(TEST_LED_PIN, OUTPUT);
-    digitalWrite(TEST_LED_PIN, LOW);
-    ledState = false;
-    Serial.printf("✓ GPIO %d configured as output\n", TEST_LED_PIN);
+    for (uint8_t i = 0; i < MAX_PINS; i++) {
+        if (config.pins[i].enabled) {
+            uint8_t gpio = config.pins[i].gpio;
+            PinMode mode = config.pins[i].mode;
+            
+            switch (mode) {
+                case PinMode::OUTPUT_DIGITAL:
+                case PinMode::OUTPUT_PWM:
+                    pinMode(gpio, OUTPUT);
+                    digitalWrite(gpio, LOW);
+                    pinStates[i] = false;
+                    Serial.printf("✓ GPIO %d: %s (%s)\n", gpio, config.pins[i].name.c_str(),
+                                 mode == PinMode::OUTPUT_DIGITAL ? "Digital" : "PWM");
+                    break;
+                case PinMode::INPUT_DIGITAL:
+                    pinMode(gpio, INPUT_PULLUP);
+                    Serial.printf("✓ GPIO %d: %s (Input Digital)\n", gpio, config.pins[i].name.c_str());
+                    break;
+                case PinMode::INPUT_ANALOG:
+                    pinMode(gpio, INPUT);
+                    Serial.printf("✓ GPIO %d: %s (Input Analog)\n", gpio, config.pins[i].name.c_str());
+                    break;
+                case PinMode::OUTPUT_WS2812B:
+                    Serial.printf("✓ GPIO %d: %s (WS2812B - not implemented yet)\n", gpio, config.pins[i].name.c_str());
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
 }
 
 void handleLedControl(bool state) {
-    ledState = state;
-    digitalWrite(TEST_LED_PIN, ledState ? HIGH : LOW);
-    Serial.printf("GPIO %d: %s\n", TEST_LED_PIN, ledState ? "ON" : "OFF");
-    server.send(200, "text/plain", ledState ? F("LED ON") : F("LED OFF"));
+    // Find first enabled output pin for compatibility
+    for (uint8_t i = 0; i < MAX_PINS; i++) {
+        if (config.pins[i].enabled && 
+            (config.pins[i].mode == PinMode::OUTPUT_DIGITAL || config.pins[i].mode == PinMode::OUTPUT_PWM)) {
+            pinStates[i] = state;
+            digitalWrite(config.pins[i].gpio, state ? HIGH : LOW);
+            Serial.printf("GPIO %d (%s): %s\n", config.pins[i].gpio, config.pins[i].name.c_str(), state ? "ON" : "OFF");
+            server.send(200, "text/plain", state ? F("LED ON") : F("LED OFF"));
+            return;
+        }
+    }
+    server.send(404, "text/plain", F("No output pins configured"));
+}
+
+void setupSPIFFS() {
+    if (!SPIFFS.begin(true)) {
+        Serial.println("✗ SPIFFS initialization failed");
+        Serial.println("  Continuing with defaults...");
+        return;
+    }
+    
+    size_t totalBytes = SPIFFS.totalBytes();
+    size_t usedBytes = SPIFFS.usedBytes();
+    Serial.printf("✓ SPIFFS initialized: %d KB total, %d KB used\n", 
+                  totalBytes / 1024, usedBytes / 1024);
+}
+
+void initializeDefaults() {
+    config = SystemConfig();  // Reset to defaults
+    
+    // Set up one default pin for testing
+    config.pins[0].gpio = 2;
+    config.pins[0].mode = PinMode::OUTPUT_DIGITAL;
+    config.pins[0].name = "Test LED";
+    config.pins[0].enabled = true;
+    config.pins[0].brightness = 255;
+    config.pins[0].color = 0xFF6600;
+    
+    Serial.println("✓ Default configuration initialized");
+}
+
+void loadConfiguration() {
+    initializeDefaults();  // Always start with defaults
+    
+    if (!SPIFFS.exists(CONFIG_FILE)) {
+        Serial.println("⚠ Config file not found - using defaults");
+        configLoaded = false;
+        return;
+    }
+    
+    File file = SPIFFS.open(CONFIG_FILE, "r");
+    if (!file) {
+        Serial.println("✗ Failed to open config file - using defaults");
+        configLoaded = false;
+        return;
+    }
+    
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, file);
+    file.close();
+    
+    if (error) {
+        Serial.printf("✗ Failed to parse config: %s - using defaults\n", error.c_str());
+        configLoaded = false;
+        return;
+    }
+    
+    // Load configuration from JSON
+    config.deviceName = doc["deviceName"] | config.deviceName;
+    config.wifiSSID = doc["wifiSSID"] | "";
+    config.wifiPassword = doc["wifiPassword"] | "";
+    config.wifiEnabled = doc["wifiEnabled"] | false;
+    config.volume = doc["volume"] | 15;
+    config.audioEnabled = doc["audioEnabled"] | true;
+    
+    // Load pin configurations
+    if (doc["pins"].is<JsonArray>()) {
+        for (uint8_t i = 0; i < MAX_PINS && i < doc["pins"].size(); i++) {
+            config.pins[i].gpio = doc["pins"][i]["gpio"] | 0;
+            config.pins[i].mode = static_cast<PinMode>(doc["pins"][i]["mode"] | 0);
+            config.pins[i].name = doc["pins"][i]["name"] | "Unused";
+            config.pins[i].audioFile = doc["pins"][i]["audioFile"] | 0;
+            config.pins[i].enabled = doc["pins"][i]["enabled"] | false;
+            config.pins[i].brightness = doc["pins"][i]["brightness"] | 255;
+            config.pins[i].color = doc["pins"][i]["color"] | 0xFFFFFF;
+        }
+    }
+    
+    configLoaded = true;
+    Serial.println("✓ Configuration loaded from file");
+}
+
+void saveConfiguration() {
+    JsonDocument doc;
+    
+    doc["version"] = VERSION;
+    doc["deviceName"] = config.deviceName;
+    doc["wifiSSID"] = config.wifiSSID;
+    doc["wifiPassword"] = config.wifiPassword;
+    doc["wifiEnabled"] = config.wifiEnabled;
+    doc["volume"] = config.volume;
+    doc["audioEnabled"] = config.audioEnabled;
+    
+    JsonArray pins = doc["pins"].to<JsonArray>();
+    for (uint8_t i = 0; i < MAX_PINS; i++) {
+        JsonObject pin = pins.add<JsonObject>();
+        pin["gpio"] = config.pins[i].gpio;
+        pin["mode"] = static_cast<uint8_t>(config.pins[i].mode);
+        pin["name"] = config.pins[i].name;
+        pin["audioFile"] = config.pins[i].audioFile;
+        pin["enabled"] = config.pins[i].enabled;
+        pin["brightness"] = config.pins[i].brightness;
+        pin["color"] = config.pins[i].color;
+    }
+    
+    File file = SPIFFS.open(CONFIG_FILE, "w");
+    if (!file) {
+        Serial.println("✗ Failed to save config file");
+        return;
+    }
+    
+    size_t bytesWritten = serializeJson(doc, file);
+    file.close();
+    
+    Serial.printf("✓ Configuration saved (%d bytes)\n", bytesWritten);
 }
 
 void printSystemInfo() {
     Serial.println();
     Serial.println("System Configuration:");
+    Serial.printf("  Device: %s\n", config.deviceName.c_str());
     Serial.printf("  WiFi AP: %s\n", AP_SSID);
     Serial.printf("  IP Address: %s\n", WiFi.softAPIP().toString().c_str());
     Serial.printf("  Web Interface: http://%s/\n", WiFi.softAPIP().toString().c_str());
     Serial.printf("  Firmware Updates: http://%s/update\n", WiFi.softAPIP().toString().c_str());
-    Serial.printf("  GPIO Control: GPIO %d (Test LED)\n", TEST_LED_PIN);
+    Serial.printf("  Config File: %s\n", configLoaded ? "Loaded" : "Using defaults");
     Serial.printf("  Free heap: %d bytes\n", ESP.getFreeHeap());
     Serial.printf("  Flash size: %d bytes\n", ESP.getFlashChipSize());
 }
