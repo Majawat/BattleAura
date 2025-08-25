@@ -4,10 +4,14 @@
 #include <Update.h>
 
 // Application constants
-const char* VERSION = "0.1.1-dev";
+const char* VERSION = "0.2.0-dev";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
+
+// GPIO configuration
+const int TEST_LED_PIN = 2;  // GPIO 2 for testing
+bool ledState = false;
 
 // Global objects
 WebServer server(80);
@@ -20,9 +24,11 @@ const unsigned long HEARTBEAT_INTERVAL = 10000; // 10 seconds
 // Forward declarations
 void setupWiFiAP();
 void setupWebServer();
+void setupGPIO();
 void handleRoot();
 void handleUpdate();
 void handleUpdateUpload();
+void handleLedControl();
 void printSystemInfo();
 
 void setup() {
@@ -36,6 +42,10 @@ void setup() {
     Serial.printf("Chip: %s\n", ESP.getChipModel());
     Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
     Serial.printf("CPU frequency: %d MHz\n", ESP.getCpuFreqMHz());
+    
+    // Initialize GPIO pins
+    Serial.println("Setting up GPIO pins...");
+    setupGPIO();
     
     // Initialize WiFi Access Point
     Serial.println("Setting up WiFi Access Point...");
@@ -102,6 +112,11 @@ void setupWebServer() {
     server.on("/update", HTTP_GET, handleUpdate);
     server.on("/update", HTTP_POST, handleUpdateUpload);
     
+    // GPIO control endpoints
+    server.on("/led/on", HTTP_GET, []() { handleLedControl(true); });
+    server.on("/led/off", HTTP_GET, []() { handleLedControl(false); });
+    server.on("/led/toggle", HTTP_GET, []() { handleLedControl(!ledState); });
+    
     // 404 handler
     server.onNotFound([]() {
         server.send(404, "text/plain", "Not found");
@@ -147,14 +162,17 @@ void handleRoot() {
     
     html += F("</div>"
              "<div class=\"status\">"
-             "<h3>Firmware Update</h3>"
-             "<p><a href=\"/update\" style=\"color: #ff6b35; text-decoration: none;\">Upload New Firmware (.bin file)</a></p>"
-             "<p>Build with: <code>platformio run</code><br>"
-             "Upload file: <code>.pio/build/seeed_xiao_esp32c3/firmware.bin</code></p>"
+             "<h3>GPIO Control</h3>"
+             "<p><strong>Test LED (GPIO 2):</strong> ");
+    html += ledState ? "ON" : "OFF";
+    html += F("</p>"
+             "<button onclick=\"fetch('/led/on')\" style=\"background:#4CAF50; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">LED ON</button>"
+             "<button onclick=\"fetch('/led/off')\" style=\"background:#f44336; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">LED OFF</button>"
+             "<button onclick=\"fetch('/led/toggle'); setTimeout(function(){location.reload();}, 100);\" style=\"background:#ff6b35; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">TOGGLE</button>"
              "</div>"
              "<div class=\"status\">"
-             "<h3>Quick Test</h3>"
-             "<p>If you can see this page, the basic system is working!</p>"
+             "<h3>Firmware Update</h3>"
+             "<p><a href=\"/update\" style=\"color: #ff6b35; text-decoration: none;\">Upload New Firmware (.bin file)</a></p>"
              "</div>"
              "</body></html>");
     
@@ -234,6 +252,20 @@ void handleUpdateUpload() {
     }
 }
 
+void setupGPIO() {
+    pinMode(TEST_LED_PIN, OUTPUT);
+    digitalWrite(TEST_LED_PIN, LOW);
+    ledState = false;
+    Serial.printf("✓ GPIO %d configured as output\n", TEST_LED_PIN);
+}
+
+void handleLedControl(bool state) {
+    ledState = state;
+    digitalWrite(TEST_LED_PIN, ledState ? HIGH : LOW);
+    Serial.printf("GPIO %d: %s\n", TEST_LED_PIN, ledState ? "ON" : "OFF");
+    server.send(200, "text/plain", ledState ? "LED ON" : "LED OFF");
+}
+
 void printSystemInfo() {
     Serial.println();
     Serial.println("System Configuration:");
@@ -241,6 +273,7 @@ void printSystemInfo() {
     Serial.printf("  IP Address: %s\n", WiFi.softAPIP().toString().c_str());
     Serial.printf("  Web Interface: http://%s/\n", WiFi.softAPIP().toString().c_str());
     Serial.printf("  Firmware Updates: http://%s/update\n", WiFi.softAPIP().toString().c_str());
+    Serial.printf("  GPIO Control: GPIO %d (Test LED)\n", TEST_LED_PIN);
     Serial.printf("  Free heap: %d bytes\n", ESP.getFreeHeap());
     Serial.printf("  Flash size: %d bytes\n", ESP.getFlashChipSize());
 }
