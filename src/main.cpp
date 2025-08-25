@@ -3,7 +3,7 @@
 #include <WebServer.h>
 
 // Application constants
-const char* VERSION = "1.2.0-minimal";
+const char* VERSION = "0.1.0-dev";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
