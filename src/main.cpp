@@ -90,6 +90,11 @@ void setupWebServer() {
         server.send(200, "text/plain", "OK");
     });
     
+    // Favicon handler (prevents 404 errors)
+    server.on("/favicon.ico", HTTP_GET, []() {
+        server.send(204); // No Content
+    });
+    
     // 404 handler
     server.onNotFound([]() {
         server.send(404, "text/plain", "Not found");
@@ -102,6 +107,7 @@ void setupWebServer() {
 void handleRoot() {
     String html = F("<!DOCTYPE html>"
                    "<html><head>"
+                   "<meta charset=\"UTF-8\">"
                    "<title>BattleAura Control</title>"
                    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
                    "<style>"
