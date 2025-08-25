@@ -17,7 +17,7 @@ const int AP_CHANNEL = 1;
 
 // Pin mode types
 enum class PinMode {
-    DISABLED = 0,
+    PIN_DISABLED = 0,
     OUTPUT_DIGITAL = 1,
     OUTPUT_PWM = 2,
     OUTPUT_WS2812B = 3,
@@ -35,7 +35,7 @@ struct PinConfig {
     uint8_t brightness;
     uint32_t color;
     
-    PinConfig() : gpio(0), mode(PinMode::DISABLED), name("Unused"), 
+    PinConfig() : gpio(0), mode(PinMode::PIN_DISABLED), name("Unused"), 
                   audioFile(0), enabled(false), brightness(255), color(0xFFFFFF) {}
 };
 
