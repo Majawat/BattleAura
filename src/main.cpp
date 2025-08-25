@@ -5,9 +5,12 @@
 #include <SPIFFS.h>
 #include <ArduinoJson.h>
 #include <ESPmDNS.h>
+#include <Adafruit_NeoPixel.h>
+#include <DFRobotDFPlayerMini.h>
+#include <HardwareSerial.h>
 
 // Application constants
-const char* VERSION = "0.5.0-dev";
+const char* VERSION = "1.0.0-dev";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -15,6 +18,40 @@ const int AP_CHANNEL = 1;
 // Configuration constants
 #define CONFIG_FILE "/config.json"
 #define MAX_PINS 8
+
+// Board-specific DFPlayer Mini pin configuration
+#if defined(CONFIG_IDF_TARGET_ESP32C3)
+    // ESP32-C3 (Seeed Xiao ESP32-C3)
+    #define DFPLAYER_RX_PIN 20
+    #define DFPLAYER_TX_PIN 21
+    #define DFPLAYER_UART_NUM 1
+    #define BOARD_NAME "ESP32-C3"
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+    // ESP32-S3 (Seeed Xiao ESP32-S3)  
+    #define DFPLAYER_RX_PIN 44
+    #define DFPLAYER_TX_PIN 43
+    #define DFPLAYER_UART_NUM 1
+    #define BOARD_NAME "ESP32-S3"
+#elif defined(CONFIG_IDF_TARGET_ESP32S2)
+    // ESP32-S2
+    #define DFPLAYER_RX_PIN 18
+    #define DFPLAYER_TX_PIN 17
+    #define DFPLAYER_UART_NUM 1
+    #define BOARD_NAME "ESP32-S2"
+#elif defined(CONFIG_IDF_TARGET_ESP32)
+    // ESP32 DevKit
+    #define DFPLAYER_RX_PIN 16
+    #define DFPLAYER_TX_PIN 17
+    #define DFPLAYER_UART_NUM 2
+    #define BOARD_NAME "ESP32"
+#else
+    // Default fallback (ESP32-C3 pins)
+    #define DFPLAYER_RX_PIN 20
+    #define DFPLAYER_TX_PIN 21
+    #define DFPLAYER_UART_NUM 1
+    #define BOARD_NAME "ESP32-Unknown"
+    #warning "Unknown ESP32 variant, using ESP32-C3 default pins"
+#endif
 
 // Pin mode types
 enum class PinMode {
@@ -26,18 +63,61 @@ enum class PinMode {
     INPUT_ANALOG = 5
 };
 
+// Effect types
+enum class EffectType {
+    EFFECT_NONE = 0,
+    EFFECT_CANDLE_FLICKER = 1,
+    EFFECT_FADE = 2,
+    EFFECT_PULSE = 3,
+    EFFECT_STROBE = 4,
+    EFFECT_ENGINE_IDLE = 5,
+    EFFECT_ENGINE_REV = 6,
+    EFFECT_MACHINE_GUN = 7,
+    EFFECT_FLAMETHROWER = 8,
+    EFFECT_TAKING_HITS = 9,
+    EFFECT_EXPLOSION = 10,
+    EFFECT_ROCKET_LAUNCHER = 11,
+    EFFECT_CONSOLE_RGB = 12,
+    EFFECT_STATIC_ON = 13,
+    EFFECT_STATIC_OFF = 14
+};
+
+// Audio mapping configuration
+struct AudioMapping {
+    uint8_t candleFlicker;     // Audio file for candle flicker effect
+    uint8_t fade;              // Audio file for fade effect  
+    uint8_t pulse;             // Audio file for pulse effect
+    uint8_t strobe;            // Audio file for strobe effect
+    uint8_t engineIdle;        // Audio file for engine idle
+    uint8_t engineRev;         // Audio file for engine rev
+    uint8_t machineGun;        // Audio file for machine gun
+    uint8_t flamethrower;      // Audio file for flamethrower
+    uint8_t takingHits;        // Audio file for taking hits
+    uint8_t explosion;         // Audio file for explosion
+    uint8_t rocketLauncher;    // Audio file for rocket launcher
+    uint8_t killConfirmed;     // Audio file for kill confirmed
+    
+    AudioMapping() : candleFlicker(0), fade(0), pulse(0), strobe(0),
+                     engineIdle(1), engineRev(6), machineGun(3), flamethrower(4),
+                     takingHits(5), explosion(7), rocketLauncher(8), killConfirmed(9) {}
+};
+
 // Pin configuration structure
 struct PinConfig {
     uint8_t gpio;
     PinMode mode;
     String name;
-    uint8_t audioFile;
     bool enabled;
     uint8_t brightness;
     uint32_t color;
+    EffectType effect;
+    uint16_t effectSpeed;
+    bool effectActive;
+    uint8_t effectGroup;
     
     PinConfig() : gpio(0), mode(PinMode::PIN_DISABLED), name("Unused"), 
-                  audioFile(0), enabled(false), brightness(255), color(0xFFFFFF) {}
+                  enabled(false), brightness(255), color(0xFFFFFF),
+                  effect(EffectType::EFFECT_NONE), effectSpeed(100), effectActive(false), effectGroup(0) {}
 };
 
 // System configuration
@@ -49,6 +129,7 @@ struct SystemConfig {
     uint8_t volume;
     bool audioEnabled;
     PinConfig pins[MAX_PINS];
+    AudioMapping audioMap;
     
     SystemConfig() : deviceName("BattleAura"), wifiSSID(""), wifiPassword(""),
                      wifiEnabled(false), volume(15), audioEnabled(true) {}
@@ -61,8 +142,29 @@ bool configLoaded = false;
 // GPIO state tracking
 bool pinStates[MAX_PINS] = {false};
 
+// Effect state tracking
+struct EffectState {
+    unsigned long lastUpdate;
+    uint16_t step;
+    uint8_t currentBrightness;
+    bool direction;
+    
+    EffectState() : lastUpdate(0), step(0), currentBrightness(0), direction(true) {}
+};
+
+EffectState effectStates[MAX_PINS];
+
 // Global objects
 WebServer server(80);
+
+// WS2812B LED strip objects (one per pin)
+Adafruit_NeoPixel* neoPixels[MAX_PINS] = {nullptr};
+const uint16_t DEFAULT_LED_COUNT = 10; // Default number of LEDs per strip
+
+// DFPlayer Mini objects
+HardwareSerial dfPlayerSerial(DFPLAYER_UART_NUM);
+DFRobotDFPlayerMini dfPlayer;
+bool audioInitialized = false;
 
 // Application state
 bool systemReady = false;
@@ -85,7 +187,27 @@ void handleUpdate();
 void handleUpdateUpload();
 void handleConfig();
 void handleConfigSave();
+void handleAudioMapping();
+String getEffectName(EffectType effect);
 void handleLedControl(bool state);
+void initializeNeoPixel(uint8_t pinIndex);
+void setNeoPixelColor(uint8_t pinIndex, uint32_t color, uint8_t brightness = 255);
+void setNeoPixelState(uint8_t pinIndex, bool state);
+void updateEffects();
+void updateCandleFlicker(uint8_t pinIndex);
+void startEffect(uint8_t pinIndex, EffectType effect);
+void stopEffect(uint8_t pinIndex);
+void startGroupEffect(uint8_t group, EffectType effect, uint16_t duration = 0);
+void stopGroupEffect(uint8_t group);
+void setPinBrightness(uint8_t pinIndex, uint8_t brightness);
+void setupAudio();
+void playAudioFile(uint8_t fileNumber);
+void playEffectAudio(EffectType effect);
+void playScenarioAudio(const String& scenario);
+void setAudioVolume(uint8_t volume);
+void stopAudio();
+bool isAudioReady();
+void checkPinConflicts();
 void printSystemInfo();
 
 void setup() {
@@ -112,6 +234,15 @@ void setup() {
     Serial.println("Setting up GPIO pins...");
     setupGPIO();
     
+    // Initialize Audio System
+    if (config.audioEnabled) {
+        Serial.println("Setting up DFPlayer Mini audio...");
+        setupAudio();
+        checkPinConflicts();
+    } else {
+        Serial.println("Audio system disabled");
+    }
+    
     // Initialize WiFi (Station mode with AP fallback)
     Serial.println("Setting up WiFi connection...");
     setupWiFi();
@@ -132,6 +263,9 @@ void setup() {
 void loop() {
     // Handle web server requests (non-blocking)
     server.handleClient();
+    
+    // Update lighting effects (non-blocking)
+    updateEffects();
     
     // Periodic heartbeat (non-blocking timing)
     unsigned long now = millis();
@@ -274,6 +408,217 @@ void setupWebServer() {
         server.send(404, "text/plain", F("No output pins configured"));
     });
     
+    // Effects control endpoints
+    server.on("/effects/start", HTTP_GET, []() {
+        if (!server.hasArg("pin") || !server.hasArg("effect")) {
+            server.send(400, "text/plain", F("Missing pin or effect parameter"));
+            return;
+        }
+        
+        uint8_t pin = server.arg("pin").toInt();
+        uint8_t effect = server.arg("effect").toInt();
+        
+        if (pin >= MAX_PINS) {
+            server.send(400, "text/plain", F("Invalid pin number"));
+            return;
+        }
+        
+        if (!config.pins[pin].enabled) {
+            server.send(400, "text/plain", F("Pin not enabled"));
+            return;
+        }
+        
+        startEffect(pin, (EffectType)effect);
+        server.send(200, "text/plain", F("Effect started"));
+    });
+    
+    server.on("/effects/stop", HTTP_GET, []() {
+        if (!server.hasArg("pin")) {
+            server.send(400, "text/plain", F("Missing pin parameter"));
+            return;
+        }
+        
+        uint8_t pin = server.arg("pin").toInt();
+        
+        if (pin >= MAX_PINS) {
+            server.send(400, "text/plain", F("Invalid pin number"));
+            return;
+        }
+        
+        stopEffect(pin);
+        server.send(200, "text/plain", F("Effect stopped"));
+    });
+    
+    server.on("/effects/candle", HTTP_GET, []() {
+        if (!server.hasArg("pin")) {
+            server.send(400, "text/plain", F("Missing pin parameter"));
+            return;
+        }
+        
+        uint8_t pin = server.arg("pin").toInt();
+        bool persistent = server.hasArg("persistent") && server.arg("persistent") == "true";
+        
+        if (pin >= MAX_PINS || !config.pins[pin].enabled) {
+            server.send(400, "text/plain", F("Invalid or disabled pin"));
+            return;
+        }
+        
+        startEffect(pin, EffectType::EFFECT_CANDLE_FLICKER);
+        
+        if (persistent) {
+            config.pins[pin].effect = EffectType::EFFECT_CANDLE_FLICKER;
+            config.pins[pin].effectActive = true;
+            saveConfiguration();
+            server.send(200, "text/plain", F("Candle flicker effect started (persistent)"));
+        } else {
+            server.send(200, "text/plain", F("Candle flicker effect started"));
+        }
+    });
+    
+    server.on("/effects/configure", HTTP_GET, []() {
+        if (!server.hasArg("pin") || !server.hasArg("effect") || !server.hasArg("active")) {
+            server.send(400, "text/plain", F("Missing parameters: pin, effect, active"));
+            return;
+        }
+        
+        uint8_t pin = server.arg("pin").toInt();
+        uint8_t effect = server.arg("effect").toInt();
+        bool active = server.arg("active") == "true";
+        uint16_t speed = server.hasArg("speed") ? server.arg("speed").toInt() : 100;
+        
+        if (pin >= MAX_PINS || !config.pins[pin].enabled) {
+            server.send(400, "text/plain", F("Invalid or disabled pin"));
+            return;
+        }
+        
+        // Configure persistent effect settings
+        config.pins[pin].effect = (EffectType)effect;
+        config.pins[pin].effectActive = active;
+        config.pins[pin].effectSpeed = speed;
+        
+        if (active) {
+            startEffect(pin, (EffectType)effect);
+        } else {
+            stopEffect(pin);
+        }
+        
+        saveConfiguration();
+        server.send(200, "text/plain", F("Effect configuration saved"));
+    });
+    
+    server.on("/effects/group", HTTP_GET, []() {
+        if (!server.hasArg("group") || !server.hasArg("effect")) {
+            server.send(400, "text/plain", F("Missing parameters: group, effect"));
+            return;
+        }
+        
+        uint8_t group = server.arg("group").toInt();
+        uint8_t effect = server.arg("effect").toInt();
+        uint16_t duration = server.hasArg("duration") ? server.arg("duration").toInt() : 0;
+        
+        if (group == 0) {
+            server.send(400, "text/plain", F("Group 0 is reserved (no group)"));
+            return;
+        }
+        
+        startGroupEffect(group, (EffectType)effect, duration);
+        
+        String response = "Group " + String(group) + " effect " + String(effect) + " started";
+        if (duration > 0) {
+            response += " for " + String(duration) + "ms";
+        }
+        server.send(200, "text/plain", response);
+    });
+    
+    server.on("/effects/group/stop", HTTP_GET, []() {
+        if (!server.hasArg("group")) {
+            server.send(400, "text/plain", F("Missing group parameter"));
+            return;
+        }
+        
+        uint8_t group = server.arg("group").toInt();
+        stopGroupEffect(group);
+        server.send(200, "text/plain", "Group " + String(group) + " effects stopped");
+    });
+    
+    // Audio control endpoints
+    server.on("/audio/play", HTTP_GET, []() {
+        if (!server.hasArg("file")) {
+            server.send(400, "text/plain", F("Missing file parameter"));
+            return;
+        }
+        
+        uint8_t fileNumber = server.arg("file").toInt();
+        if (fileNumber == 0 || fileNumber > 255) {
+            server.send(400, "text/plain", F("File number must be 1-255"));
+            return;
+        }
+        
+        if (!isAudioReady()) {
+            server.send(503, "text/plain", F("Audio system not ready"));
+            return;
+        }
+        
+        playAudioFile(fileNumber);
+        server.send(200, "text/plain", "Playing file " + String(fileNumber));
+    });
+    
+    server.on("/audio/stop", HTTP_GET, []() {
+        stopAudio();
+        server.send(200, "text/plain", F("Audio stopped"));
+    });
+    
+    server.on("/audio/volume", HTTP_GET, []() {
+        if (!server.hasArg("level")) {
+            server.send(400, "text/plain", F("Missing level parameter"));
+            return;
+        }
+        
+        uint8_t volume = server.arg("level").toInt();
+        if (volume > 30) {
+            server.send(400, "text/plain", F("Volume must be 0-30"));
+            return;
+        }
+        
+        setAudioVolume(volume);
+        config.volume = volume;
+        saveConfiguration();
+        server.send(200, "text/plain", "Volume set to " + String(volume));
+    });
+    
+    server.on("/audio/status", HTTP_GET, []() {
+        String status = "{";
+        status += "\"ready\": " + String(isAudioReady() ? "true" : "false") + ",";
+        status += "\"enabled\": " + String(config.audioEnabled ? "true" : "false") + ",";
+        status += "\"volume\": " + String(config.volume);
+        status += "}";
+        server.send(200, "application/json", status);
+    });
+    
+    server.on("/audio/scenario", HTTP_GET, []() {
+        if (!server.hasArg("name")) {
+            server.send(400, "text/plain", F("Missing name parameter"));
+            return;
+        }
+        
+        String scenario = server.arg("name");
+        playScenarioAudio(scenario);
+        server.send(200, "text/plain", "Playing scenario: " + scenario);
+    });
+    
+    server.on("/audio/effect", HTTP_GET, []() {
+        if (!server.hasArg("type")) {
+            server.send(400, "text/plain", F("Missing type parameter"));
+            return;
+        }
+        
+        uint8_t effectType = server.arg("type").toInt();
+        playEffectAudio((EffectType)effectType);
+        server.send(200, "text/plain", "Playing effect audio: " + String(effectType));
+    });
+    
+    server.on("/audio/map", HTTP_GET, handleAudioMapping);
+    
     // 404 handler
     server.onNotFound([]() {
         server.send(404, "text/plain", F("Not found"));
@@ -345,6 +690,25 @@ void handleRoot() {
     html += F("<button onclick=\"fetch('/led/on')\" style=\"background:#4CAF50; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">LED ON</button>"
              "<button onclick=\"fetch('/led/off')\" style=\"background:#f44336; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">LED OFF</button>"
              "<button onclick=\"fetch('/led/toggle'); setTimeout(function(){location.reload();}, 100);\" style=\"background:#ff6b35; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">TOGGLE</button>"
+             "</div>"
+             "<div class=\"status\">"
+             "<h3>🕯️ Lighting Effects</h3>"
+             "<p>Control lighting effects on configured pins</p>"
+             "<div style=\"margin: 10px 0;\">"
+             "<button onclick=\"startEffect(0, 1)\" style=\"background:#4CAF50; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">Pin 0 Candle</button>"
+             "<button onclick=\"startEffect(1, 1)\" style=\"background:#4CAF50; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">Pin 1 Candle</button>"
+             "<button onclick=\"startEffect(2, 1)\" style=\"background:#4CAF50; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">Pin 2 Candle</button>"
+             "</div>"
+             "<div style=\"margin: 10px 0;\">"
+             "<button onclick=\"groupEffect(1, 1)\" style=\"background:#2196F3; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">Group 1 Effect</button>"
+             "<button onclick=\"groupEffect(2, 1)\" style=\"background:#2196F3; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">Group 2 Effect</button>"
+             "<button onclick=\"stopAll()\" style=\"background:#f44336; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">Stop All Effects</button>"
+             "</div>"
+             "<script>"
+             "function startEffect(pin, effect) { fetch('/effects/start?pin=' + pin + '&effect=' + effect); }"
+             "function groupEffect(group, effect) { fetch('/effects/group?group=' + group + '&effect=' + effect); }"
+             "function stopAll() { for(let i=0; i<8; i++) fetch('/effects/stop?pin=' + i); }"
+             "</script>"
              "</div>"
              "<div class=\"status\">"
              "<h3>Configuration</h3>"
@@ -460,10 +824,18 @@ void setupGPIO() {
                     Serial.printf("✓ GPIO %d: %s (Input Analog)\n", gpio, config.pins[i].name.c_str());
                     break;
                 case PinMode::OUTPUT_WS2812B:
-                    Serial.printf("✓ GPIO %d: %s (WS2812B - not implemented yet)\n", gpio, config.pins[i].name.c_str());
+                    initializeNeoPixel(i);
+                    pinStates[i] = false;
+                    Serial.printf("✓ GPIO %d: %s (WS2812B - %d LEDs)\n", gpio, config.pins[i].name.c_str(), DEFAULT_LED_COUNT);
                     break;
                 default:
                     break;
+            }
+            
+            // Auto-start configured effects
+            if (config.pins[i].effectActive && config.pins[i].effect != EffectType::EFFECT_NONE) {
+                startEffect(i, config.pins[i].effect);
+                Serial.printf("✓ Auto-started effect %d on GPIO %d\n", (int)config.pins[i].effect, gpio);
             }
         }
     }
@@ -473,9 +845,18 @@ void handleLedControl(bool state) {
     // Find first enabled output pin for compatibility
     for (uint8_t i = 0; i < MAX_PINS; i++) {
         if (config.pins[i].enabled && 
-            (config.pins[i].mode == PinMode::OUTPUT_DIGITAL || config.pins[i].mode == PinMode::OUTPUT_PWM)) {
+            (config.pins[i].mode == PinMode::OUTPUT_DIGITAL || 
+             config.pins[i].mode == PinMode::OUTPUT_PWM ||
+             config.pins[i].mode == PinMode::OUTPUT_WS2812B)) {
+            
             pinStates[i] = state;
-            digitalWrite(config.pins[i].gpio, state ? HIGH : LOW);
+            
+            if (config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                setNeoPixelState(i, state);
+            } else {
+                digitalWrite(config.pins[i].gpio, state ? HIGH : LOW);
+            }
+            
             Serial.printf("GPIO %d (%s): %s\n", config.pins[i].gpio, config.pins[i].name.c_str(), state ? "ON" : "OFF");
             server.send(200, "text/plain", state ? F("LED ON") : F("LED OFF"));
             return;
@@ -551,11 +932,30 @@ void loadConfiguration() {
             config.pins[i].gpio = doc["pins"][i]["gpio"] | 0;
             config.pins[i].mode = static_cast<PinMode>(doc["pins"][i]["mode"] | 0);
             config.pins[i].name = doc["pins"][i]["name"] | "Unused";
-            config.pins[i].audioFile = doc["pins"][i]["audioFile"] | 0;
             config.pins[i].enabled = doc["pins"][i]["enabled"] | false;
             config.pins[i].brightness = doc["pins"][i]["brightness"] | 255;
             config.pins[i].color = doc["pins"][i]["color"] | 0xFFFFFF;
+            config.pins[i].effect = static_cast<EffectType>(doc["pins"][i]["effect"] | 0);
+            config.pins[i].effectSpeed = doc["pins"][i]["effectSpeed"] | 100;
+            config.pins[i].effectActive = doc["pins"][i]["effectActive"] | false;
+            config.pins[i].effectGroup = doc["pins"][i]["effectGroup"] | 0;
         }
+    }
+    
+    // Load audio mapping
+    if (doc["audioMap"].is<JsonObject>()) {
+        config.audioMap.candleFlicker = doc["audioMap"]["candleFlicker"] | 0;
+        config.audioMap.fade = doc["audioMap"]["fade"] | 0;
+        config.audioMap.pulse = doc["audioMap"]["pulse"] | 0;
+        config.audioMap.strobe = doc["audioMap"]["strobe"] | 0;
+        config.audioMap.engineIdle = doc["audioMap"]["engineIdle"] | 1;
+        config.audioMap.engineRev = doc["audioMap"]["engineRev"] | 6;
+        config.audioMap.machineGun = doc["audioMap"]["machineGun"] | 3;
+        config.audioMap.flamethrower = doc["audioMap"]["flamethrower"] | 4;
+        config.audioMap.takingHits = doc["audioMap"]["takingHits"] | 5;
+        config.audioMap.explosion = doc["audioMap"]["explosion"] | 7;
+        config.audioMap.rocketLauncher = doc["audioMap"]["rocketLauncher"] | 8;
+        config.audioMap.killConfirmed = doc["audioMap"]["killConfirmed"] | 9;
     }
     
     configLoaded = true;
@@ -579,11 +979,29 @@ void saveConfiguration() {
         pin["gpio"] = config.pins[i].gpio;
         pin["mode"] = static_cast<uint8_t>(config.pins[i].mode);
         pin["name"] = config.pins[i].name;
-        pin["audioFile"] = config.pins[i].audioFile;
         pin["enabled"] = config.pins[i].enabled;
         pin["brightness"] = config.pins[i].brightness;
         pin["color"] = config.pins[i].color;
+        pin["effect"] = static_cast<uint8_t>(config.pins[i].effect);
+        pin["effectSpeed"] = config.pins[i].effectSpeed;
+        pin["effectActive"] = config.pins[i].effectActive;
+        pin["effectGroup"] = config.pins[i].effectGroup;
     }
+    
+    // Save audio mapping
+    JsonObject audioMap = doc["audioMap"].to<JsonObject>();
+    audioMap["candleFlicker"] = config.audioMap.candleFlicker;
+    audioMap["fade"] = config.audioMap.fade;
+    audioMap["pulse"] = config.audioMap.pulse;
+    audioMap["strobe"] = config.audioMap.strobe;
+    audioMap["engineIdle"] = config.audioMap.engineIdle;
+    audioMap["engineRev"] = config.audioMap.engineRev;
+    audioMap["machineGun"] = config.audioMap.machineGun;
+    audioMap["flamethrower"] = config.audioMap.flamethrower;
+    audioMap["takingHits"] = config.audioMap.takingHits;
+    audioMap["explosion"] = config.audioMap.explosion;
+    audioMap["rocketLauncher"] = config.audioMap.rocketLauncher;
+    audioMap["killConfirmed"] = config.audioMap.killConfirmed;
     
     File file = SPIFFS.open(CONFIG_FILE, "w");
     if (!file) {
@@ -783,6 +1201,136 @@ void handleConfigSave() {
     Serial.println("Configuration updated via web interface");
 }
 
+void handleAudioMapping() {
+    String html = F("<!DOCTYPE html>"
+                   "<html><head>"
+                   "<meta charset=\"UTF-8\">"
+                   "<title>BattleAura - Audio Mapping</title>"
+                   "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+                   "<style>"
+                   "body { font-family: Arial; margin: 20px; background: #1a1a2e; color: white; }"
+                   ".header { text-align: center; margin-bottom: 20px; }"
+                   ".section { background: #16213e; padding: 20px; border-radius: 8px; margin-bottom: 20px; }"
+                   ".mapping-row { margin: 10px 0; display: flex; align-items: center; }"
+                   ".mapping-row label { width: 200px; display: inline-block; }"
+                   ".mapping-row input { flex: 1; padding: 5px; margin-left: 10px; background: #0f1626; color: white; border: 1px solid #555; border-radius: 3px; }"
+                   ".btn { padding: 10px 20px; margin: 5px; color: white; text-decoration: none; border-radius: 5px; display: inline-block; }"
+                   ".btn-primary { background: #4CAF50; }"
+                   ".btn-secondary { background: #ff6b35; }"
+                   "</style>"
+                   "</head><body>");
+    
+    html += F("<div class=\"header\">"
+             "<h1>🎵 Audio Mapping Configuration</h1>"
+             "<p>Map audio files to effects and scenarios</p>"
+             "</div>");
+    
+    html += F("<div class=\"section\">"
+             "<h3>Current Audio Mapping</h3>");
+    
+    // Effect mappings
+    html += F("<div class=\"mapping-row\">"
+             "<label>Candle Flicker:</label>"
+             "<span>File ");
+    html += config.audioMap.candleFlicker;
+    html += F("</span></div>");
+    
+    html += F("<div class=\"mapping-row\">"
+             "<label>Fade:</label>"
+             "<span>File ");
+    html += config.audioMap.fade;
+    html += F("</span></div>");
+    
+    html += F("<div class=\"mapping-row\">"
+             "<label>Pulse:</label>"
+             "<span>File ");
+    html += config.audioMap.pulse;
+    html += F("</span></div>");
+    
+    html += F("<div class=\"mapping-row\">"
+             "<label>Strobe:</label>"
+             "<span>File ");
+    html += config.audioMap.strobe;
+    html += F("</span></div>");
+    
+    // Scenario mappings
+    html += F("<h4>Scenario Mappings:</h4>");
+    
+    html += F("<div class=\"mapping-row\">"
+             "<label>Engine Idle:</label>"
+             "<span>File ");
+    html += config.audioMap.engineIdle;
+    html += F("</span></div>");
+    
+    html += F("<div class=\"mapping-row\">"
+             "<label>Engine Rev:</label>"
+             "<span>File ");
+    html += config.audioMap.engineRev;
+    html += F("</span></div>");
+    
+    html += F("<div class=\"mapping-row\">"
+             "<label>Machine Gun:</label>"
+             "<span>File ");
+    html += config.audioMap.machineGun;
+    html += F("</span></div>");
+    
+    html += F("<div class=\"mapping-row\">"
+             "<label>Flamethrower:</label>"
+             "<span>File ");
+    html += config.audioMap.flamethrower;
+    html += F("</span></div>");
+    
+    html += F("<div class=\"mapping-row\">"
+             "<label>Taking Hits:</label>"
+             "<span>File ");
+    html += config.audioMap.takingHits;
+    html += F("</span></div>");
+    
+    html += F("<div class=\"mapping-row\">"
+             "<label>Explosion:</label>"
+             "<span>File ");
+    html += config.audioMap.explosion;
+    html += F("</span></div>");
+    
+    html += F("<div class=\"mapping-row\">"
+             "<label>Rocket Launcher:</label>"
+             "<span>File ");
+    html += config.audioMap.rocketLauncher;
+    html += F("</span></div>");
+    
+    html += F("<div class=\"mapping-row\">"
+             "<label>Kill Confirmed:</label>"
+             "<span>File ");
+    html += config.audioMap.killConfirmed;
+    html += F("</span></div>");
+    
+    html += F("</div>");
+    
+    // Test controls
+    html += F("<div class=\"section\">"
+             "<h3>Test Audio</h3>"
+             "<p>Play scenarios to test your mapping:</p>");
+    
+    html += F("<a href=\"/audio/scenario?name=engine_idle\" class=\"btn btn-primary\">🏎️ Engine Idle</a>");
+    html += F("<a href=\"/audio/scenario?name=engine_rev\" class=\"btn btn-primary\">🚗 Engine Rev</a>");
+    html += F("<a href=\"/audio/scenario?name=machine_gun\" class=\"btn btn-primary\">🔫 Machine Gun</a>");
+    html += F("<a href=\"/audio/scenario?name=flamethrower\" class=\"btn btn-primary\">🔥 Flamethrower</a>");
+    html += F("<a href=\"/audio/scenario?name=explosion\" class=\"btn btn-primary\">💥 Explosion</a>");
+    html += F("<a href=\"/audio/stop\" class=\"btn btn-secondary\">⏹️ Stop Audio</a>");
+    
+    html += F("</div>");
+    
+    // Navigation
+    html += F("<div class=\"section\">"
+             "<a href=\"/config\" class=\"btn btn-secondary\">⚙️ Back to Configuration</a>"
+             "<a href=\"/\" class=\"btn btn-primary\">🏠 Control Panel</a>"
+             "</div>");
+    
+    html += F("</body></html>");
+    
+    server.send(200, F("text/html; charset=utf-8"), html);
+}
+
 void printSystemInfo() {
     Serial.println();
     Serial.println("System Configuration:");
@@ -808,7 +1356,396 @@ void printSystemInfo() {
     
     Serial.printf("  Configuration: /config\n");
     Serial.printf("  Firmware Updates: /update\n");
+    Serial.printf("  Board Type: %s\n", BOARD_NAME);
+    
+    // Show audio system status
+    if (config.audioEnabled) {
+        Serial.printf("  Audio: %s (DFPlayer Mini)\n", isAudioReady() ? "Ready" : "Not Ready");
+        Serial.printf("  Audio Pins: RX=%d, TX=%d (UART%d)\n", DFPLAYER_RX_PIN, DFPLAYER_TX_PIN, DFPLAYER_UART_NUM);
+        Serial.printf("  Audio Volume: %d/30\n", config.volume);
+    } else {
+        Serial.printf("  Audio: Disabled\n");
+    }
+    
     Serial.printf("  Config File: %s\n", configLoaded ? "Loaded" : "Using defaults");
     Serial.printf("  Free heap: %d bytes\n", ESP.getFreeHeap());
     Serial.printf("  Flash size: %d bytes\n", ESP.getFlashChipSize());
+}
+
+// WS2812B NeoPixel Functions
+
+void initializeNeoPixel(uint8_t pinIndex) {
+    if (pinIndex >= MAX_PINS) return;
+    
+    // Clean up existing NeoPixel object if it exists
+    if (neoPixels[pinIndex] != nullptr) {
+        delete neoPixels[pinIndex];
+        neoPixels[pinIndex] = nullptr;
+    }
+    
+    // Create new NeoPixel object
+    uint8_t gpio = config.pins[pinIndex].gpio;
+    neoPixels[pinIndex] = new Adafruit_NeoPixel(DEFAULT_LED_COUNT, gpio, NEO_GRB + NEO_KHZ800);
+    
+    if (neoPixels[pinIndex] != nullptr) {
+        neoPixels[pinIndex]->begin();
+        neoPixels[pinIndex]->clear();
+        neoPixels[pinIndex]->show();
+        Serial.printf("✓ WS2812B initialized on GPIO %d with %d LEDs\n", gpio, DEFAULT_LED_COUNT);
+    } else {
+        Serial.printf("✗ Failed to initialize WS2812B on GPIO %d\n", gpio);
+    }
+}
+
+void setNeoPixelColor(uint8_t pinIndex, uint32_t color, uint8_t brightness) {
+    if (pinIndex >= MAX_PINS || neoPixels[pinIndex] == nullptr) return;
+    
+    // Apply brightness scaling
+    uint8_t r = (uint8_t)((color >> 16) & 0xFF);
+    uint8_t g = (uint8_t)((color >> 8) & 0xFF);
+    uint8_t b = (uint8_t)(color & 0xFF);
+    
+    r = (r * brightness) / 255;
+    g = (g * brightness) / 255;
+    b = (b * brightness) / 255;
+    
+    uint32_t scaledColor = neoPixels[pinIndex]->Color(r, g, b);
+    
+    // Set all LEDs to the same color
+    for (uint16_t i = 0; i < DEFAULT_LED_COUNT; i++) {
+        neoPixels[pinIndex]->setPixelColor(i, scaledColor);
+    }
+    neoPixels[pinIndex]->show();
+}
+
+void setNeoPixelState(uint8_t pinIndex, bool state) {
+    if (pinIndex >= MAX_PINS || neoPixels[pinIndex] == nullptr) return;
+    
+    if (state) {
+        // Turn on with configured color and brightness
+        setNeoPixelColor(pinIndex, config.pins[pinIndex].color, config.pins[pinIndex].brightness);
+    } else {
+        // Turn off (clear all pixels)
+        neoPixels[pinIndex]->clear();
+        neoPixels[pinIndex]->show();
+    }
+}
+
+// Effects System Functions
+
+void updateEffects() {
+    for (uint8_t i = 0; i < MAX_PINS; i++) {
+        if (config.pins[i].enabled && config.pins[i].effectActive) {
+            switch (config.pins[i].effect) {
+                case EffectType::EFFECT_CANDLE_FLICKER:
+                    updateCandleFlicker(i);
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+}
+
+void updateCandleFlicker(uint8_t pinIndex) {
+    if (pinIndex >= MAX_PINS) return;
+    
+    unsigned long now = millis();
+    uint16_t interval = map(config.pins[pinIndex].effectSpeed, 1, 255, 200, 20); // Speed control
+    
+    if (now - effectStates[pinIndex].lastUpdate >= interval) {
+        effectStates[pinIndex].lastUpdate = now;
+        
+        // Generate random flicker values
+        uint8_t baseBrightness = config.pins[pinIndex].brightness;
+        uint8_t flickerRange = baseBrightness / 4; // 25% flicker range
+        uint8_t minBrightness = baseBrightness - flickerRange;
+        uint8_t maxBrightness = baseBrightness;
+        
+        // Create realistic candle flicker pattern
+        uint8_t newBrightness;
+        if (random(100) < 85) {
+            // 85% chance of subtle variation
+            newBrightness = random(baseBrightness - flickerRange/2, baseBrightness + 1);
+        } else {
+            // 15% chance of dramatic flicker
+            newBrightness = random(minBrightness, maxBrightness + 1);
+        }
+        
+        // Ensure brightness stays within bounds
+        newBrightness = constrain(newBrightness, minBrightness, maxBrightness);
+        
+        setPinBrightness(pinIndex, newBrightness);
+        effectStates[pinIndex].currentBrightness = newBrightness;
+    }
+}
+
+void startEffect(uint8_t pinIndex, EffectType effect) {
+    if (pinIndex >= MAX_PINS) return;
+    
+    config.pins[pinIndex].effect = effect;
+    config.pins[pinIndex].effectActive = true;
+    
+    // Initialize effect state with randomization to prevent sync
+    effectStates[pinIndex].lastUpdate = millis() + random(0, 500); // Random 0-500ms offset
+    effectStates[pinIndex].step = random(0, 100); // Random starting step
+    effectStates[pinIndex].currentBrightness = config.pins[pinIndex].brightness;
+    effectStates[pinIndex].direction = random(0, 2) == 0; // Random initial direction
+    
+    Serial.printf("Started effect %d on pin %d (offset: %dms)\n", 
+                 (int)effect, pinIndex, effectStates[pinIndex].lastUpdate - millis());
+}
+
+void stopEffect(uint8_t pinIndex) {
+    if (pinIndex >= MAX_PINS) return;
+    
+    config.pins[pinIndex].effectActive = false;
+    
+    // Reset to original brightness
+    setPinBrightness(pinIndex, config.pins[pinIndex].brightness);
+    
+    Serial.printf("Stopped effect on pin %d\n", pinIndex);
+}
+
+void setPinBrightness(uint8_t pinIndex, uint8_t brightness) {
+    if (pinIndex >= MAX_PINS || !config.pins[pinIndex].enabled) return;
+    
+    PinMode mode = config.pins[pinIndex].mode;
+    uint8_t gpio = config.pins[pinIndex].gpio;
+    
+    switch (mode) {
+        case PinMode::OUTPUT_PWM:
+            analogWrite(gpio, brightness);
+            break;
+        case PinMode::OUTPUT_DIGITAL:
+            digitalWrite(gpio, brightness > 128 ? HIGH : LOW);
+            break;
+        case PinMode::OUTPUT_WS2812B:
+            if (neoPixels[pinIndex] != nullptr) {
+                setNeoPixelColor(pinIndex, config.pins[pinIndex].color, brightness);
+            }
+            break;
+        default:
+            break;
+    }
+}
+
+// Group Effect Functions
+
+void startGroupEffect(uint8_t group, EffectType effect, uint16_t duration) {
+    if (group == 0) return; // Group 0 reserved for no group
+    
+    int pinsAffected = 0;
+    
+    // Start effect on all pins in the group
+    for (uint8_t i = 0; i < MAX_PINS; i++) {
+        if (config.pins[i].enabled && config.pins[i].effectGroup == group) {
+            startEffect(i, effect);
+            pinsAffected++;
+        }
+    }
+    
+    Serial.printf("Started group %d effect %d on %d pins", group, (int)effect, pinsAffected);
+    if (duration > 0) {
+        Serial.printf(" for %dms", duration);
+        // TODO: Implement duration timer
+    }
+    Serial.println();
+}
+
+void stopGroupEffect(uint8_t group) {
+    if (group == 0) return; // Group 0 reserved for no group
+    
+    int pinsAffected = 0;
+    
+    // Stop effect on all pins in the group
+    for (uint8_t i = 0; i < MAX_PINS; i++) {
+        if (config.pins[i].enabled && config.pins[i].effectGroup == group) {
+            stopEffect(i);
+            pinsAffected++;
+        }
+    }
+    
+    Serial.printf("Stopped group %d effects on %d pins\n", group, pinsAffected);
+}
+
+// DFPlayer Mini Audio Functions
+
+void setupAudio() {
+    if (!config.audioEnabled) {
+        Serial.println("Audio system disabled in configuration");
+        return;
+    }
+    
+    // Initialize UART for DFPlayer
+    dfPlayerSerial.begin(9600, SERIAL_8N1, DFPLAYER_RX_PIN, DFPLAYER_TX_PIN);
+    delay(1000); // Wait for DFPlayer to initialize
+    
+    // Initialize DFPlayer Mini
+    if (dfPlayer.begin(dfPlayerSerial)) {
+        Serial.println("✓ DFPlayer Mini initialized successfully");
+        
+        // Set initial volume
+        dfPlayer.volume(config.volume);
+        Serial.printf("✓ Audio volume set to %d/30\n", config.volume);
+        
+        // Query available files
+        int fileCount = dfPlayer.readFileCounts();
+        Serial.printf("✓ Found %d audio files on SD card\n", fileCount);
+        
+        audioInitialized = true;
+    } else {
+        Serial.println("✗ Failed to initialize DFPlayer Mini");
+        Serial.println("  Check connections and SD card");
+        audioInitialized = false;
+    }
+}
+
+void playAudioFile(uint8_t fileNumber) {
+    if (!audioInitialized || !config.audioEnabled) {
+        Serial.printf("⚠ Audio not ready - cannot play file %d\n", fileNumber);
+        return;
+    }
+    
+    Serial.printf("🔊 Playing audio file %03d\n", fileNumber);
+    dfPlayer.play(fileNumber);
+}
+
+void setAudioVolume(uint8_t volume) {
+    if (!audioInitialized) return;
+    
+    volume = constrain(volume, 0, 30); // DFPlayer volume range 0-30
+    dfPlayer.volume(volume);
+    Serial.printf("🔊 Audio volume set to %d/30\n", volume);
+}
+
+void stopAudio() {
+    if (!audioInitialized) return;
+    
+    dfPlayer.stop();
+    Serial.println("🔇 Audio stopped");
+}
+
+bool isAudioReady() {
+    return audioInitialized && config.audioEnabled;
+}
+
+void checkPinConflicts() {
+    if (!config.audioEnabled) return;
+    
+    // Check if any configured pins conflict with DFPlayer pins
+    for (uint8_t i = 0; i < MAX_PINS; i++) {
+        if (config.pins[i].enabled) {
+            uint8_t gpio = config.pins[i].gpio;
+            if (gpio == DFPLAYER_RX_PIN || gpio == DFPLAYER_TX_PIN) {
+                Serial.printf("⚠ WARNING: Pin %d conflicts with DFPlayer (GPIO %d)\n", i, gpio);
+                Serial.printf("  DFPlayer uses GPIO %d (RX) and %d (TX)\n", DFPLAYER_RX_PIN, DFPLAYER_TX_PIN);
+                Serial.printf("  Disabling pin %d to avoid conflict\n", i);
+                config.pins[i].enabled = false;
+            }
+        }
+    }
+}
+
+// Audio Mapping Functions
+
+void playEffectAudio(EffectType effect) {
+    if (!isAudioReady()) return;
+    
+    uint8_t fileNumber = 0;
+    
+    switch (effect) {
+        case EffectType::EFFECT_CANDLE_FLICKER:
+            fileNumber = config.audioMap.candleFlicker;
+            break;
+        case EffectType::EFFECT_FADE:
+            fileNumber = config.audioMap.fade;
+            break;
+        case EffectType::EFFECT_PULSE:
+            fileNumber = config.audioMap.pulse;
+            break;
+        case EffectType::EFFECT_STROBE:
+            fileNumber = config.audioMap.strobe;
+            break;
+        case EffectType::EFFECT_ENGINE_IDLE:
+            fileNumber = config.audioMap.engineIdle;
+            break;
+        case EffectType::EFFECT_ENGINE_REV:
+            fileNumber = config.audioMap.engineRev;
+            break;
+        case EffectType::EFFECT_MACHINE_GUN:
+            fileNumber = config.audioMap.machineGun;
+            break;
+        case EffectType::EFFECT_FLAMETHROWER:
+            fileNumber = config.audioMap.flamethrower;
+            break;
+        case EffectType::EFFECT_TAKING_HITS:
+            fileNumber = config.audioMap.takingHits;
+            break;
+        case EffectType::EFFECT_EXPLOSION:
+            fileNumber = config.audioMap.explosion;
+            break;
+        case EffectType::EFFECT_ROCKET_LAUNCHER:
+            fileNumber = config.audioMap.rocketLauncher;
+            break;
+        default:
+            return; // No audio mapping for this effect
+    }
+    
+    if (fileNumber > 0) {
+        playAudioFile(fileNumber);
+        Serial.printf("Playing effect audio: %s -> file %03d\n", 
+                      getEffectName(effect).c_str(), fileNumber);
+    }
+}
+
+void playScenarioAudio(const String& scenario) {
+    if (!isAudioReady()) return;
+    
+    uint8_t fileNumber = 0;
+    
+    if (scenario.equalsIgnoreCase("engine_idle")) {
+        fileNumber = config.audioMap.engineIdle;
+    } else if (scenario.equalsIgnoreCase("engine_rev")) {
+        fileNumber = config.audioMap.engineRev;
+    } else if (scenario.equalsIgnoreCase("machine_gun")) {
+        fileNumber = config.audioMap.machineGun;
+    } else if (scenario.equalsIgnoreCase("flamethrower")) {
+        fileNumber = config.audioMap.flamethrower;
+    } else if (scenario.equalsIgnoreCase("taking_hits")) {
+        fileNumber = config.audioMap.takingHits;
+    } else if (scenario.equalsIgnoreCase("explosion")) {
+        fileNumber = config.audioMap.explosion;
+    } else if (scenario.equalsIgnoreCase("rocket_launcher")) {
+        fileNumber = config.audioMap.rocketLauncher;
+    } else if (scenario.equalsIgnoreCase("kill_confirmed")) {
+        fileNumber = config.audioMap.killConfirmed;
+    }
+    
+    if (fileNumber > 0) {
+        playAudioFile(fileNumber);
+        Serial.printf("Playing scenario audio: %s -> file %03d\n", 
+                      scenario.c_str(), fileNumber);
+    }
+}
+
+String getEffectName(EffectType effect) {
+    switch (effect) {
+        case EffectType::EFFECT_NONE: return "None";
+        case EffectType::EFFECT_CANDLE_FLICKER: return "Candle Flicker";
+        case EffectType::EFFECT_FADE: return "Fade";
+        case EffectType::EFFECT_PULSE: return "Pulse";
+        case EffectType::EFFECT_STROBE: return "Strobe";
+        case EffectType::EFFECT_ENGINE_IDLE: return "Engine Idle";
+        case EffectType::EFFECT_ENGINE_REV: return "Engine Rev";
+        case EffectType::EFFECT_MACHINE_GUN: return "Machine Gun";
+        case EffectType::EFFECT_FLAMETHROWER: return "Flamethrower";
+        case EffectType::EFFECT_TAKING_HITS: return "Taking Hits";
+        case EffectType::EFFECT_EXPLOSION: return "Explosion";
+        case EffectType::EFFECT_ROCKET_LAUNCHER: return "Rocket Launcher";
+        case EffectType::EFFECT_CONSOLE_RGB: return "Console RGB";
+        case EffectType::EFFECT_STATIC_ON: return "Static On";
+        case EffectType::EFFECT_STATIC_OFF: return "Static Off";
+        default: return "Unknown";
+    }
 }
