@@ -222,7 +222,7 @@ void WebServerManager::handlePinEffect() {
         return;
     }
     
-    if (!doc.containsKey("pin") || !doc.containsKey("effect")) {
+    if (!doc["pin"].is<int>() || !doc["effect"].is<int>()) {
         sendJsonResponse(400, "Missing pin or effect parameters");
         return;
     }
@@ -252,7 +252,7 @@ void WebServerManager::handlePinState() {
         return;
     }
     
-    if (!doc.containsKey("pin") || !doc.containsKey("state")) {
+    if (!doc["pin"].is<int>() || !doc["state"].is<bool>()) {
         sendJsonResponse(400, "Missing pin or state parameters");
         return;
     }
@@ -287,7 +287,7 @@ void WebServerManager::handleAudioPlay() {
         return;
     }
     
-    if (!doc.containsKey("file")) {
+    if (!doc["file"].is<int>()) {
         sendJsonResponse(400, "Missing file parameter");
         return;
     }
@@ -324,7 +324,7 @@ void WebServerManager::handleAudioVolume() {
         return;
     }
     
-    if (!doc.containsKey("volume")) {
+    if (!doc["volume"].is<int>()) {
         sendJsonResponse(400, "Missing volume parameter");
         return;
     }
@@ -355,7 +355,7 @@ void WebServerManager::handleGlobalEffect() {
         return;
     }
     
-    if (!doc.containsKey("effect")) {
+    if (!doc["effect"].is<const char*>()) {
         sendJsonResponse(400, "Missing effect parameter");
         return;
     }

@@ -152,7 +152,7 @@ JsonDocument ConfigManager::configToJson() const {
 }
 
 bool ConfigManager::jsonToConfig(const JsonDocument& doc) {
-    if (!doc.containsKey("version")) {
+    if (!doc["version"].is<const char*>()) {
         Serial.println("Config file missing version field");
         return false;
     }
@@ -165,8 +165,8 @@ bool ConfigManager::jsonToConfig(const JsonDocument& doc) {
     config.audioEnabled = doc["audioEnabled"] | true;
     config.activePins = doc["activePins"] | 0;
     
-    if (doc.containsKey("pins") && doc["pins"].is<JsonArray>()) {
-        JsonArray pinsArray = doc["pins"];
+    if (doc["pins"].is<JsonArray>()) {
+        JsonArray pinsArray = doc["pins"].as<JsonArray>();
         for (uint8_t i = 0; i < 10 && i < pinsArray.size(); i++) {
             JsonObject pinObj = pinsArray[i];
             config.pins[i].pin = pinObj["pin"] | 0;

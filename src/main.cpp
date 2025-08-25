@@ -3,6 +3,13 @@
 #include "hal/gpio_manager.h"
 #include "web/server.h"
 
+// Function declarations
+bool initializeSystem();
+bool setupWiFi();
+void printSystemInfo();
+void reportSystemStatus();
+const char* getPinModeString(PinMode mode);
+
 // Application state
 bool systemInitialized = false;
 unsigned long lastStatusReport = 0;
