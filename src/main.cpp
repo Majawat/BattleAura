@@ -183,7 +183,17 @@ void setupWebServer() {
     // GPIO control endpoints
     server.on("/led/on", HTTP_GET, []() { handleLedControl(true); });
     server.on("/led/off", HTTP_GET, []() { handleLedControl(false); });
-    server.on("/led/toggle", HTTP_GET, []() { handleLedControl(!ledState); });
+    server.on("/led/toggle", HTTP_GET, []() { 
+        // Find first enabled output pin and toggle its state
+        for (uint8_t i = 0; i < MAX_PINS; i++) {
+            if (config.pins[i].enabled && 
+                (config.pins[i].mode == PinMode::OUTPUT_DIGITAL || config.pins[i].mode == PinMode::OUTPUT_PWM)) {
+                handleLedControl(!pinStates[i]);
+                return;
+            }
+        }
+        server.send(404, "text/plain", F("No output pins configured"));
+    });
     
     // 404 handler
     server.onNotFound([]() {
@@ -230,11 +240,30 @@ void handleRoot() {
     
     html += F("</div>"
              "<div class=\"status\">"
-             "<h3>GPIO Control</h3>"
-             "<p><strong>Test LED (GPIO 2):</strong> ");
-    html += ledState ? "ON" : "OFF";
-    html += F("</p>"
-             "<button onclick=\"fetch('/led/on')\" style=\"background:#4CAF50; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">LED ON</button>"
+             "<h3>GPIO Control</h3>");
+    
+    // Show status of first enabled output pin
+    bool foundPin = false;
+    for (uint8_t i = 0; i < MAX_PINS; i++) {
+        if (config.pins[i].enabled && 
+            (config.pins[i].mode == PinMode::OUTPUT_DIGITAL || config.pins[i].mode == PinMode::OUTPUT_PWM)) {
+            html += F("<p><strong>");
+            html += config.pins[i].name;
+            html += F(" (GPIO ");
+            html += config.pins[i].gpio;
+            html += F("):</strong> ");
+            html += pinStates[i] ? "ON" : "OFF";
+            html += F("</p>");
+            foundPin = true;
+            break;
+        }
+    }
+    
+    if (!foundPin) {
+        html += F("<p><em>No output pins configured</em></p>");
+    }
+    
+    html += F("<button onclick=\"fetch('/led/on')\" style=\"background:#4CAF50; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">LED ON</button>"
              "<button onclick=\"fetch('/led/off')\" style=\"background:#f44336; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">LED OFF</button>"
              "<button onclick=\"fetch('/led/toggle'); setTimeout(function(){location.reload();}, 100);\" style=\"background:#ff6b35; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">TOGGLE</button>"
              "</div>"
