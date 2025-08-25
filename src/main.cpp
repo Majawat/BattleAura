@@ -1,185 +1,153 @@
 #include <Arduino.h>
-#include "core/config.h"
-#include "hal/gpio_manager.h"
-#include "web/server.h"
+#include <WiFi.h>
+#include <WebServer.h>
 
-// Function declarations
-bool initializeSystem();
-bool setupWiFi();
-void printSystemInfo();
-void reportSystemStatus();
-const char* getPinModeString(PinMode mode);
+// Application constants
+const char* VERSION = "1.2.0-minimal";
+const char* AP_SSID = "BattleAura";  
+const char* AP_PASS = "battlesync";
+const int AP_CHANNEL = 1;
+
+// Global objects
+WebServer server(80);
 
 // Application state
-bool systemInitialized = false;
-unsigned long lastStatusReport = 0;
-const unsigned long STATUS_INTERVAL = 30000; // 30 seconds
+bool systemReady = false;
+unsigned long lastHeartbeat = 0;
+const unsigned long HEARTBEAT_INTERVAL = 10000; // 10 seconds
+
+// Forward declarations
+void setupWiFiAP();
+void setupWebServer(); 
+void handleRoot();
+void printSystemInfo();
 
 void setup() {
     Serial.begin(115200);
-    delay(2000); // Allow serial monitor to connect
+    delay(1000); // Brief delay for serial stabilization
     
     Serial.println();
-    Serial.println("========================================");
-    Serial.println("BattleAura v" BATTLEARUA_VERSION " Starting...");
-    Serial.println("========================================");
+    Serial.println("==================================");  
+    Serial.printf("BattleAura %s Starting...\n", VERSION);
+    Serial.println("==================================");
     Serial.printf("Chip: %s\n", ESP.getChipModel());
     Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
-    Serial.printf("Flash size: %d bytes\n", ESP.getFlashChipSize());
-    Serial.println("========================================");
+    Serial.printf("CPU frequency: %d MHz\n", ESP.getCpuFreqMHz());
     
-    // Initialize core components in proper order
-    if (!initializeSystem()) {
-        Serial.println("CRITICAL: System initialization failed!");
-        Serial.println("System will continue with limited functionality");
-        // Don't return - continue with degraded functionality
-    }
+    // Initialize WiFi Access Point
+    Serial.println("Setting up WiFi Access Point...");
+    setupWiFiAP();
     
-    Serial.println();
-    Serial.println("🎉 BattleAura Ready! 🎉");
+    // Initialize Web Server  
+    Serial.println("Setting up Web Server...");
+    setupWebServer();
+    
+    // Print final system info
     printSystemInfo();
-    Serial.println("========================================");
     
-    systemInitialized = true;
+    systemReady = true;
+    Serial.println("==================================");
+    Serial.println("🎯 SYSTEM READY!");
+    Serial.println("==================================");
 }
 
 void loop() {
-    // Handle web server requests
-    WebServerManager::getInstance().handleClient();
+    // Handle web server requests (non-blocking)
+    server.handleClient();
     
-    // Periodic status reporting
-    unsigned long currentTime = millis();
-    if (currentTime - lastStatusReport >= STATUS_INTERVAL) {
-        reportSystemStatus();
-        lastStatusReport = currentTime;
+    // Periodic heartbeat (non-blocking timing)
+    unsigned long now = millis();
+    if (now - lastHeartbeat >= HEARTBEAT_INTERVAL) {
+        Serial.printf("[%lu] Heartbeat - Free heap: %d bytes\n", 
+                     now / 1000, ESP.getFreeHeap());
+        lastHeartbeat = now;
     }
     
-    // Small delay to prevent watchdog issues
-    delay(10);
+    // Small yield to prevent watchdog issues
+    delay(1);
 }
 
-bool initializeSystem() {
-    bool allSuccess = true;
+void setupWiFiAP() {
+    WiFi.mode(WIFI_AP);
+    bool result = WiFi.softAP(AP_SSID, AP_PASS, AP_CHANNEL);
     
-    // 1. Initialize Configuration Manager
-    Serial.println("Initializing ConfigManager...");
-    if (ConfigManager::getInstance().initialize()) {
-        Serial.println("✓ ConfigManager initialized successfully");
+    if (result) {
+        Serial.printf("✓ WiFi AP created: %s\n", AP_SSID);
+        Serial.printf("✓ Password: %s\n", AP_PASS); 
+        Serial.printf("✓ IP Address: %s\n", WiFi.softAPIP().toString().c_str());
     } else {
-        Serial.println("✗ ConfigManager initialization failed");
-        allSuccess = false;
+        Serial.println("✗ Failed to create WiFi AP");
+        Serial.println("  Continuing with limited functionality...");
     }
-    
-    // 2. Initialize GPIO Manager  
-    Serial.println("Initializing GPIOManager...");
-    GPIOManager& gpio = GPIOManager::getInstance();
-    
-    // Configure pins based on config
-    const SystemConfig& config = ConfigManager::getInstance().getConfig();
-    for (uint8_t i = 0; i < 10; i++) {
-        const PinConfig& pinCfg = config.pins[i];
-        if (pinCfg.enabled) {
-            if (gpio.configurePins(pinCfg.pin, pinCfg.pinMode)) {
-                Serial.printf("✓ Configured GPIO %d as %s\n", 
-                    pinCfg.pin, getPinModeString(pinCfg.pinMode));
-            } else {
-                Serial.printf("✗ Failed to configure GPIO %d\n", pinCfg.pin);
-                allSuccess = false;
-            }
-        }
-    }
-    
-    // 3. Initialize Web Server
-    Serial.println("Initializing WebServer...");
-    if (WebServerManager::getInstance().initialize()) {
-        Serial.println("✓ WebServer initialized successfully");
-    } else {
-        Serial.println("✗ WebServer initialization failed");
-        allSuccess = false;
-    }
-    
-    // 4. Setup WiFi
-    Serial.println("Setting up WiFi...");
-    if (setupWiFi()) {
-        Serial.println("✓ WiFi setup completed");
-    } else {
-        Serial.println("✗ WiFi setup failed");
-        allSuccess = false;
-    }
-    
-    return allSuccess;
 }
 
-bool setupWiFi() {
-    const SystemConfig& config = ConfigManager::getInstance().getConfig();
-    WebServerManager& webServer = WebServerManager::getInstance();
+void setupWebServer() {
+    // Root handler
+    server.on("/", HTTP_GET, handleRoot);
     
-    if (config.wifiEnabled && config.wifiSSID.length() > 0) {
-        Serial.printf("Attempting to connect to WiFi: %s\n", config.wifiSSID.c_str());
-        
-        if (webServer.connectWiFiStation(config.wifiSSID, config.wifiPassword)) {
-            Serial.printf("✓ Connected to WiFi. IP: %s\n", webServer.getIPAddress().c_str());
-            return true;
-        } else {
-            Serial.println("✗ WiFi connection failed, falling back to AP mode");
-        }
-    }
+    // Status endpoint
+    server.on("/status", HTTP_GET, []() {
+        server.send(200, "text/plain", "OK");
+    });
     
-    // Fallback to AP mode
-    Serial.println("Starting WiFi Access Point...");
-    String apName = config.deviceName;
-    if (apName.length() == 0) {
-        apName = "BattleAura-" + String(random(1000, 9999));
-    }
+    // 404 handler
+    server.onNotFound([]() {
+        server.send(404, "text/plain", "Not found");
+    });
     
-    if (webServer.startWiFiAP(apName, "battlesync")) {
-        Serial.printf("✓ WiFi AP started: %s\n", apName.c_str());
-        Serial.printf("✓ AP IP Address: %s\n", webServer.getIPAddress().c_str());
-        return true;
-    } else {
-        Serial.println("✗ Failed to start WiFi AP");
-        return false;
-    }
+    server.begin();
+    Serial.println("✓ Web server started on port 80");
+}
+
+void handleRoot() {
+    String html = F("<!DOCTYPE html>"
+                   "<html><head>"
+                   "<title>BattleAura Control</title>"
+                   "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+                   "<style>"
+                   "body { font-family: Arial; margin: 20px; background: #1a1a2e; color: white; }"
+                   ".header { text-align: center; margin-bottom: 20px; }"
+                   ".status { background: #16213e; padding: 15px; border-radius: 8px; margin-bottom: 20px; }"
+                   ".ready { color: #4CAF50; font-weight: bold; }"
+                   "</style>"
+                   "</head><body>"
+                   "<div class=\"header\">"
+                   "<h1>🎯 BattleAura Control</h1>"
+                   "<p>Tactical Lighting & Audio System</p>"
+                   "</div>"
+                   "<div class=\"status\">"
+                   "<h3>System Status</h3>");
+    
+    html += "<p><strong>Version:</strong> ";
+    html += VERSION;
+    html += "</p>";
+    
+    html += "<p><strong>Status:</strong> <span class=\"ready\">READY</span></p>";
+    
+    html += "<p><strong>Free Memory:</strong> ";
+    html += ESP.getFreeHeap();
+    html += " bytes</p>";
+    
+    html += "<p><strong>Uptime:</strong> ";
+    html += millis() / 1000;
+    html += " seconds</p>";
+    
+    html += F("</div>"
+             "<div class=\"status\">"
+             "<h3>Quick Test</h3>"
+             "<p>If you can see this page, the basic system is working!</p>"
+             "</div>"
+             "</body></html>");
+    
+    server.send(200, "text/html", html);
 }
 
 void printSystemInfo() {
-    const SystemConfig& config = ConfigManager::getInstance().getConfig();
-    WebServerManager& webServer = WebServerManager::getInstance();
-    
-    Serial.printf("Device Name: %s\n", config.deviceName.c_str());
-    Serial.printf("IP Address: %s\n", webServer.getIPAddress().c_str());
-    Serial.printf("Web Interface: http://%s/\n", webServer.getIPAddress().c_str());
-    Serial.printf("Active Pins: %d\n", config.activePins);
-    Serial.printf("Audio: %s (Volume: %d)\n", 
-        config.audioEnabled ? "Enabled" : "Disabled", config.volume);
-    
-    if (config.activePins > 0) {
-        Serial.println("Configured Pins:");
-        for (uint8_t i = 0; i < 10; i++) {
-            const PinConfig& pin = config.pins[i];
-            if (pin.enabled) {
-                Serial.printf("  GPIO %d: %s (%s)\n", 
-                    pin.pin, pin.name.c_str(), getPinModeString(pin.pinMode));
-            }
-        }
-    }
-}
-
-void reportSystemStatus() {
-    if (!systemInitialized) return;
-    
-    Serial.printf("[%lu] Status: Free heap: %d bytes | Uptime: %lu seconds\n",
-        millis(), ESP.getFreeHeap(), millis() / 1000);
-}
-
-const char* getPinModeString(PinMode mode) {
-    switch (mode) {
-        case PinMode::PIN_DISABLED: return "Disabled";
-        case PinMode::OUTPUT_STANDARD: return "Standard Output";
-        case PinMode::OUTPUT_PWM: return "PWM Output";  
-        case PinMode::OUTPUT_WS2812B: return "WS2812B RGB";
-        case PinMode::INPUT_DIGITAL: return "Digital Input";
-        case PinMode::INPUT_ANALOG: return "Analog Input";
-        default: return "Unknown";
-    }
+    Serial.println();
+    Serial.println("System Configuration:");
+    Serial.printf("  WiFi AP: %s\n", AP_SSID);
+    Serial.printf("  IP Address: %s\n", WiFi.softAPIP().toString().c_str());
+    Serial.printf("  Web Interface: http://%s/\n", WiFi.softAPIP().toString().c_str());
+    Serial.printf("  Free heap: %d bytes\n", ESP.getFreeHeap());
+    Serial.printf("  Flash size: %d bytes\n", ESP.getFlashChipSize());
 }
