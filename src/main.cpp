@@ -4,9 +4,10 @@
 #include <Update.h>
 #include <SPIFFS.h>
 #include <ArduinoJson.h>
+#include <ESPmDNS.h>
 
 // Application constants
-const char* VERSION = "0.4.0-dev";
+const char* VERSION = "0.5.0-dev";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -73,7 +74,10 @@ void setupSPIFFS();
 void loadConfiguration();
 void saveConfiguration();
 void initializeDefaults();
+void setupWiFi();
+bool setupWiFiStation();
 void setupWiFiAP();
+void setupmDNS();
 void setupWebServer();
 void setupGPIO();
 void handleRoot();
@@ -108,9 +112,9 @@ void setup() {
     Serial.println("Setting up GPIO pins...");
     setupGPIO();
     
-    // Initialize WiFi Access Point
-    Serial.println("Setting up WiFi Access Point...");
-    setupWiFiAP();
+    // Initialize WiFi (Station mode with AP fallback)
+    Serial.println("Setting up WiFi connection...");
+    setupWiFi();
     
     // Initialize Web Server  
     Serial.println("Setting up Web Server...");
@@ -141,17 +145,86 @@ void loop() {
     delay(1);
 }
 
+void setupWiFi() {
+    WiFi.disconnect(true);
+    delay(100);
+    
+    // Try station mode first if WiFi is enabled and configured
+    if (config.wifiEnabled && config.wifiSSID.length() > 0) {
+        if (setupWiFiStation()) {
+            setupmDNS();
+            return; // Successfully connected to station
+        }
+        Serial.println("Station mode failed, falling back to AP mode...");
+    } else {
+        Serial.println("WiFi station mode not configured, using AP mode");
+    }
+    
+    // Fallback to AP mode
+    setupWiFiAP();
+    setupmDNS();
+}
+
+bool setupWiFiStation() {
+    Serial.printf("Attempting to connect to WiFi: %s\n", config.wifiSSID.c_str());
+    
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(config.wifiSSID.c_str(), config.wifiPassword.c_str());
+    
+    // Wait for connection with timeout
+    unsigned long startAttemptTime = millis();
+    const unsigned long timeout = 15000; // 15 second timeout
+    
+    while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < timeout) {
+        delay(500);
+        Serial.print(".");
+    }
+    Serial.println();
+    
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.printf("✓ Connected to WiFi: %s\n", config.wifiSSID.c_str());
+        Serial.printf("✓ IP Address: %s\n", WiFi.localIP().toString().c_str());
+        Serial.printf("✓ Signal strength: %d dBm\n", WiFi.RSSI());
+        return true;
+    } else {
+        Serial.printf("✗ Failed to connect to WiFi: %s\n", config.wifiSSID.c_str());
+        Serial.printf("  Status code: %d\n", WiFi.status());
+        return false;
+    }
+}
+
 void setupWiFiAP() {
     WiFi.mode(WIFI_AP);
-    bool result = WiFi.softAP(AP_SSID, AP_PASS, AP_CHANNEL);
+    
+    // Use configured device name as AP SSID if available
+    String apName = config.deviceName.length() > 0 ? config.deviceName : AP_SSID;
+    
+    bool result = WiFi.softAP(apName.c_str(), AP_PASS, AP_CHANNEL);
     
     if (result) {
-        Serial.printf("✓ WiFi AP created: %s\n", AP_SSID);
+        Serial.printf("✓ WiFi AP created: %s\n", apName.c_str());
         Serial.printf("✓ Password: %s\n", AP_PASS); 
         Serial.printf("✓ IP Address: %s\n", WiFi.softAPIP().toString().c_str());
     } else {
         Serial.println("✗ Failed to create WiFi AP");
         Serial.println("  Continuing with limited functionality...");
+    }
+}
+
+void setupmDNS() {
+    String hostname = config.deviceName.length() > 0 ? config.deviceName : "battlearua";
+    
+    // Remove spaces and convert to lowercase for hostname
+    hostname.toLowerCase();
+    hostname.replace(" ", "-");
+    
+    if (MDNS.begin(hostname.c_str())) {
+        Serial.printf("✓ mDNS responder started: %s.local\n", hostname.c_str());
+        MDNS.addService("http", "tcp", 80);
+        MDNS.addServiceTxt("http", "tcp", "version", VERSION);
+        MDNS.addServiceTxt("http", "tcp", "device", "BattleAura");
+    } else {
+        Serial.println("✗ Failed to start mDNS responder");
     }
 }
 
@@ -714,11 +787,27 @@ void printSystemInfo() {
     Serial.println();
     Serial.println("System Configuration:");
     Serial.printf("  Device: %s\n", config.deviceName.c_str());
-    Serial.printf("  WiFi AP: %s\n", AP_SSID);
-    Serial.printf("  IP Address: %s\n", WiFi.softAPIP().toString().c_str());
-    Serial.printf("  Web Interface: http://%s/\n", WiFi.softAPIP().toString().c_str());
-    Serial.printf("  Configuration: http://%s/config\n", WiFi.softAPIP().toString().c_str());
-    Serial.printf("  Firmware Updates: http://%s/update\n", WiFi.softAPIP().toString().c_str());
+    
+    // Show current WiFi status and connection info
+    if (WiFi.getMode() == WIFI_STA && WiFi.status() == WL_CONNECTED) {
+        Serial.printf("  WiFi: Connected to %s\n", WiFi.SSID().c_str());
+        Serial.printf("  IP Address: %s\n", WiFi.localIP().toString().c_str());
+        Serial.printf("  Web Interface: http://%s/\n", WiFi.localIP().toString().c_str());
+        
+        // Show mDNS hostname if available
+        String hostname = config.deviceName.length() > 0 ? config.deviceName : "battlearua";
+        hostname.toLowerCase();
+        hostname.replace(" ", "-");
+        Serial.printf("  mDNS: http://%s.local/\n", hostname.c_str());
+    } else if (WiFi.getMode() == WIFI_AP) {
+        String apName = config.deviceName.length() > 0 ? config.deviceName : AP_SSID;
+        Serial.printf("  WiFi: AP Mode (%s)\n", apName.c_str());
+        Serial.printf("  IP Address: %s\n", WiFi.softAPIP().toString().c_str());
+        Serial.printf("  Web Interface: http://%s/\n", WiFi.softAPIP().toString().c_str());
+    }
+    
+    Serial.printf("  Configuration: /config\n");
+    Serial.printf("  Firmware Updates: /update\n");
     Serial.printf("  Config File: %s\n", configLoaded ? "Loaded" : "Using defaults");
     Serial.printf("  Free heap: %d bytes\n", ESP.getFreeHeap());
     Serial.printf("  Flash size: %d bytes\n", ESP.getFlashChipSize());
