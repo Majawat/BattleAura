@@ -167,15 +167,14 @@ bool ConfigManager::jsonToConfig(const JsonDocument& doc) {
     
     if (doc["pins"].is<JsonArray>()) {
         for (uint8_t i = 0; i < 10 && i < doc["pins"].size(); i++) {
-            JsonObject pinObj = doc["pins"][i];
-            config.pins[i].pin = pinObj["pin"] | 0;
-            config.pins[i].pinMode = static_cast<PinMode>(pinObj["pinMode"] | 0);
-            config.pins[i].defaultEffect = static_cast<EffectType>(pinObj["defaultEffect"] | 0);
-            config.pins[i].name = pinObj["name"] | "Unused";
-            config.pins[i].audioFile = pinObj["audioFile"] | 0;
-            config.pins[i].enabled = pinObj["enabled"] | false;
-            config.pins[i].brightness = pinObj["brightness"] | 255;
-            config.pins[i].color = pinObj["color"] | 0xFFFFFF;
+            config.pins[i].pin = doc["pins"][i]["pin"] | 0;
+            config.pins[i].pinMode = static_cast<PinMode>(doc["pins"][i]["pinMode"] | 0);
+            config.pins[i].defaultEffect = static_cast<EffectType>(doc["pins"][i]["defaultEffect"] | 0);
+            config.pins[i].name = doc["pins"][i]["name"] | "Unused";
+            config.pins[i].audioFile = doc["pins"][i]["audioFile"] | 0;
+            config.pins[i].enabled = doc["pins"][i]["enabled"] | false;
+            config.pins[i].brightness = doc["pins"][i]["brightness"] | 255;
+            config.pins[i].color = doc["pins"][i]["color"] | 0xFFFFFF;
         }
     }
     
