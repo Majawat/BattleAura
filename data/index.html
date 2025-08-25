@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BattleAura Control</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>⚔️ BattleAura Control ⚔️</h1>
+            <p>Tactical Lighting & Audio System</p>
+        </header>
+        
+        <div class="status-grid">
+            <div class="status-card">
+                <strong>Device:</strong> <span id="deviceName">Loading...</span>
+            </div>
+            <div class="status-card">
+                <strong>Version:</strong> <span id="version">Loading...</span>
+            </div>
+            <div class="status-card">
+                <strong>WiFi:</strong> <span id="wifiStatus">Loading...</span>
+            </div>
+            <div class="status-card">
+                <strong>Audio:</strong> <span id="audioStatus">Loading...</span>
+            </div>
+        </div>
+        
+        <div class="controls-grid">
+            <section class="control-card">
+                <h3>🎯 Pin Configuration</h3>
+                <div id="pinControls">
+                    <!-- Pin controls loaded dynamically -->
+                </div>
+            </section>
+            
+            <section class="control-card">
+                <h3>🔊 Audio Control</h3>
+                <div class="audio-controls">
+                    <div class="volume-control">
+                        <label for="volumeSlider">Volume:</label>
+                        <input type="range" id="volumeSlider" min="0" max="30" value="15">
+                        <span id="volumeValue">15</span>
+                    </div>
+                    
+                    <div class="audio-buttons">
+                        <button class="btn btn-secondary" onclick="playAudio(1)">Tank Idle</button>
+                        <button class="btn btn-secondary" onclick="playAudio(3)">Machine Gun</button>
+                        <button class="btn btn-secondary" onclick="playAudio(4)">Flamethrower</button>
+                        <button class="btn btn-danger" onclick="stopAudio()">Stop Audio</button>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="control-card">
+                <h3>⚡ Global Effects</h3>
+                <div class="global-buttons">
+                    <button class="btn btn-primary" onclick="triggerGlobalEffect('explosion')">💥 Global Explosion</button>
+                    <button class="btn btn-secondary" onclick="triggerGlobalEffect('damage')">🎯 Taking Damage</button>
+                    <button class="btn btn-danger" onclick="stopAllEffects()">🛑 Stop All</button>
+                </div>
+            </section>
+            
+            <section class="control-card">
+                <h3>⚙️ System</h3>
+                <div class="system-buttons">
+                    <a href="/config.html" class="btn btn-secondary">Configuration</a>
+                    <button class="btn btn-primary" onclick="reloadConfig()">Reload Config</button>
+                    <button class="btn btn-danger" onclick="factoryReset()">Factory Reset</button>
+                </div>
+            </section>
+        </div>
+    </div>
+    
+    <div id="toast" class="toast"></div>
+    
+    <script src="/app.js"></script>
+</body>
+</html>
