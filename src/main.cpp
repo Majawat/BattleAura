@@ -28,7 +28,7 @@ void setupGPIO();
 void handleRoot();
 void handleUpdate();
 void handleUpdateUpload();
-void handleLedControl();
+void handleLedControl(bool state);
 void printSystemInfo();
 
 void setup() {
