@@ -120,10 +120,12 @@ struct PinConfig {
     bool effectActive;
     uint8_t effectGroup;
     uint16_t ledCount;  // Number of LEDs for WS2812B strips
+    EffectType defaultEffect;  // Effect to start automatically on boot
     
     PinConfig() : gpio(0), mode(PinMode::PIN_DISABLED), name("Unused"), 
                   enabled(false), brightness(255), color(0xFFFFFF),
-                  effect(EffectType::EFFECT_NONE), effectSpeed(100), effectActive(false), effectGroup(0), ledCount(10) {}
+                  effect(EffectType::EFFECT_NONE), effectSpeed(100), effectActive(false), effectGroup(0), ledCount(10),
+                  defaultEffect(EffectType::EFFECT_NONE) {}
 };
 
 // System configuration
@@ -188,6 +190,7 @@ void setupWiFiAP();
 void setupmDNS();
 void setupWebServer();
 void setupGPIO();
+void startDefaultEffects();
 void handleRoot();
 void handleStaticFile(const String& path, const String& contentType);
 void handleUpdate();
@@ -240,6 +243,10 @@ void setup() {
     // Initialize GPIO pins
     Serial.println("Setting up GPIO pins...");
     setupGPIO();
+    
+    // Start default effects
+    Serial.println("Starting default effects...");
+    startDefaultEffects();
     
     // Initialize Audio System
     if (config.audioEnabled) {
@@ -944,6 +951,18 @@ void setupGPIO() {
     }
 }
 
+void startDefaultEffects() {
+    Serial.println("=== Starting Default Effects ===");
+    
+    for (uint8_t i = 0; i < MAX_PINS; i++) {
+        if (config.pins[i].enabled && config.pins[i].defaultEffect != EffectType::EFFECT_NONE) {
+            Serial.printf("Starting default effect %d on pin %d (GPIO %d)\n", 
+                         (int)config.pins[i].defaultEffect, i, config.pins[i].gpio);
+            startEffect(i, config.pins[i].defaultEffect);
+        }
+    }
+}
+
 void handleLedControl(bool state) {
     Serial.printf("=== LED Control Debug ===\n");
     Serial.printf("Requested state: %s\n", state ? "ON" : "OFF");
@@ -1054,6 +1073,7 @@ void loadConfiguration() {
             config.pins[i].effectActive = doc["pins"][i]["effectActive"] | false;
             config.pins[i].effectGroup = doc["pins"][i]["effectGroup"] | 0;
             config.pins[i].ledCount = doc["pins"][i]["ledCount"] | 10;
+            config.pins[i].defaultEffect = static_cast<EffectType>(doc["pins"][i]["defaultEffect"] | 0);
         }
     }
     
@@ -1102,6 +1122,7 @@ void saveConfiguration() {
         pin["effectActive"] = config.pins[i].effectActive;
         pin["effectGroup"] = config.pins[i].effectGroup;
         pin["ledCount"] = config.pins[i].ledCount;
+        pin["defaultEffect"] = static_cast<uint8_t>(config.pins[i].defaultEffect);
     }
     
     // Save audio mapping
@@ -1247,6 +1268,28 @@ void handleConfig() {
         html += F("\"");
         if (config.pins[i].enabled) html += F(" checked");
         html += F("></div>"
+                 "<div class=\"form-row\">"
+                 "<label>Default Effect:</label>"
+                 "<select name=\"defaultEffect");
+        html += i;
+        html += F("\">");
+        
+        // Default effect options
+        const char* effects[] = {"None", "Candle Flicker", "Fade", "Pulse", "Strobe", "Engine Idle", "Engine Rev", 
+                                "Machine Gun", "Flamethrower", "Taking Hits", "Explosion", "Rocket Launcher", 
+                                "Console RGB", "Static On", "Static Off"};
+        for (int e = 0; e < 15; e++) {
+            html += F("<option value=\"");
+            html += e;
+            html += F("\"");
+            if (static_cast<int>(config.pins[i].defaultEffect) == e) html += F(" selected");
+            html += F(">");
+            html += effects[e];
+            html += F("</option>");
+        }
+        
+        html += F("</select>"
+                 "</div>"
                  "</div>");
     }
     
@@ -1285,6 +1328,7 @@ void handleConfigSave() {
         String modeArg = "mode" + String(i);
         String nameArg = "name" + String(i);
         String enabledArg = "enabled" + String(i);
+        String defaultEffectArg = "defaultEffect" + String(i);
         
         if (server.hasArg(gpioArg)) {
             config.pins[i].gpio = constrain(server.arg(gpioArg).toInt(), 0, 21);
@@ -1296,6 +1340,10 @@ void handleConfigSave() {
         
         if (server.hasArg(nameArg)) {
             config.pins[i].name = server.arg(nameArg);
+        }
+        
+        if (server.hasArg(defaultEffectArg)) {
+            config.pins[i].defaultEffect = static_cast<EffectType>(server.arg(defaultEffectArg).toInt());
         }
         
         config.pins[i].enabled = server.hasArg(enabledArg);
