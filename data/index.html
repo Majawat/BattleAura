@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>BattleAura Control</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 BattleAura Control</h1>
+        <p>Tactical Lighting & Audio System</p>
+    </div>
+
+    <div class="status">
+        <h3>System Status</h3>
+        <p><strong>Version:</strong> <span id="version">Loading...</span></p>
+        <p><strong>Status:</strong> <span class="ready">READY</span></p>
+        <p><strong>Free Memory:</strong> <span id="memory">Loading...</span> bytes</p>
+        <p><strong>Uptime:</strong> <span id="uptime">Loading...</span> seconds</p>
+    </div>
+
+    <div class="status">
+        <h3>GPIO Control</h3>
+        <div id="gpio-status">Loading...</div>
+        <button onclick="fetch('/led/on')" class="btn btn-green">LED ON</button>
+        <button onclick="fetch('/led/off')" class="btn btn-red">LED OFF</button>
+        <button onclick="fetch('/led/toggle'); setTimeout(function(){location.reload();}, 100);" class="btn btn-orange">TOGGLE</button>
+    </div>
+
+    <div class="status">
+        <h3>🕯️ Lighting Effects</h3>
+        <p>Control lighting effects on configured pins</p>
+        <div class="button-group">
+            <button onclick="startEffect(0, 1)" class="btn btn-green">Pin 0 Candle</button>
+            <button onclick="startEffect(1, 1)" class="btn btn-green">Pin 1 Candle</button>
+            <button onclick="startEffect(2, 1)" class="btn btn-green">Pin 2 Candle</button>
+        </div>
+        <div class="button-group">
+            <button onclick="groupEffect(1, 1)" class="btn btn-blue">Group 1 Effect</button>
+            <button onclick="groupEffect(2, 1)" class="btn btn-blue">Group 2 Effect</button>
+            <button onclick="stopAll()" class="btn btn-red">Stop All Effects</button>
+        </div>
+    </div>
+
+    <div class="status">
+        <h3>🎨 RGB LED Control</h3>
+        <p>Direct RGB color control (stops active effects)</p>
+        <div class="button-group">
+            <button onclick="setRgbColor('red')" class="btn rgb-red">Red</button>
+            <button onclick="setRgbColor('green')" class="btn rgb-green">Green</button>
+            <button onclick="setRgbColor('blue')" class="btn rgb-blue">Blue</button>
+            <button onclick="setRgbColor('white')" class="btn rgb-white">White</button>
+            <button onclick="setRgbColor('off')" class="btn rgb-off">OFF</button>
+        </div>
+        <button onclick="startRainbow()" class="btn rainbow">🌈 Rainbow Test</button>
+    </div>
+
+    <div class="status">
+        <h3>💡 Brightness Control</h3>
+        <p>Adjust LED brightness (0-255)</p>
+        <div class="brightness-control">
+            <label for="globalBrightness">Global Brightness:</label>
+            <input type="range" id="globalBrightness" min="0" max="255" value="255">
+            <div class="brightness-presets">
+                <button onclick="setBrightness(64)" class="btn brightness-25">25%</button>
+                <button onclick="setBrightness(128)" class="btn brightness-50">50%</button>
+                <button onclick="setBrightness(192)" class="btn brightness-75">75%</button>
+                <button onclick="setBrightness(255)" class="btn brightness-100">100%</button>
+            </div>
+            <span id="brightnessValue">255</span>
+        </div>
+    </div>
+
+    <div class="status">
+        <h3>Configuration</h3>
+        <p><a href="/config" class="link-green">⚙️ Device Configuration</a></p>
+        <p>Configure pins, WiFi, and system settings</p>
+    </div>
+
+    <div class="status">
+        <h3>Audio Mapping</h3>
+        <p><a href="/audio/map" class="link-blue">🎵 Audio Configuration</a></p>
+        <p>Configure audio-to-effect mappings</p>
+    </div>
+
+    <div class="status">
+        <h3>Firmware Update</h3>
+        <p><a href="/update" class="link-orange">📦 Upload New Firmware (.bin file)</a></p>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>

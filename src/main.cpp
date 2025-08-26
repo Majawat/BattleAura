@@ -189,6 +189,7 @@ void setupmDNS();
 void setupWebServer();
 void setupGPIO();
 void handleRoot();
+void handleStaticFile(const String& path, const String& contentType);
 void handleUpdate();
 void handleUpdateUpload();
 void handleConfig();
@@ -372,7 +373,36 @@ void setupWebServer() {
     // Root handler
     server.on("/", HTTP_GET, handleRoot);
     
-    // Status endpoint
+    // Static file handlers
+    server.on("/styles.css", HTTP_GET, []() { handleStaticFile("/styles.css", "text/css"); });
+    server.on("/app.js", HTTP_GET, []() { handleStaticFile("/app.js", "application/javascript"); });
+    
+    // API status endpoint
+    server.on("/api/status", HTTP_GET, []() {
+        JsonDocument statusDoc;
+        statusDoc["version"] = VERSION;
+        statusDoc["status"] = "READY";
+        statusDoc["freeHeap"] = ESP.getFreeHeap();
+        statusDoc["uptime"] = millis() / 1000;
+        
+        // Add GPIO pin status
+        JsonArray pins = statusDoc["pins"].to<JsonArray>();
+        for (uint8_t i = 0; i < MAX_PINS; i++) {
+            if (config.pins[i].enabled) {
+                JsonObject pin = pins.add<JsonObject>();
+                pin["gpio"] = config.pins[i].gpio;
+                pin["name"] = config.pins[i].name;
+                pin["mode"] = static_cast<int>(config.pins[i].mode);
+                pin["state"] = pinStates[i];
+            }
+        }
+        
+        String response;
+        serializeJson(statusDoc, response);
+        server.send(200, "application/json", response);
+    });
+    
+    // Legacy status endpoint
     server.on("/status", HTTP_GET, []() {
         server.send(200, "text/plain", F("OK"));
     });
@@ -775,140 +805,19 @@ void setupWebServer() {
 }
 
 void handleRoot() {
-    String html = F("<!DOCTYPE html>"
-                   "<html><head>"
-                   "<meta charset=\"UTF-8\">"
-                   "<title>BattleAura Control</title>"
-                   "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
-                   "<style>"
-                   "body { font-family: Arial; margin: 20px; background: #1a1a2e; color: white; }"
-                   ".header { text-align: center; margin-bottom: 20px; }"
-                   ".status { background: #16213e; padding: 15px; border-radius: 8px; margin-bottom: 20px; }"
-                   ".ready { color: #4CAF50; font-weight: bold; }"
-                   "</style>"
-                   "</head><body>"
-                   "<div class=\"header\">"
-                   "<h1>🎯 BattleAura Control</h1>"
-                   "<p>Tactical Lighting & Audio System</p>"
-                   "</div>"
-                   "<div class=\"status\">"
-                   "<h3>System Status</h3>");
-    
-    html += "<p><strong>Version:</strong> ";
-    html += VERSION;
-    html += "</p>";
-    
-    html += "<p><strong>Status:</strong> <span class=\"ready\">READY</span></p>";
-    
-    html += "<p><strong>Free Memory:</strong> ";
-    html += ESP.getFreeHeap();
-    html += " bytes</p>";
-    
-    html += "<p><strong>Uptime:</strong> ";
-    html += millis() / 1000;
-    html += " seconds</p>";
-    
-    html += F("</div>"
-             "<div class=\"status\">"
-             "<h3>GPIO Control</h3>");
-    
-    // Show status of first enabled output pin
-    bool foundPin = false;
-    for (uint8_t i = 0; i < MAX_PINS; i++) {
-        if (config.pins[i].enabled && 
-            (config.pins[i].mode == PinMode::OUTPUT_DIGITAL || config.pins[i].mode == PinMode::OUTPUT_PWM)) {
-            html += F("<p><strong>");
-            html += config.pins[i].name;
-            html += F(" (GPIO ");
-            html += config.pins[i].gpio;
-            html += F("):</strong> ");
-            html += pinStates[i] ? "ON" : "OFF";
-            html += F("</p>");
-            foundPin = true;
-            break;
-        }
+    handleStaticFile("/index.html", "text/html");
+}
+
+void handleStaticFile(const String& path, const String& contentType) {
+    File file = SPIFFS.open(path, "r");
+    if (!file) {
+        Serial.printf("Failed to open file: %s\n", path.c_str());
+        server.send(404, "text/plain", "File not found");
+        return;
     }
     
-    if (!foundPin) {
-        html += F("<p><em>No output pins configured</em></p>");
-    }
-    
-    html += F("<button onclick=\"fetch('/led/on')\" style=\"background:#4CAF50; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">LED ON</button>"
-             "<button onclick=\"fetch('/led/off')\" style=\"background:#f44336; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">LED OFF</button>"
-             "<button onclick=\"fetch('/led/toggle'); setTimeout(function(){location.reload();}, 100);\" style=\"background:#ff6b35; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">TOGGLE</button>"
-             "</div>"
-             "<div class=\"status\">"
-             "<h3>🕯️ Lighting Effects</h3>"
-             "<p>Control lighting effects on configured pins</p>"
-             "<div style=\"margin: 10px 0;\">"
-             "<button onclick=\"startEffect(0, 1)\" style=\"background:#4CAF50; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">Pin 0 Candle</button>"
-             "<button onclick=\"startEffect(1, 1)\" style=\"background:#4CAF50; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">Pin 1 Candle</button>"
-             "<button onclick=\"startEffect(2, 1)\" style=\"background:#4CAF50; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">Pin 2 Candle</button>"
-             "</div>"
-             "<div style=\"margin: 10px 0;\">"
-             "<button onclick=\"groupEffect(1, 1)\" style=\"background:#2196F3; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">Group 1 Effect</button>"
-             "<button onclick=\"groupEffect(2, 1)\" style=\"background:#2196F3; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">Group 2 Effect</button>"
-             "<button onclick=\"stopAll()\" style=\"background:#f44336; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">Stop All Effects</button>"
-             "</div>"
-             "<script>"
-             "function startEffect(pin, effect) { fetch('/effects/start?pin=' + pin + '&effect=' + effect); }"
-             "function groupEffect(group, effect) { fetch('/effects/group?group=' + group + '&effect=' + effect); }"
-             "function stopAll() { for(let i=0; i<8; i++) fetch('/effects/stop?pin=' + i); }"
-             "function setRgbColor(color) { fetch('/rgb/' + color).then(response => response.text()).then(data => console.log(data)); }"
-             "function startRainbow() { fetch('/rgb/test').then(response => response.text()).then(data => console.log(data)); }"
-             "function setBrightness(value) { "
-             "  fetch('/brightness?value=' + value).then(response => response.text()).then(data => { "
-             "    console.log(data); "
-             "    document.getElementById('globalBrightness').value = value; "
-             "    document.getElementById('brightnessValue').textContent = value; "
-             "  }); "
-             "}"
-             "document.getElementById('globalBrightness').addEventListener('input', function() { "
-             "  const value = this.value; "
-             "  document.getElementById('brightnessValue').textContent = value; "
-             "  setBrightness(value); "
-             "});"
-             "</script>"
-             "</div>"
-             "<div class=\"status\">"
-             "<h3>🎨 RGB LED Control</h3>"
-             "<p>Direct RGB color control (stops active effects)</p>"
-             "<div style=\"margin: 10px 0;\">"
-             "<button onclick=\"setRgbColor('red')\" style=\"background:#FF0000; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">Red</button>"
-             "<button onclick=\"setRgbColor('green')\" style=\"background:#00FF00; color:black; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">Green</button>"
-             "<button onclick=\"setRgbColor('blue')\" style=\"background:#0000FF; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">Blue</button>"
-             "<button onclick=\"setRgbColor('white')\" style=\"background:#FFFFFF; color:black; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">White</button>"
-             "<button onclick=\"setRgbColor('off')\" style=\"background:#333333; color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">OFF</button>"
-             "</div>"
-             "<button onclick=\"startRainbow()\" style=\"background:linear-gradient(90deg,#FF0000,#FF8000,#FFFF00,#00FF00,#0000FF,#8000FF,#FF00FF); color:white; border:none; padding:8px 16px; margin:4px; border-radius:4px; cursor:pointer;\">🌈 Rainbow Test</button>"
-             "</div>"
-             "<div class=\"status\">"
-             "<h3>💡 Brightness Control</h3>"
-             "<p>Adjust LED brightness (0-255)</p>"
-             "<div style=\"margin: 15px 0;\">"
-             "<label for=\"globalBrightness\" style=\"display: block; margin-bottom: 5px;\">Global Brightness:</label>"
-             "<input type=\"range\" id=\"globalBrightness\" min=\"0\" max=\"255\" value=\"255\" style=\"width: 100%; margin-bottom: 10px;\">"
-             "<div style=\"display: flex; justify-content: space-between; margin-bottom: 10px;\">"
-             "<button onclick=\"setBrightness(64)\" style=\"background:#555; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;\">25%</button>"
-             "<button onclick=\"setBrightness(128)\" style=\"background:#777; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;\">50%</button>"
-             "<button onclick=\"setBrightness(192)\" style=\"background:#999; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;\">75%</button>"
-             "<button onclick=\"setBrightness(255)\" style=\"background:#FFF; color:black; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;\">100%</button>"
-             "</div>"
-             "<span id=\"brightnessValue\">255</span>"
-             "</div>"
-             "</div>"
-             "<div class=\"status\">"
-             "<h3>Configuration</h3>"
-             "<p><a href=\"/config\" style=\"color: #4CAF50; text-decoration: none;\">⚙️ Device Configuration</a></p>"
-             "<p>Configure pins, WiFi, and system settings</p>"
-             "</div>"
-             "<div class=\"status\">"
-             "<h3>Firmware Update</h3>"
-             "<p><a href=\"/update\" style=\"color: #ff6b35; text-decoration: none;\">Upload New Firmware (.bin file)</a></p>"
-             "</div>"
-             "</body></html>");
-    
-    server.send(200, F("text/html; charset=utf-8"), html);
+    server.streamFile(file, contentType);
+    file.close();
 }
 
 void handleUpdate() {

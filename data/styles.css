@@ -1,0 +1,219 @@
+/* BattleAura Web Interface Styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background: #1a1a2e;
+    color: white;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.header h1 {
+    margin: 0;
+    padding: 10px 0;
+}
+
+.status {
+    background: #16213e;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.status h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #4CAF50;
+}
+
+.ready {
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+/* Button Styles */
+.btn {
+    border: none;
+    padding: 8px 16px;
+    margin: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.btn-green {
+    background: #4CAF50;
+    color: white;
+}
+
+.btn-red {
+    background: #f44336;
+    color: white;
+}
+
+.btn-blue {
+    background: #2196F3;
+    color: white;
+}
+
+.btn-orange {
+    background: #ff6b35;
+    color: white;
+}
+
+.button-group {
+    margin: 10px 0;
+}
+
+/* RGB Button Styles */
+.rgb-red {
+    background: #FF0000;
+    color: white;
+}
+
+.rgb-green {
+    background: #00FF00;
+    color: black;
+}
+
+.rgb-blue {
+    background: #0000FF;
+    color: white;
+}
+
+.rgb-white {
+    background: #FFFFFF;
+    color: black;
+}
+
+.rgb-off {
+    background: #333333;
+    color: white;
+}
+
+.rainbow {
+    background: linear-gradient(90deg, #FF0000, #FF8000, #FFFF00, #00FF00, #0000FF, #8000FF, #FF00FF);
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+
+/* Brightness Control Styles */
+.brightness-control {
+    margin: 15px 0;
+}
+
+.brightness-control label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.brightness-control input[type="range"] {
+    width: 100%;
+    margin-bottom: 10px;
+    background: #0f1626;
+    border-radius: 4px;
+}
+
+.brightness-presets {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.brightness-25 {
+    background: #555;
+    color: white;
+}
+
+.brightness-50 {
+    background: #777;
+    color: white;
+}
+
+.brightness-75 {
+    background: #999;
+    color: white;
+}
+
+.brightness-100 {
+    background: #FFF;
+    color: black;
+}
+
+/* Link Styles */
+.link-green {
+    color: #4CAF50;
+    text-decoration: none;
+}
+
+.link-blue {
+    color: #2196F3;
+    text-decoration: none;
+}
+
+.link-orange {
+    color: #ff6b35;
+    text-decoration: none;
+}
+
+.link-green:hover,
+.link-blue:hover,
+.link-orange:hover {
+    text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+    body {
+        margin: 10px;
+    }
+    
+    .brightness-presets {
+        flex-direction: column;
+    }
+    
+    .brightness-presets .btn {
+        margin: 2px 0;
+        width: 100%;
+    }
+    
+    .button-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    
+    .btn {
+        flex: 1;
+        min-width: 80px;
+    }
+}
+
+/* Loading Animation */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.loading {
+    animation: pulse 1.5s infinite;
+}
+
+/* Status Indicators */
+.status-online {
+    color: #4CAF50;
+}
+
+.status-offline {
+    color: #f44336;
+}
+
+.status-warning {
+    color: #ff6b35;
+}
