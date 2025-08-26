@@ -690,8 +690,10 @@ void setupWebServer() {
             if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
                 // Stop any active effects on this pin
                 config.pins[i].effectActive = false;
-                setNeoPixelColor(i, 0xFF0000, 255); // Full red
-                Serial.printf("RGB Red set on pin %d (effects stopped)\n", i);
+                config.pins[i].color = 0xFF0000; // Save the color
+                uint8_t brightness = calculateActualBrightness(i);
+                setNeoPixelColor(i, 0xFF0000, brightness);
+                Serial.printf("RGB Red set on pin %d (effects stopped, brightness: %d)\n", i, brightness);
                 server.send(200, "text/plain", F("RGB Red"));
                 return;
             }
@@ -704,7 +706,9 @@ void setupWebServer() {
             if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
                 // Stop any active effects on this pin
                 config.pins[i].effectActive = false;
-                setNeoPixelColor(i, 0x00FF00, 255); // Full green
+                config.pins[i].color = 0x00FF00; // Save the color
+                uint8_t brightness = calculateActualBrightness(i);
+                setNeoPixelColor(i, 0x00FF00, brightness);
                 server.send(200, "text/plain", F("RGB Green"));
                 return;
             }
@@ -717,7 +721,9 @@ void setupWebServer() {
             if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
                 // Stop any active effects on this pin
                 config.pins[i].effectActive = false;
-                setNeoPixelColor(i, 0x0000FF, 255); // Full blue
+                config.pins[i].color = 0x0000FF; // Save the color
+                uint8_t brightness = calculateActualBrightness(i);
+                setNeoPixelColor(i, 0x0000FF, brightness);
                 server.send(200, "text/plain", F("RGB Blue"));
                 return;
             }
@@ -730,7 +736,9 @@ void setupWebServer() {
             if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
                 // Stop any active effects on this pin
                 config.pins[i].effectActive = false;
-                setNeoPixelColor(i, 0xFFFFFF, 255); // Full white
+                config.pins[i].color = 0xFFFFFF; // Save the color
+                uint8_t brightness = calculateActualBrightness(i);
+                setNeoPixelColor(i, 0xFFFFFF, brightness);
                 server.send(200, "text/plain", F("RGB White"));
                 return;
             }
@@ -743,6 +751,7 @@ void setupWebServer() {
             if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
                 // Stop any active effects on this pin
                 config.pins[i].effectActive = false;
+                config.pins[i].color = 0x000000; // Save the color (off)
                 setNeoPixelColor(i, 0x000000, 0); // Off
                 server.send(200, "text/plain", F("RGB Off"));
                 return;
