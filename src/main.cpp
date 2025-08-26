@@ -31,24 +31,28 @@ const int AP_CHANNEL = 1;
     #define DFPLAYER_RX_PIN 7
     #define DFPLAYER_TX_PIN 6
     #define DFPLAYER_UART_NUM 1
+    #define MAX_PINS 8
     #define BOARD_NAME "ESP32-S3"
 #elif defined(CONFIG_IDF_TARGET_ESP32S2)
     // ESP32-S2
     #define DFPLAYER_RX_PIN 18
     #define DFPLAYER_TX_PIN 17
     #define DFPLAYER_UART_NUM 1
+    #define MAX_PINS 8
     #define BOARD_NAME "ESP32-S2"
 #elif defined(CONFIG_IDF_TARGET_ESP32)
     // ESP32 DevKit
     #define DFPLAYER_RX_PIN 16
     #define DFPLAYER_TX_PIN 17
     #define DFPLAYER_UART_NUM 2
+    #define MAX_PINS 8
     #define BOARD_NAME "ESP32"
 #else
     // Default fallback (ESP32-C3 pins)
     #define DFPLAYER_RX_PIN 20
     #define DFPLAYER_TX_PIN 21
     #define DFPLAYER_UART_NUM 1
+    #define MAX_PINS 8
     #define BOARD_NAME "ESP32-Unknown"
     #warning "Unknown ESP32 variant, using ESP32-C3 default pins"
 #endif
