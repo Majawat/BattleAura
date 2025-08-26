@@ -404,6 +404,7 @@ void setupWebServer() {
                 pin["name"] = config.pins[i].name;
                 pin["mode"] = static_cast<int>(config.pins[i].mode);
                 pin["state"] = pinStates[i];
+                pin["enabled"] = true; // Since we only include enabled pins
             }
         }
         
@@ -446,7 +447,9 @@ void setupWebServer() {
         // Find first enabled output pin and toggle its state
         for (uint8_t i = 0; i < MAX_PINS; i++) {
             if (config.pins[i].enabled && 
-                (config.pins[i].mode == PinMode::OUTPUT_DIGITAL || config.pins[i].mode == PinMode::OUTPUT_PWM)) {
+                (config.pins[i].mode == PinMode::OUTPUT_DIGITAL || 
+                 config.pins[i].mode == PinMode::OUTPUT_PWM ||
+                 config.pins[i].mode == PinMode::OUTPUT_WS2812B)) {
                 handleLedControl(!pinStates[i]);
                 return;
             }
