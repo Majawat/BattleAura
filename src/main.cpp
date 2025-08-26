@@ -21,8 +21,9 @@ const int AP_CHANNEL = 1;
 // Board-specific DFPlayer Mini pin configuration
 #if defined(CONFIG_IDF_TARGET_ESP32C3)
     // ESP32-C3 (Seeed Xiao ESP32-C3)
-    #define DFPLAYER_RX_PIN 20
-    #define DFPLAYER_TX_PIN 21
+    // Physical pins: RX=GPIO20/D7, TX=GPIO21/D6
+    #define DFPLAYER_RX_PIN 20    // ESP32 RX <- DFPlayer TX (GPIO20/D7)
+    #define DFPLAYER_TX_PIN 21    // ESP32 TX -> DFPlayer RX (GPIO21/D6)
     #define DFPLAYER_UART_NUM 1
     #define MAX_PINS 8
     #define BOARD_NAME "ESP32-C3"
@@ -118,10 +119,11 @@ struct PinConfig {
     uint16_t effectSpeed;
     bool effectActive;
     uint8_t effectGroup;
+    uint16_t ledCount;  // Number of LEDs for WS2812B strips
     
     PinConfig() : gpio(0), mode(PinMode::PIN_DISABLED), name("Unused"), 
                   enabled(false), brightness(255), color(0xFFFFFF),
-                  effect(EffectType::EFFECT_NONE), effectSpeed(100), effectActive(false), effectGroup(0) {}
+                  effect(EffectType::EFFECT_NONE), effectSpeed(100), effectActive(false), effectGroup(0), ledCount(10) {}
 };
 
 // System configuration
@@ -646,7 +648,10 @@ void setupWebServer() {
     server.on("/rgb/red", HTTP_GET, []() {
         for (uint8_t i = 0; i < MAX_PINS; i++) {
             if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                // Stop any active effects on this pin
+                config.pins[i].effectActive = false;
                 setNeoPixelColor(i, 0xFF0000, 255); // Full red
+                Serial.printf("RGB Red set on pin %d (effects stopped)\n", i);
                 server.send(200, "text/plain", F("RGB Red"));
                 return;
             }
@@ -657,6 +662,8 @@ void setupWebServer() {
     server.on("/rgb/green", HTTP_GET, []() {
         for (uint8_t i = 0; i < MAX_PINS; i++) {
             if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                // Stop any active effects on this pin
+                config.pins[i].effectActive = false;
                 setNeoPixelColor(i, 0x00FF00, 255); // Full green
                 server.send(200, "text/plain", F("RGB Green"));
                 return;
@@ -668,6 +675,8 @@ void setupWebServer() {
     server.on("/rgb/blue", HTTP_GET, []() {
         for (uint8_t i = 0; i < MAX_PINS; i++) {
             if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                // Stop any active effects on this pin
+                config.pins[i].effectActive = false;
                 setNeoPixelColor(i, 0x0000FF, 255); // Full blue
                 server.send(200, "text/plain", F("RGB Blue"));
                 return;
@@ -679,6 +688,8 @@ void setupWebServer() {
     server.on("/rgb/white", HTTP_GET, []() {
         for (uint8_t i = 0; i < MAX_PINS; i++) {
             if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                // Stop any active effects on this pin
+                config.pins[i].effectActive = false;
                 setNeoPixelColor(i, 0xFFFFFF, 255); // Full white
                 server.send(200, "text/plain", F("RGB White"));
                 return;
@@ -690,12 +701,68 @@ void setupWebServer() {
     server.on("/rgb/off", HTTP_GET, []() {
         for (uint8_t i = 0; i < MAX_PINS; i++) {
             if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                // Stop any active effects on this pin
+                config.pins[i].effectActive = false;
                 setNeoPixelColor(i, 0x000000, 0); // Off
                 server.send(200, "text/plain", F("RGB Off"));
                 return;
             }
         }
         server.send(404, "text/plain", F("No RGB LEDs configured"));
+    });
+    
+    // Brightness control endpoints
+    server.on("/brightness", HTTP_GET, []() {
+        if (!server.hasArg("value")) {
+            server.send(400, "text/plain", F("Missing brightness value (0-255)"));
+            return;
+        }
+        
+        uint8_t brightness = constrain(server.arg("value").toInt(), 0, 255);
+        bool found = false;
+        
+        // Set brightness on all enabled RGB LEDs
+        for (uint8_t i = 0; i < MAX_PINS; i++) {
+            if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                config.pins[i].brightness = brightness;
+                // Refresh current color with new brightness
+                setNeoPixelColor(i, config.pins[i].color, brightness);
+                found = true;
+            }
+        }
+        
+        if (found) {
+            server.send(200, "text/plain", "Brightness set to " + String(brightness));
+        } else {
+            server.send(404, "text/plain", F("No RGB LEDs configured"));
+        }
+    });
+    
+    server.on("/brightness/pin", HTTP_GET, []() {
+        if (!server.hasArg("pin") || !server.hasArg("value")) {
+            server.send(400, "text/plain", F("Missing pin or brightness value"));
+            return;
+        }
+        
+        uint8_t pin = server.arg("pin").toInt();
+        uint8_t brightness = constrain(server.arg("value").toInt(), 0, 255);
+        
+        if (pin >= MAX_PINS || !config.pins[pin].enabled) {
+            server.send(400, "text/plain", F("Invalid or disabled pin"));
+            return;
+        }
+        
+        config.pins[pin].brightness = brightness;
+        
+        if (config.pins[pin].mode == PinMode::OUTPUT_WS2812B) {
+            // Stop effects and set brightness
+            config.pins[pin].effectActive = false;
+            setNeoPixelColor(pin, config.pins[pin].color, brightness);
+        } else if (config.pins[pin].mode == PinMode::OUTPUT_PWM) {
+            analogWrite(config.pins[pin].gpio, brightness);
+        }
+        
+        server.send(200, "text/plain", "Pin " + String(pin) + " brightness: " + String(brightness));
     });
     
     // 404 handler
@@ -1036,6 +1103,7 @@ void loadConfiguration() {
             config.pins[i].effectSpeed = doc["pins"][i]["effectSpeed"] | 100;
             config.pins[i].effectActive = doc["pins"][i]["effectActive"] | false;
             config.pins[i].effectGroup = doc["pins"][i]["effectGroup"] | 0;
+            config.pins[i].ledCount = doc["pins"][i]["ledCount"] | 10;
         }
     }
     
@@ -1083,6 +1151,7 @@ void saveConfiguration() {
         pin["effectSpeed"] = config.pins[i].effectSpeed;
         pin["effectActive"] = config.pins[i].effectActive;
         pin["effectGroup"] = config.pins[i].effectGroup;
+        pin["ledCount"] = config.pins[i].ledCount;
     }
     
     // Save audio mapping
@@ -1480,15 +1549,18 @@ void initializeNeoPixel(uint8_t pinIndex) {
         neoPixels[pinIndex] = nullptr;
     }
     
-    // Create new NeoPixel object
+    // Create new NeoPixel object with configured LED count
     uint8_t gpio = config.pins[pinIndex].gpio;
-    neoPixels[pinIndex] = new Adafruit_NeoPixel(DEFAULT_LED_COUNT, gpio, NEO_GRB + NEO_KHZ800);
+    uint16_t ledCount = config.pins[pinIndex].ledCount;
+    if (ledCount == 0) ledCount = DEFAULT_LED_COUNT; // Fallback to default
+    
+    neoPixels[pinIndex] = new Adafruit_NeoPixel(ledCount, gpio, NEO_GRB + NEO_KHZ800);
     
     if (neoPixels[pinIndex] != nullptr) {
         neoPixels[pinIndex]->begin();
         neoPixels[pinIndex]->clear();
         neoPixels[pinIndex]->show();
-        Serial.printf("✓ WS2812B initialized on GPIO %d with %d LEDs\n", gpio, DEFAULT_LED_COUNT);
+        Serial.printf("✓ WS2812B initialized on GPIO %d with %d LEDs\n", gpio, ledCount);
     } else {
         Serial.printf("✗ Failed to initialize WS2812B on GPIO %d\n", gpio);
     }
@@ -1509,7 +1581,8 @@ void setNeoPixelColor(uint8_t pinIndex, uint32_t color, uint8_t brightness) {
     uint32_t scaledColor = neoPixels[pinIndex]->Color(r, g, b);
     
     // Set all LEDs to the same color
-    for (uint16_t i = 0; i < DEFAULT_LED_COUNT; i++) {
+    uint16_t numLEDs = neoPixels[pinIndex]->numPixels();
+    for (uint16_t i = 0; i < numLEDs; i++) {
         neoPixels[pinIndex]->setPixelColor(i, scaledColor);
     }
     neoPixels[pinIndex]->show();
