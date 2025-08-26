@@ -57,10 +57,10 @@
     </div>
 
     <div class="status">
-        <h3>💡 Brightness Control</h3>
-        <p>Adjust LED brightness (0-255)</p>
+        <h3>💡 Global Brightness Control</h3>
+        <p>Master brightness for all LEDs (0-255)</p>
         <div class="brightness-control">
-            <label for="globalBrightness">Global Brightness:</label>
+            <label for="globalBrightness">Global Max Brightness:</label>
             <input type="range" id="globalBrightness" min="0" max="255" value="255">
             <div class="brightness-presets">
                 <button onclick="setBrightness(0)" class="btn brightness-0">0%</button>
@@ -71,6 +71,11 @@
             </div>
             <span id="brightnessValue">255</span>
         </div>
+    </div>
+
+    <div class="status">
+        <h3>🎛️ Per-Pin Controls</h3>
+        <div id="pin-controls">Loading pin controls...</div>
     </div>
 
     <div class="status">

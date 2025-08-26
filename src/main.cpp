@@ -10,7 +10,7 @@
 #include <HardwareSerial.h>
 
 // Application constants
-const char* VERSION = "1.0.0-dev";
+const char* VERSION = "2.0.0-dev";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -136,11 +136,12 @@ struct SystemConfig {
     bool wifiEnabled;
     uint8_t volume;
     bool audioEnabled;
+    uint8_t globalMaxBrightness;  // Global brightness ceiling (0-255)
     PinConfig pins[MAX_PINS];
     AudioMapping audioMap;
     
     SystemConfig() : deviceName("BattleAura"), wifiSSID(""), wifiPassword(""),
-                     wifiEnabled(false), volume(15), audioEnabled(true) {}
+                     wifiEnabled(false), volume(15), audioEnabled(true), globalMaxBrightness(255) {}
 };
 
 // Global configuration
@@ -210,6 +211,8 @@ void stopEffect(uint8_t pinIndex);
 void startGroupEffect(uint8_t group, EffectType effect, uint16_t duration = 0);
 void stopGroupEffect(uint8_t group);
 void setPinBrightness(uint8_t pinIndex, uint8_t brightness);
+uint8_t calculateActualBrightness(uint8_t pinIndex);
+void updateAllPinBrightness();
 void setupAudio();
 void playAudioFile(uint8_t fileNumber);
 void playEffectAudio(EffectType effect);
@@ -748,7 +751,7 @@ void setupWebServer() {
         server.send(404, "text/plain", F("No RGB LEDs configured"));
     });
     
-    // Brightness control endpoints
+    // Global brightness control endpoint
     server.on("/brightness", HTTP_GET, []() {
         if (!server.hasArg("value")) {
             server.send(400, "text/plain", F("Missing brightness value (0-255)"));
@@ -756,23 +759,15 @@ void setupWebServer() {
         }
         
         uint8_t brightness = constrain(server.arg("value").toInt(), 0, 255);
-        bool found = false;
+        config.globalMaxBrightness = brightness;
         
-        // Set brightness on all enabled RGB LEDs
-        for (uint8_t i = 0; i < MAX_PINS; i++) {
-            if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
-                config.pins[i].brightness = brightness;
-                // Refresh current color with new brightness
-                setNeoPixelColor(i, config.pins[i].color, brightness);
-                found = true;
-            }
-        }
+        // Update all pin brightnesses based on new global max
+        updateAllPinBrightness();
         
-        if (found) {
-            server.send(200, "text/plain", "Brightness set to " + String(brightness));
-        } else {
-            server.send(404, "text/plain", F("No RGB LEDs configured"));
-        }
+        // Save configuration
+        saveConfiguration();
+        
+        server.send(200, "text/plain", "Global brightness set to " + String(brightness));
     });
     
     server.on("/brightness/pin", HTTP_GET, []() {
@@ -791,15 +786,21 @@ void setupWebServer() {
         
         config.pins[pin].brightness = brightness;
         
+        // Calculate actual brightness using global max
+        uint8_t actualBrightness = calculateActualBrightness(pin);
+        
         if (config.pins[pin].mode == PinMode::OUTPUT_WS2812B) {
             // Stop effects and set brightness
             config.pins[pin].effectActive = false;
-            setNeoPixelColor(pin, config.pins[pin].color, brightness);
+            setNeoPixelColor(pin, config.pins[pin].color, actualBrightness);
         } else if (config.pins[pin].mode == PinMode::OUTPUT_PWM) {
-            analogWrite(config.pins[pin].gpio, brightness);
+            analogWrite(config.pins[pin].gpio, actualBrightness);
         }
         
-        server.send(200, "text/plain", "Pin " + String(pin) + " brightness: " + String(brightness));
+        // Save configuration
+        saveConfiguration();
+        
+        server.send(200, "text/plain", "Pin " + String(pin) + " brightness: " + String(brightness) + " (actual: " + String(actualBrightness) + ")");
     });
     
     // LED count endpoint for WS2812B strips
@@ -830,6 +831,79 @@ void setupWebServer() {
         } else {
             server.send(404, "text/plain", F("No WS2812B pins configured"));
         }
+    });
+    
+    // Pin control endpoints
+    server.on("/pin/toggle", HTTP_GET, []() {
+        if (!server.hasArg("pin")) {
+            server.send(400, "text/plain", F("Missing pin parameter"));
+            return;
+        }
+        
+        uint8_t pinIndex = server.arg("pin").toInt();
+        if (pinIndex >= MAX_PINS || !config.pins[pinIndex].enabled) {
+            server.send(400, "text/plain", F("Invalid or disabled pin"));
+            return;
+        }
+        
+        // Toggle pin state
+        bool newState = !pinStates[pinIndex];
+        pinStates[pinIndex] = newState;
+        
+        if (config.pins[pinIndex].mode == PinMode::OUTPUT_DIGITAL) {
+            digitalWrite(config.pins[pinIndex].gpio, newState ? HIGH : LOW);
+        } else if (config.pins[pinIndex].mode == PinMode::OUTPUT_PWM) {
+            uint8_t brightness = newState ? calculateActualBrightness(pinIndex) : 0;
+            analogWrite(config.pins[pinIndex].gpio, brightness);
+        } else if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
+            config.pins[pinIndex].effectActive = false;
+            if (newState) {
+                uint8_t brightness = calculateActualBrightness(pinIndex);
+                setNeoPixelColor(pinIndex, config.pins[pinIndex].color, brightness);
+            } else {
+                setNeoPixelColor(pinIndex, 0x000000, 0);
+            }
+        }
+        
+        server.send(200, "text/plain", "Pin " + String(pinIndex) + " " + (newState ? "ON" : "OFF"));
+    });
+    
+    server.on("/pin/color", HTTP_GET, []() {
+        if (!server.hasArg("pin") || !server.hasArg("color")) {
+            server.send(400, "text/plain", F("Missing pin or color parameter"));
+            return;
+        }
+        
+        uint8_t pinIndex = server.arg("pin").toInt();
+        String color = server.arg("color");
+        
+        if (pinIndex >= MAX_PINS || !config.pins[pinIndex].enabled) {
+            server.send(400, "text/plain", F("Invalid or disabled pin"));
+            return;
+        }
+        
+        if (config.pins[pinIndex].mode != PinMode::OUTPUT_WS2812B) {
+            server.send(400, "text/plain", F("Pin is not WS2812B RGB"));
+            return;
+        }
+        
+        uint32_t colorValue = 0;
+        if (color == "red") colorValue = 0xFF0000;
+        else if (color == "green") colorValue = 0x00FF00;
+        else if (color == "blue") colorValue = 0x0000FF;
+        else if (color == "white") colorValue = 0xFFFFFF;
+        else if (color == "off") colorValue = 0x000000;
+        
+        config.pins[pinIndex].color = colorValue;
+        config.pins[pinIndex].effectActive = false;
+        
+        uint8_t brightness = calculateActualBrightness(pinIndex);
+        setNeoPixelColor(pinIndex, colorValue, brightness);
+        
+        // Save configuration
+        saveConfiguration();
+        
+        server.send(200, "text/plain", "Pin " + String(pinIndex) + " color: " + color);
     });
     
     // 404 handler
@@ -1088,6 +1162,7 @@ void loadConfiguration() {
     config.wifiEnabled = doc["wifiEnabled"] | false;
     config.volume = doc["volume"] | 15;
     config.audioEnabled = doc["audioEnabled"] | true;
+    config.globalMaxBrightness = doc["globalMaxBrightness"] | 255;
     
     // Load pin configurations
     if (doc["pins"].is<JsonArray>()) {
@@ -1137,6 +1212,7 @@ void saveConfiguration() {
     doc["wifiEnabled"] = config.wifiEnabled;
     doc["volume"] = config.volume;
     doc["audioEnabled"] = config.audioEnabled;
+    doc["globalMaxBrightness"] = config.globalMaxBrightness;
     
     JsonArray pins = doc["pins"].to<JsonArray>();
     for (uint8_t i = 0; i < MAX_PINS; i++) {
@@ -1725,6 +1801,23 @@ void setPinBrightness(uint8_t pinIndex, uint8_t brightness) {
             break;
         default:
             break;
+    }
+}
+
+uint8_t calculateActualBrightness(uint8_t pinIndex) {
+    if (pinIndex >= MAX_PINS) return 0;
+    
+    // Calculate: (globalMax * pinBrightness) / 255
+    uint16_t actual = (config.globalMaxBrightness * config.pins[pinIndex].brightness) / 255;
+    return (uint8_t)constrain(actual, 0, 255);
+}
+
+void updateAllPinBrightness() {
+    for (uint8_t i = 0; i < MAX_PINS; i++) {
+        if (config.pins[i].enabled && !config.pins[i].effectActive) {
+            uint8_t actualBrightness = calculateActualBrightness(i);
+            setPinBrightness(i, actualBrightness);
+        }
     }
 }
 

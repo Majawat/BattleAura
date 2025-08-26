@@ -16,6 +16,7 @@ function loadSystemInfo() {
             document.getElementById('memory').textContent = data.freeHeap || 'Unknown';
             document.getElementById('uptime').textContent = data.uptime || 'Unknown';
             updateGpioStatus(data.pins);
+            generatePinControls(data.pins);
         })
         .catch(error => {
             console.log('Status API not available, using basic mode');
@@ -56,6 +57,93 @@ function updateGpioStatus(pins) {
     }
     
     gpioStatus.innerHTML = html;
+}
+
+// Generate per-pin control interface
+function generatePinControls(pins) {
+    const pinControls = document.getElementById('pin-controls');
+    if (!pins || pins.length === 0) {
+        pinControls.innerHTML = '<p><em>No pins configured</em></p>';
+        return;
+    }
+    
+    let html = '';
+    pins.forEach((pin, index) => {
+        if (pin.enabled) {
+            const modeText = getModeText(pin.mode);
+            html += `
+                <div class="pin-control" style="border: 1px solid #334155; padding: 10px; margin: 5px 0; border-radius: 4px;">
+                    <h4>${pin.name} (GPIO ${pin.gpio}) - ${modeText}</h4>
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <button onclick="togglePin(${index})" class="btn ${pin.state ? 'btn-red' : 'btn-green'}">
+                            ${pin.state ? 'Turn OFF' : 'Turn ON'}
+                        </button>
+                        ${pin.mode === 2 || pin.mode === 3 ? `
+                            <label>Brightness:</label>
+                            <input type="range" min="0" max="255" value="255" onchange="setPinBrightness(${index}, this.value)">
+                        ` : ''}
+                        ${pin.mode === 3 ? `
+                            <button onclick="setPinColor(${index}, 'red')" class="btn" style="background: #FF0000; color: white;">Red</button>
+                            <button onclick="setPinColor(${index}, 'green')" class="btn" style="background: #00FF00; color: black;">Green</button>
+                            <button onclick="setPinColor(${index}, 'blue')" class="btn" style="background: #0000FF; color: white;">Blue</button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+    });
+    
+    if (html === '') {
+        html = '<p><em>No enabled pins configured</em></p>';
+    }
+    
+    pinControls.innerHTML = html;
+}
+
+function getModeText(mode) {
+    const modes = ['Disabled', 'Digital', 'PWM', 'WS2812B RGB', 'Digital Input', 'Analog Input'];
+    return modes[mode] || 'Unknown';
+}
+
+// Per-pin control functions
+function togglePin(pinIndex) {
+    fetch(`/pin/toggle?pin=${pinIndex}`)
+        .then(response => response.text())
+        .then(data => {
+            console.log(`Pin toggle: ${data}`);
+            showFeedback(`Pin ${pinIndex} toggled`, 'success');
+            setTimeout(() => loadSystemInfo(), 100); // Refresh status
+        })
+        .catch(error => {
+            console.error('Pin toggle error:', error);
+            showFeedback('Pin Toggle Error', 'error');
+        });
+}
+
+function setPinBrightness(pinIndex, brightness) {
+    fetch(`/brightness/pin?pin=${pinIndex}&value=${brightness}`)
+        .then(response => response.text())
+        .then(data => {
+            console.log(`Pin brightness: ${data}`);
+            showFeedback(`Pin ${pinIndex} brightness: ${Math.round(brightness/255*100)}%`, 'success');
+        })
+        .catch(error => {
+            console.error('Pin brightness error:', error);
+            showFeedback('Pin Brightness Error', 'error');
+        });
+}
+
+function setPinColor(pinIndex, color) {
+    fetch(`/pin/color?pin=${pinIndex}&color=${color}`)
+        .then(response => response.text())
+        .then(data => {
+            console.log(`Pin color: ${data}`);
+            showFeedback(`Pin ${pinIndex} color: ${color}`, 'success');
+        })
+        .catch(error => {
+            console.error('Pin color error:', error);
+            showFeedback('Pin Color Error', 'error');
+        });
 }
 
 // Lighting Effects Functions
