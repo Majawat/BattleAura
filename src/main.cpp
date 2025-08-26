@@ -1100,8 +1100,12 @@ void handleLedControl(bool state) {
             if (config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
                 Serial.printf("Using WS2812B mode\n");
                 setNeoPixelState(i, state);
+            } else if (config.pins[i].mode == PinMode::OUTPUT_PWM) {
+                Serial.printf("Using PWM mode\n");
+                uint8_t brightness = state ? calculateActualBrightness(i) : 0;
+                analogWrite(config.pins[i].gpio, state ? 255 : 0);
             } else {
-                Serial.printf("Using Digital/PWM mode\n");
+                Serial.printf("Using Digital mode\n");
                 digitalWrite(config.pins[i].gpio, state ? HIGH : LOW);
             }
             

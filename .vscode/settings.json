@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.hta": "html",
+        "cstddef": "cpp",
+        "limits": "cpp"
+    }
+}

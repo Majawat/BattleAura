@@ -39,6 +39,7 @@ function updateSystemInfo() {
 // Update GPIO status display
 function updateGpioStatus(pins) {
     const gpioStatus = document.getElementById('gpio-status');
+    console.log(pins);
     if (!pins || pins.length === 0) {
         gpioStatus.innerHTML = '<p><em>No output pins configured</em></p>';
         return;
