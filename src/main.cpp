@@ -623,6 +623,81 @@ void setupWebServer() {
     
     server.on("/audio/map", HTTP_GET, handleAudioMapping);
     
+    // RGB LED test endpoints
+    server.on("/rgb/test", HTTP_GET, []() {
+        // Test RGB LEDs with rainbow colors
+        for (uint8_t i = 0; i < MAX_PINS; i++) {
+            if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                // Cycle through rainbow colors
+                uint32_t colors[] = {0xFF0000, 0xFF8000, 0xFFFF00, 0x00FF00, 0x0000FF, 0x8000FF, 0xFF00FF};
+                for (int c = 0; c < 7; c++) {
+                    setNeoPixelColor(i, colors[c], 128);
+                    delay(300);
+                }
+                setNeoPixelColor(i, 0x000000, 0); // Turn off
+                Serial.printf("RGB test completed on pin %d (GPIO %d)\n", i, config.pins[i].gpio);
+                server.send(200, "text/plain", F("RGB Test Complete"));
+                return;
+            }
+        }
+        server.send(404, "text/plain", F("No RGB LEDs configured"));
+    });
+    
+    server.on("/rgb/red", HTTP_GET, []() {
+        for (uint8_t i = 0; i < MAX_PINS; i++) {
+            if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                setNeoPixelColor(i, 0xFF0000, 255); // Full red
+                server.send(200, "text/plain", F("RGB Red"));
+                return;
+            }
+        }
+        server.send(404, "text/plain", F("No RGB LEDs configured"));
+    });
+    
+    server.on("/rgb/green", HTTP_GET, []() {
+        for (uint8_t i = 0; i < MAX_PINS; i++) {
+            if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                setNeoPixelColor(i, 0x00FF00, 255); // Full green
+                server.send(200, "text/plain", F("RGB Green"));
+                return;
+            }
+        }
+        server.send(404, "text/plain", F("No RGB LEDs configured"));
+    });
+    
+    server.on("/rgb/blue", HTTP_GET, []() {
+        for (uint8_t i = 0; i < MAX_PINS; i++) {
+            if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                setNeoPixelColor(i, 0x0000FF, 255); // Full blue
+                server.send(200, "text/plain", F("RGB Blue"));
+                return;
+            }
+        }
+        server.send(404, "text/plain", F("No RGB LEDs configured"));
+    });
+    
+    server.on("/rgb/white", HTTP_GET, []() {
+        for (uint8_t i = 0; i < MAX_PINS; i++) {
+            if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                setNeoPixelColor(i, 0xFFFFFF, 255); // Full white
+                server.send(200, "text/plain", F("RGB White"));
+                return;
+            }
+        }
+        server.send(404, "text/plain", F("No RGB LEDs configured"));
+    });
+    
+    server.on("/rgb/off", HTTP_GET, []() {
+        for (uint8_t i = 0; i < MAX_PINS; i++) {
+            if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                setNeoPixelColor(i, 0x000000, 0); // Off
+                server.send(200, "text/plain", F("RGB Off"));
+                return;
+            }
+        }
+        server.send(404, "text/plain", F("No RGB LEDs configured"));
+    });
+    
     // 404 handler
     server.onNotFound([]() {
         server.send(404, "text/plain", F("Not found"));
@@ -805,7 +880,14 @@ void handleUpdateUpload() {
 }
 
 void setupGPIO() {
+    Serial.println("=== GPIO Setup Debug ===");
+    Serial.printf("Setting up %d pins...\n", MAX_PINS);
+    
     for (uint8_t i = 0; i < MAX_PINS; i++) {
+        Serial.printf("Pin %d: GPIO=%d, enabled=%s, mode=%d, name='%s'\n", 
+                     i, config.pins[i].gpio, config.pins[i].enabled ? "YES" : "NO", 
+                     (int)config.pins[i].mode, config.pins[i].name.c_str());
+        
         if (config.pins[i].enabled) {
             uint8_t gpio = config.pins[i].gpio;
             PinMode mode = config.pins[i].mode;
@@ -846,18 +928,28 @@ void setupGPIO() {
 }
 
 void handleLedControl(bool state) {
+    Serial.printf("=== LED Control Debug ===\n");
+    Serial.printf("Requested state: %s\n", state ? "ON" : "OFF");
+    Serial.printf("Checking %d pins...\n", MAX_PINS);
+    
     // Find first enabled output pin for compatibility
     for (uint8_t i = 0; i < MAX_PINS; i++) {
+        Serial.printf("Pin %d: GPIO=%d, enabled=%s, mode=%d\n", 
+                     i, config.pins[i].gpio, config.pins[i].enabled ? "YES" : "NO", (int)config.pins[i].mode);
+        
         if (config.pins[i].enabled && 
             (config.pins[i].mode == PinMode::OUTPUT_DIGITAL || 
              config.pins[i].mode == PinMode::OUTPUT_PWM ||
              config.pins[i].mode == PinMode::OUTPUT_WS2812B)) {
             
+            Serial.printf("✓ Found valid pin %d (GPIO %d) - setting %s\n", i, config.pins[i].gpio, state ? "HIGH" : "LOW");
             pinStates[i] = state;
             
             if (config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                Serial.printf("Using WS2812B mode\n");
                 setNeoPixelState(i, state);
             } else {
+                Serial.printf("Using Digital/PWM mode\n");
                 digitalWrite(config.pins[i].gpio, state ? HIGH : LOW);
             }
             
@@ -866,6 +958,7 @@ void handleLedControl(bool state) {
             return;
         }
     }
+    Serial.printf("✗ No valid output pins found!\n");
     server.send(404, "text/plain", F("No output pins configured"));
 }
 
