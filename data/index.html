@@ -63,12 +63,22 @@
             <label for="globalBrightness">Global Brightness:</label>
             <input type="range" id="globalBrightness" min="0" max="255" value="255">
             <div class="brightness-presets">
+                <button onclick="setBrightness(0)" class="btn brightness-0">0%</button>
                 <button onclick="setBrightness(64)" class="btn brightness-25">25%</button>
                 <button onclick="setBrightness(128)" class="btn brightness-50">50%</button>
                 <button onclick="setBrightness(192)" class="btn brightness-75">75%</button>
                 <button onclick="setBrightness(255)" class="btn brightness-100">100%</button>
             </div>
             <span id="brightnessValue">255</span>
+        </div>
+    </div>
+
+    <div class="status">
+        <h3>⚙️ Quick Settings</h3>
+        <div class="brightness-control">
+            <label for="ledCount">LED Count (WS2812B):</label>
+            <input type="number" id="ledCount" min="1" max="100" value="10">
+            <button onclick="setLedCount()" class="btn btn-blue">Update</button>
         </div>
     </div>
 

@@ -802,6 +802,36 @@ void setupWebServer() {
         server.send(200, "text/plain", "Pin " + String(pin) + " brightness: " + String(brightness));
     });
     
+    // LED count endpoint for WS2812B strips
+    server.on("/ledcount", HTTP_GET, []() {
+        if (!server.hasArg("value")) {
+            server.send(400, "text/plain", F("Missing LED count value (1-100)"));
+            return;
+        }
+        
+        uint16_t ledCount = constrain(server.arg("value").toInt(), 1, 100);
+        bool found = false;
+        
+        // Update LED count on all enabled WS2812B pins
+        for (uint8_t i = 0; i < MAX_PINS; i++) {
+            if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                config.pins[i].ledCount = ledCount;
+                // Reinitialize the NeoPixel with new count
+                initializeNeoPixel(i);
+                found = true;
+                Serial.printf("Updated LED count to %d on pin %d (GPIO %d)\n", ledCount, i, config.pins[i].gpio);
+            }
+        }
+        
+        if (found) {
+            // Save updated configuration
+            saveConfiguration();
+            server.send(200, "text/plain", "LED count updated to " + String(ledCount));
+        } else {
+            server.send(404, "text/plain", F("No WS2812B pins configured"));
+        }
+    });
+    
     // 404 handler
     server.onNotFound([]() {
         server.send(404, "text/plain", F("Not found"));

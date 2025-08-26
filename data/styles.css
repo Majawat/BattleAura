@@ -125,6 +125,11 @@ body {
     flex-wrap: wrap;
 }
 
+.brightness-0 {
+    background: #333;
+    color: white;
+}
+
 .brightness-25 {
     background: #555;
     color: white;

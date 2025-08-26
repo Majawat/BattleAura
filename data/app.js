@@ -107,6 +107,21 @@ function startRainbow() {
         });
 }
 
+// LED Count Control Function
+function setLedCount() {
+    const value = document.getElementById('ledCount').value;
+    fetch(`/ledcount?value=${value}`)
+        .then(response => response.text())
+        .then(data => {
+            console.log(`LED count set: ${data}`);
+            showFeedback(`LED Count: ${value}`, 'success');
+        })
+        .catch(error => {
+            console.error('LED count error:', error);
+            showFeedback('LED Count Error', 'error');
+        });
+}
+
 // Brightness Control Functions
 function setBrightness(value) {
     fetch(`/brightness?value=${value}`)
