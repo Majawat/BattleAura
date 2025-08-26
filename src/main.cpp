@@ -17,7 +17,6 @@ const int AP_CHANNEL = 1;
 
 // Configuration constants
 #define CONFIG_FILE "/config.json"
-#define MAX_PINS 8
 
 // Board-specific DFPlayer Mini pin configuration
 #if defined(CONFIG_IDF_TARGET_ESP32C3)
@@ -25,11 +24,12 @@ const int AP_CHANNEL = 1;
     #define DFPLAYER_RX_PIN 20
     #define DFPLAYER_TX_PIN 21
     #define DFPLAYER_UART_NUM 1
+    #define MAX_PINS 8
     #define BOARD_NAME "ESP32-C3"
 #elif defined(CONFIG_IDF_TARGET_ESP32S3)
     // ESP32-S3 (Seeed Xiao ESP32-S3)  
-    #define DFPLAYER_RX_PIN 44
-    #define DFPLAYER_TX_PIN 43
+    #define DFPLAYER_RX_PIN 7
+    #define DFPLAYER_TX_PIN 6
     #define DFPLAYER_UART_NUM 1
     #define BOARD_NAME "ESP32-S3"
 #elif defined(CONFIG_IDF_TARGET_ESP32S2)
