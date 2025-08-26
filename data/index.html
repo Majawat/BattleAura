@@ -23,8 +23,8 @@
     <div class="status">
         <h3>GPIO Control</h3>
         <div id="gpio-status">Loading...</div>
-        <button onclick="fetch('/led/on')" class="btn btn-green">LED ON</button>
-        <button onclick="fetch('/led/off')" class="btn btn-red">LED OFF</button>
+        <button onclick="fetch('/led/on'); setTimeout(function(){location.reload();}, 100);" class="btn btn-green">LED ON</button>
+        <button onclick="fetch('/led/off'); setTimeout(function(){location.reload();}, 100);" class="btn btn-red">LED OFF</button>
         <button onclick="fetch('/led/toggle'); setTimeout(function(){location.reload();}, 100);" class="btn btn-orange">TOGGLE</button>
     </div>
 
