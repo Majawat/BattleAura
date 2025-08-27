@@ -202,6 +202,7 @@ void handleConfig();
 void handleConfigSave();
 void handleAudioMapping();
 String getEffectName(EffectType effect);
+EffectType mapEffectNameToType(const String& effectName, PinMode mode);
 void handleLedControl(bool state);
 void initializeNeoPixel(uint8_t pinIndex);
 void setNeoPixelColor(uint8_t pinIndex, uint32_t color, uint8_t brightness = 255);
@@ -412,6 +413,64 @@ void setupWebServer() {
         
         String response;
         serializeJson(statusDoc, response);
+        server.send(200, "application/json", response);
+    });
+    
+    // API endpoint for configured pin types (for dynamic UI generation)
+    server.on("/api/types", HTTP_GET, []() {
+        JsonDocument typesDoc;
+        JsonArray types = typesDoc["types"].to<JsonArray>();
+        
+        // Collect unique types from enabled pins
+        String uniqueTypes[MAX_PINS];
+        int typeCount = 0;
+        
+        for (uint8_t i = 0; i < MAX_PINS; i++) {
+            if (!config.pins[i].enabled || config.pins[i].type.length() == 0) continue;
+            
+            // Check if this type already exists
+            bool found = false;
+            for (int t = 0; t < typeCount; t++) {
+                if (uniqueTypes[t].equals(config.pins[i].type)) {
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (!found && typeCount < MAX_PINS) {
+                uniqueTypes[typeCount] = config.pins[i].type;
+                
+                JsonObject typeObj = types.add<JsonObject>();
+                typeObj["type"] = config.pins[i].type;
+                typeObj["count"] = 1; // We'll update this below
+                typeObj["hasRGB"] = (config.pins[i].mode == PinMode::OUTPUT_WS2812B);
+                typeObj["hasPWM"] = (config.pins[i].mode == PinMode::OUTPUT_PWM);
+                
+                typeCount++;
+            }
+        }
+        
+        // Update counts and capabilities
+        for (int t = 0; t < typeCount; t++) {
+            int count = 0;
+            bool hasRGB = false;
+            bool hasPWM = false;
+            
+            for (uint8_t i = 0; i < MAX_PINS; i++) {
+                if (config.pins[i].enabled && config.pins[i].type.equals(uniqueTypes[t])) {
+                    count++;
+                    if (config.pins[i].mode == PinMode::OUTPUT_WS2812B) hasRGB = true;
+                    if (config.pins[i].mode == PinMode::OUTPUT_PWM) hasPWM = true;
+                }
+            }
+            
+            types[t]["count"] = count;
+            types[t]["hasRGB"] = hasRGB;
+            types[t]["hasPWM"] = hasPWM;
+        }
+        
+        String response;
+        serializeJson(typesDoc, response);
         server.send(200, "application/json", response);
     });
     
@@ -920,6 +979,110 @@ void setupWebServer() {
         server.send(200, "text/plain", "Pin " + String(pinIndex) + " color: " + color);
     });
     
+    // TYPE-BASED EFFECT ENDPOINTS - Core modular system
+    server.on("/effect", HTTP_POST, []() {
+        if (!server.hasArg("type") || !server.hasArg("effect")) {
+            server.send(400, "text/plain", F("Missing type or effect parameter"));
+            return;
+        }
+        
+        String type = server.arg("type");
+        String effectName = server.arg("effect");
+        uint16_t duration = server.hasArg("duration") ? server.arg("duration").toInt() : 0;
+        
+        // Find all pins matching this type
+        bool foundPins = false;
+        for (uint8_t i = 0; i < MAX_PINS; i++) {
+            if (!config.pins[i].enabled || !config.pins[i].type.equalsIgnoreCase(type)) continue;
+            
+            foundPins = true;
+            EffectType effect = mapEffectNameToType(effectName, config.pins[i].mode);
+            
+            if (effect != EffectType::EFFECT_NONE) {
+                startEffect(i, effect);
+                if (duration > 0) {
+                    // Set timeout to stop effect
+                    // Note: In a full implementation, you'd want a timer system here
+                }
+                Serial.printf("Type effect: %s.%s applied to pin %d (GPIO %d)\n", 
+                             type.c_str(), effectName.c_str(), i, config.pins[i].gpio);
+            }
+        }
+        
+        if (!foundPins) {
+            server.send(404, "text/plain", "No enabled pins found for type: " + type);
+        } else {
+            server.send(200, "text/plain", "Effect " + effectName + " applied to type: " + type);
+        }
+    });
+    
+    // Global effect endpoints
+    server.on("/global", HTTP_POST, []() {
+        if (!server.hasArg("effect")) {
+            server.send(400, "text/plain", F("Missing effect parameter"));
+            return;
+        }
+        
+        String effectName = server.arg("effect");
+        
+        if (effectName == "damage") {
+            // Taking damage: all pins flash red briefly
+            for (uint8_t i = 0; i < MAX_PINS; i++) {
+                if (config.pins[i].enabled) {
+                    if (config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                        setNeoPixelColor(i, 0xFF0000, 255); // Bright red
+                    } else if (config.pins[i].mode == PinMode::OUTPUT_PWM) {
+                        analogWrite(config.pins[i].gpio, 255); // Full brightness
+                    }
+                }
+            }
+            server.send(200, "text/plain", F("Global damage effect"));
+            
+        } else if (effectName == "victory") {
+            // Victory: all pins bright green
+            for (uint8_t i = 0; i < MAX_PINS; i++) {
+                if (config.pins[i].enabled) {
+                    if (config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                        setNeoPixelColor(i, 0x00FF00, 255); // Bright green
+                    } else if (config.pins[i].mode == PinMode::OUTPUT_PWM) {
+                        analogWrite(config.pins[i].gpio, 255); // Full brightness
+                    }
+                }
+            }
+            server.send(200, "text/plain", F("Global victory effect"));
+            
+        } else if (effectName == "alert") {
+            // Alert: all pins flash amber
+            for (uint8_t i = 0; i < MAX_PINS; i++) {
+                if (config.pins[i].enabled) {
+                    if (config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                        setNeoPixelColor(i, 0xFF8000, 255); // Amber
+                    } else if (config.pins[i].mode == PinMode::OUTPUT_PWM) {
+                        analogWrite(config.pins[i].gpio, 200); // High brightness
+                    }
+                }
+            }
+            server.send(200, "text/plain", F("Global alert effect"));
+            
+        } else if (effectName == "off") {
+            // Turn off all effects
+            for (uint8_t i = 0; i < MAX_PINS; i++) {
+                if (config.pins[i].enabled) {
+                    stopEffect(i);
+                    if (config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                        setNeoPixelColor(i, 0x000000, 0); // Off
+                    } else if (config.pins[i].mode == PinMode::OUTPUT_PWM) {
+                        analogWrite(config.pins[i].gpio, 0); // Off
+                    }
+                }
+            }
+            server.send(200, "text/plain", F("All effects stopped"));
+            
+        } else {
+            server.send(400, "text/plain", "Unknown global effect: " + effectName);
+        }
+    });
+    
     // 404 handler
     server.onNotFound([]() {
         server.send(404, "text/plain", F("Not found"));
@@ -927,6 +1090,36 @@ void setupWebServer() {
     
     server.begin();
     Serial.println("✓ Web server started on port 80");
+}
+
+// Helper function to map effect names to EffectType based on pin capabilities
+EffectType mapEffectNameToType(const String& effectName, PinMode mode) {
+    if (effectName == "off") return EffectType::EFFECT_NONE;
+    if (effectName == "on") return EffectType::EFFECT_STATIC_ON;
+    
+    // Engine effects
+    if (effectName == "idle") return EffectType::EFFECT_ENGINE_IDLE;
+    if (effectName == "rev") return EffectType::EFFECT_ENGINE_REV;
+    
+    // Weapon effects  
+    if (effectName == "fire1" || effectName == "fire") return EffectType::EFFECT_MACHINE_GUN;
+    if (effectName == "fire2") return EffectType::EFFECT_FLAMETHROWER;
+    
+    // Candle effects
+    if (effectName == "flicker") return EffectType::EFFECT_CANDLE_FLICKER;
+    if (effectName == "bright") return EffectType::EFFECT_STATIC_ON;
+    
+    // Console effects (RGB only)
+    if (mode == PinMode::OUTPUT_WS2812B) {
+        if (effectName == "active") return EffectType::EFFECT_CONSOLE_RGB;
+        if (effectName == "alert") return EffectType::EFFECT_PULSE;
+    }
+    
+    // Generic effects
+    if (effectName == "pulse") return EffectType::EFFECT_PULSE;
+    if (effectName == "fade") return EffectType::EFFECT_FADE;
+    
+    return EffectType::EFFECT_NONE;
 }
 
 void handleRoot() {
