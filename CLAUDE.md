@@ -200,6 +200,72 @@ MP3 files stored on SD card in `/audio_files/` directory:
 - Designed for 35mm H × 60mm W × 40mm D cavity constraint
 - Target completion: October 9th, 2025
 
+## **CORE VISION: Modular Configuration-Driven Effects System**
+
+### **The Problem We're Solving:**
+Same firmware should work for Tank, Beast, Dreadnought, Daemon Engine - just with different configurations. Players configure once during setup, then have simple effect buttons during gameplay.
+
+### **Pin Configuration System:**
+Each pin has:
+- **Type**: "Engine", "Weapon", "Candle", "Console", "Damage", "Ambient"
+- **Group**: "Engine1", "Engine2", "Weapon1", "Candles", etc.
+- **Pin Mode**: PWM (single color), WS2812B (RGB), Digital (on/off)
+- **Brightness**: Per-pin brightness (0-255) to balance different LED types
+- **Ambient Effect**: Default always-on effect (Candle flicker, Engine idle, etc.)
+
+### **Effect System Design:**
+
+**Two Priority Levels:**
+- **Ambient Effects**: Always running (candle flicker, engine idle, console scrolling)
+- **Active Effects**: Triggered by player, interrupt ambient temporarily (weapon fire, engine rev, taking damage)
+
+**Effect Triggering:**
+- `/effect/engine/idle` → finds all pins with type="Engine" → applies engine idle
+- `/effect/weapon/fire` → finds all pins with type="Weapon" → applies weapon flash  
+- `/effect/damage/hit` → finds ALL pins → applies damage effect appropriate to pin type
+
+**Pin Type Considerations:**
+- **PWM LEDs**: Can only change brightness (dim, bright, flicker, pulse)
+- **WS2812B RGB**: Can change color AND brightness (red flash, blue glow, color cycles)
+- **Taking Damage Example**: PWM pins flicker rapidly, RGB pins flash red, then restore previous effects
+
+### **User Experience:**
+
+**Setup Phase (Config Page):**
+Pin assignments like current tank:
+- Pin 0: Type="Candle", Group="Candles", Mode=PWM, Brightness=150, Ambient=Flicker
+- Pin 3: Type="Console", Group="Console", Mode=WS2812B, Brightness=80, Ambient=DataScroll  
+- Pin 8: Type="Engine", Group="Engine1", Mode=PWM, Brightness=200, Ambient=Idle
+- Pin 9: Type="Engine", Group="Engine2", Mode=PWM, Brightness=180, Ambient=Idle
+
+**Gameplay Phase (Main Page):**
+Dynamic buttons based on configured types:
+- "Engine Rev" (appears if any Engine pins configured)
+- "Weapon Fire" (appears if any Weapon pins configured) 
+- "Taking Damage" (always available)
+- "Candle Mode" (appears if any Candle pins configured)
+
+**Same firmware, different miniature:**
+Beast config: Pin 0="Eyes", Pin 1="Claws", Pin 2="Wounds"
+→ Main page shows: "Eyes Glow", "Claw Strike", "Taking Wounds"
+
+### **Technical Implementation:**
+- Effects target types/groups, not specific pins
+- Pin brightness configured during setup to balance different LED types
+- Ambient effects start automatically, active effects interrupt then restore
+- Effect behavior adapts to pin capabilities (PWM vs RGB)
+
+### **RGB Strip Handling:**
+**One Pin = One Physical Thing**
+- Each WS2812B pin represents one complete feature (Console, Brazier, Engine, etc.)
+- Effects control all LEDs on that strip as a coordinated unit
+- Examples:
+  - Pin 3: "Console" (5 LEDs) → Console effect manages all 5 for data scrolling
+  - Pin 4: "Brazier" (8 LEDs) → Brazier effect makes each LED flicker independently
+  - Pin 5: "Engine" (12 LEDs) → Engine effect pulses all 12 together for rev
+- Configuration: Pin has LED count, effect handles coordination
+- No strip subdivision - if you want separate features, use separate pins/strips
+
 ## ESP32 Framework Naming Conflicts (CRITICAL)
 **NEVER use these names in enums - they are Arduino/ESP32 macros:**
 - `DISABLED` → use `PIN_DISABLED`
