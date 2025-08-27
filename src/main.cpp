@@ -121,11 +121,13 @@ struct PinConfig {
     uint8_t effectGroup;
     uint16_t ledCount;  // Number of LEDs for WS2812B strips
     EffectType defaultEffect;  // Effect to start automatically on boot
+    String type;        // "Engine", "Weapon", "Candle", "Console", etc.
+    String group;       // "Engine1", "Weapon1", "Candles", etc.
     
     PinConfig() : gpio(0), mode(PinMode::PIN_DISABLED), name("Unused"), 
                   enabled(false), brightness(255), color(0xFFFFFF),
                   effect(EffectType::EFFECT_NONE), effectSpeed(100), effectActive(false), effectGroup(0), ledCount(10),
-                  defaultEffect(EffectType::EFFECT_NONE) {}
+                  defaultEffect(EffectType::EFFECT_NONE), type(""), group("") {}
 };
 
 // System configuration
@@ -1195,6 +1197,8 @@ void loadConfiguration() {
             config.pins[i].effectGroup = doc["pins"][i]["effectGroup"] | 0;
             config.pins[i].ledCount = doc["pins"][i]["ledCount"] | 10;
             config.pins[i].defaultEffect = static_cast<EffectType>(doc["pins"][i]["defaultEffect"] | 0);
+            config.pins[i].type = doc["pins"][i]["type"] | "";
+            config.pins[i].group = doc["pins"][i]["group"] | "";
         }
     }
     
@@ -1245,6 +1249,8 @@ void saveConfiguration() {
         pin["effectGroup"] = config.pins[i].effectGroup;
         pin["ledCount"] = config.pins[i].ledCount;
         pin["defaultEffect"] = static_cast<uint8_t>(config.pins[i].defaultEffect);
+        pin["type"] = config.pins[i].type;
+        pin["group"] = config.pins[i].group;
     }
     
     // Save audio mapping
@@ -1285,32 +1291,41 @@ void handleConfig() {
                    ".header { text-align: center; margin-bottom: 20px; }"
                    ".section { background: #16213e; padding: 20px; border-radius: 8px; margin-bottom: 20px; }"
                    ".form-row { margin: 10px 0; display: flex; align-items: center; }"
-                   ".form-row label { min-width: 120px; }"
-                   "input, select { padding: 8px; margin-left: 10px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 4px; }"
+                   ".form-row label { min-width: 140px; font-weight: bold; }"
+                   "input, select { padding: 8px; margin-left: 10px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 4px; flex: 1; max-width: 200px; }"
+                   "input[type=range] { max-width: 150px; }"
+                   "input[type=checkbox] { width: auto; flex: none; }"
                    "input[type=submit] { background: #4CAF50; color: white; border: none; padding: 12px 30px; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 20px; }"
                    "input[type=submit]:hover { background: #45a049; }"
-                   ".pin-config { border: 1px solid #334155; padding: 15px; margin: 10px 0; border-radius: 8px; }"
+                   ".pin-config { border: 1px solid #334155; padding: 15px; margin: 10px 0; border-radius: 8px; background: #0f1419; }"
+                   ".pin-header { background: #1e293b; padding: 10px; border-radius: 4px; margin-bottom: 15px; }"
+                   ".type-examples { font-size: 11px; color: #94a3b8; margin-left: 150px; }"
+                   ".brightness-display { min-width: 40px; text-align: center; color: #94a3b8; }"
                    "</style>"
                    "</head><body>"
                    "<div class=\"header\">"
-                   "<h1>⚙️ Device Configuration</h1>"
+                   "<h1>⚙️ Modular Device Configuration</h1>"
                    "<p><a href=\"/\" style=\"color: #ff6b35;\">← Back to Control Panel</a></p>"
+                   "<p style=\"font-size: 14px; color: #94a3b8;\">Configure pins by type and group for modular effect control</p>"
                    "</div>"
                    "<form method=\"POST\">"
                    "<div class=\"section\">"
-                   "<h3>System Settings</h3>");
+                   "<h3>🔧 System Settings</h3>");
     
     html += F("<div class=\"form-row\">"
              "<label>Device Name:</label>"
              "<input type=\"text\" name=\"deviceName\" value=\"");
     html += config.deviceName;
-    html += F("\" maxlength=\"32\">"
+    html += F("\" maxlength=\"32\" placeholder=\"Tank, Beast, Dreadnought...\">"
              "</div>"
              "<div class=\"form-row\">"
              "<label>Audio Volume:</label>"
-             "<input type=\"number\" name=\"volume\" value=\"");
+             "<input type=\"range\" name=\"volume\" value=\"");
     html += config.volume;
-    html += F("\" min=\"0\" max=\"30\">"
+    html += F("\" min=\"0\" max=\"30\" oninput=\"document.getElementById('volDisplay').innerText = this.value\">"
+             "<span class=\"brightness-display\" id=\"volDisplay\">");
+    html += config.volume;
+    html += F("</span>"
              "</div>"
              "<div class=\"form-row\">"
              "<label>Audio Enabled:</label>"
@@ -1319,7 +1334,7 @@ void handleConfig() {
     html += F("></div></div>");
     
     html += F("<div class=\"section\">"
-             "<h3>WiFi Settings</h3>"
+             "<h3>📡 WiFi Settings</h3>"
              "<div class=\"form-row\">"
              "<label>WiFi SSID:</label>"
              "<input type=\"text\" name=\"wifiSSID\" value=\"");
@@ -1338,16 +1353,35 @@ void handleConfig() {
     if (config.wifiEnabled) html += F(" checked");
     html += F("></div></div>");
     
-    // Pin configurations
+    // Pin configurations - completely redesigned for modular system
     html += F("<div class=\"section\">"
-             "<h3>Pin Configuration</h3>");
+             "<h3>🎯 Modular Pin Configuration</h3>"
+             "<p style=\"font-size: 13px; color: #94a3b8; margin-bottom: 20px;\">"
+             "Configure each pin with type and group for automatic effect targeting. "
+             "Same firmware works across different miniatures through configuration.</p>");
     
     for (uint8_t i = 0; i < MAX_PINS; i++) {
         html += F("<div class=\"pin-config\">"
-                 "<h4>Pin Slot ");
+                 "<div class=\"pin-header\">"
+                 "<h4>🔌 Pin Slot ");
         html += i + 1;
-        html += F("</h4>"
-                 "<div class=\"form-row\">"
+        
+        // Show current assignment in header if configured
+        if (config.pins[i].enabled && config.pins[i].type.length() > 0) {
+            html += F(" - <span style=\"color: #ff6b35;\">");
+            html += config.pins[i].type;
+            if (config.pins[i].group.length() > 0) {
+                html += F(" (");
+                html += config.pins[i].group;
+                html += F(")");
+            }
+            html += F("</span>");
+        }
+        
+        html += F("</h4></div>");
+        
+        // Basic pin setup
+        html += F("<div class=\"form-row\">"
                  "<label>GPIO Pin:</label>"
                  "<input type=\"number\" name=\"gpio");
         html += i;
@@ -1381,7 +1415,7 @@ void handleConfig() {
         html += i;
         html += F("\" value=\"");
         html += config.pins[i].name;
-        html += F("\" maxlength=\"16\">"
+        html += F("\" maxlength=\"16\" placeholder=\"Descriptive name...\">"
                  "</div>"
                  "<div class=\"form-row\">"
                  "<label>Enabled:</label>"
@@ -1389,35 +1423,69 @@ void handleConfig() {
         html += i;
         html += F("\"");
         if (config.pins[i].enabled) html += F(" checked");
-        html += F("></div>"
+        html += F("></div>");
+        
+        // NEW: Type and Group fields for modular system
+        html += F("<div class=\"form-row\">"
+                 "<label>Pin Type:</label>"
+                 "<input type=\"text\" name=\"type");
+        html += i;
+        html += F("\" value=\"");
+        html += config.pins[i].type;
+        html += F("\" maxlength=\"20\" placeholder=\"Engine, Weapon, Candle, Console...\">"
+                 "</div>"
+                 "<div class=\"type-examples\">Examples: Engine, Weapon, Candle, Console, Brazier, Spotlight</div>"
                  "<div class=\"form-row\">"
-                 "<label>Default Effect:</label>"
-                 "<select name=\"defaultEffect");
+                 "<label>Pin Group:</label>"
+                 "<input type=\"text\" name=\"group");
+        html += i;
+        html += F("\" value=\"");
+        html += config.pins[i].group;
+        html += F("\" maxlength=\"20\" placeholder=\"Engine1, Weapon1, Candles...\">"
+                 "</div>"
+                 "<div class=\"type-examples\">Examples: Engine1, Engine2, Weapon1, Weapon2, MainCandles, SpotLights</div>");
+        
+        // Per-pin brightness control
+        html += F("<div class=\"form-row\">"
+                 "<label>Brightness:</label>"
+                 "<input type=\"range\" name=\"brightness");
+        html += i;
+        html += F("\" value=\"");
+        html += config.pins[i].brightness;
+        html += F("\" min=\"0\" max=\"255\" oninput=\"document.getElementById('brightness");
+        html += i;
+        html += F("').innerText = this.value\">"
+                 "<span class=\"brightness-display\" id=\"brightness");
         html += i;
         html += F("\">");
+        html += config.pins[i].brightness;
+        html += F("</span>"
+             "</div>");
         
-        // Default effect options
-        const char* effects[] = {"None", "Candle Flicker", "Fade", "Pulse", "Strobe", "Engine Idle", "Engine Rev", 
-                                "Machine Gun", "Flamethrower", "Taking Hits", "Explosion", "Rocket Launcher", 
-                                "Console RGB", "Static On", "Static Off"};
-        for (int e = 0; e < 15; e++) {
-            html += F("<option value=\"");
-            html += e;
-            html += F("\"");
-            if (static_cast<int>(config.pins[i].defaultEffect) == e) html += F(" selected");
-            html += F(">");
-            html += effects[e];
-            html += F("</option>");
-        }
-        
-        html += F("</select>"
+        // LED count for WS2812B strips
+        html += F("<div class=\"form-row\">"
+                 "<label>LED Count:</label>"
+                 "<input type=\"number\" name=\"ledCount");
+        html += i;
+        html += F("\" value=\"");
+        html += config.pins[i].ledCount;
+        html += F("\" min=\"1\" max=\"100\" placeholder=\"For WS2812B strips\">"
                  "</div>"
+                 "<div class=\"type-examples\">Number of LEDs in strip (WS2812B only)</div>"
                  "</div>");
     }
     
     html += F("</div>"
-             "<input type=\"submit\" value=\"Save Configuration\">"
+             "<input type=\"submit\" value=\"💾 Save Modular Configuration\">"
              "</form>"
+             "<div style=\"margin-top: 30px; padding: 15px; background: #0f1419; border-radius: 8px; font-size: 13px; color: #94a3b8;\">"
+             "<h4>💡 Configuration Tips:</h4>"
+             "<ul style=\"margin: 10px 0;\">"
+             "<li><strong>Types</strong> define what the pin controls (Engine, Weapon, etc.)</li>"
+             "<li><strong>Groups</strong> allow multiple pins of same type (Engine1, Engine2)</li>"
+             "<li><strong>Effects</strong> will target types, not individual pins</li>"
+             "<li><strong>Same firmware</strong> works for Tank, Beast, Dreadnought through config</li>"
+             "</ul></div>"
              "</body></html>");
     
     server.send(200, F("text/html; charset=utf-8"), html);
@@ -1444,13 +1512,16 @@ void handleConfigSave() {
         config.wifiPassword = server.arg("wifiPassword");
     }
     
-    // Update pin configurations
+    // Update pin configurations with new modular fields
     for (uint8_t i = 0; i < MAX_PINS; i++) {
         String gpioArg = "gpio" + String(i);
         String modeArg = "mode" + String(i);
         String nameArg = "name" + String(i);
         String enabledArg = "enabled" + String(i);
-        String defaultEffectArg = "defaultEffect" + String(i);
+        String typeArg = "type" + String(i);
+        String groupArg = "group" + String(i);
+        String brightnessArg = "brightness" + String(i);
+        String ledCountArg = "ledCount" + String(i);
         
         if (server.hasArg(gpioArg)) {
             config.pins[i].gpio = constrain(server.arg(gpioArg).toInt(), 0, 21);
@@ -1464,8 +1535,23 @@ void handleConfigSave() {
             config.pins[i].name = server.arg(nameArg);
         }
         
-        if (server.hasArg(defaultEffectArg)) {
-            config.pins[i].defaultEffect = static_cast<EffectType>(server.arg(defaultEffectArg).toInt());
+        // NEW: Handle type and group fields
+        if (server.hasArg(typeArg)) {
+            config.pins[i].type = server.arg(typeArg);
+        }
+        
+        if (server.hasArg(groupArg)) {
+            config.pins[i].group = server.arg(groupArg);
+        }
+        
+        // NEW: Handle per-pin brightness
+        if (server.hasArg(brightnessArg)) {
+            config.pins[i].brightness = constrain(server.arg(brightnessArg).toInt(), 0, 255);
+        }
+        
+        // NEW: Handle LED count for WS2812B
+        if (server.hasArg(ledCountArg)) {
+            config.pins[i].ledCount = constrain(server.arg(ledCountArg).toInt(), 1, 100);
         }
         
         config.pins[i].enabled = server.hasArg(enabledArg);
