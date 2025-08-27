@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>BattleAura - Configuration</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        .form-row {
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+        }
+        .form-row label {
+            min-width: 140px;
+            font-weight: bold;
+        }
+        input, select {
+            padding: 8px;
+            margin-left: 10px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: white;
+            border-radius: 4px;
+            flex: 1;
+            max-width: 200px;
+        }
+        input[type=range] {
+            max-width: 150px;
+        }
+        input[type=checkbox] {
+            width: auto;
+            flex: none;
+        }
+        input[type=submit] {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+        input[type=submit]:hover {
+            background: #45a049;
+        }
+        .pin-config {
+            border: 1px solid #334155;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            background: #0f1419;
+        }
+        .pin-header {
+            background: #1e293b;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .type-examples {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-left: 150px;
+        }
+        .brightness-display {
+            min-width: 40px;
+            text-align: center;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚙️ Modular Device Configuration</h1>
+        <p><a href="/" style="color: #ff6b35;">← Back to Control Panel</a></p>
+        <p style="font-size: 14px; color: #94a3b8;">Configure pins by type and group for modular effect control</p>
+    </div>
+
+    <form id="configForm" method="POST">
+        <!-- System Settings -->
+        <div class="status">
+            <h3>🔧 System Settings</h3>
+            <div class="form-row">
+                <label>Device Name:</label>
+                <input type="text" name="deviceName" id="deviceName" maxlength="32" placeholder="Tank, Beast, Dreadnought...">
+            </div>
+            <div class="form-row">
+                <label>Audio Volume:</label>
+                <input type="range" name="volume" id="volume" min="0" max="30" oninput="document.getElementById('volDisplay').innerText = this.value">
+                <span class="brightness-display" id="volDisplay">15</span>
+            </div>
+            <div class="form-row">
+                <label>Audio Enabled:</label>
+                <input type="checkbox" name="audioEnabled" id="audioEnabled">
+            </div>
+        </div>
+
+        <!-- WiFi Settings -->
+        <div class="status">
+            <h3>📡 WiFi Settings</h3>
+            <div class="form-row">
+                <label>WiFi SSID:</label>
+                <input type="text" name="wifiSSID" id="wifiSSID" maxlength="32">
+            </div>
+            <div class="form-row">
+                <label>WiFi Password:</label>
+                <input type="password" name="wifiPassword" id="wifiPassword" maxlength="64">
+            </div>
+            <div class="form-row">
+                <label>WiFi Enabled:</label>
+                <input type="checkbox" name="wifiEnabled" id="wifiEnabled">
+            </div>
+        </div>
+
+        <!-- Pin Configuration -->
+        <div class="status">
+            <h3>🎯 Modular Pin Configuration</h3>
+            <p style="font-size: 13px; color: #94a3b8; margin-bottom: 20px;">
+                Configure each pin with type and group for automatic effect targeting.
+                Same firmware works across different miniatures through configuration.
+            </p>
+            <div id="pinConfigs">
+                <!-- Pin configs will be loaded here by JavaScript -->
+            </div>
+        </div>
+
+        <input type="submit" value="💾 Save Modular Configuration">
+    </form>
+
+    <div style="margin-top: 30px; padding: 15px; background: #0f1419; border-radius: 8px; font-size: 13px; color: #94a3b8;">
+        <h4>💡 Configuration Tips:</h4>
+        <ul style="margin: 10px 0;">
+            <li><strong>Types</strong> define what the pin controls (Engine, Weapon, etc.)</li>
+            <li><strong>Groups</strong> allow multiple pins of same type (Engine1, Engine2)</li>
+            <li><strong>Effects</strong> will target types, not individual pins</li>
+            <li><strong>Same firmware</strong> works for Tank, Beast, Dreadnought through config</li>
+        </ul>
+    </div>
+
+    <script src="/app.js"></script>
+    <script>
+        // Configuration page specific JavaScript
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfiguration();
+        });
+
+        function loadConfiguration() {
+            fetch('/api/config')
+                .then(response => response.json())
+                .then(config => {
+                    // Populate system settings
+                    document.getElementById('deviceName').value = config.deviceName || '';
+                    document.getElementById('volume').value = config.volume || 15;
+                    document.getElementById('volDisplay').textContent = config.volume || 15;
+                    document.getElementById('audioEnabled').checked = config.audioEnabled || false;
+                    document.getElementById('wifiSSID').value = config.wifiSSID || '';
+                    document.getElementById('wifiPassword').value = config.wifiPassword || '';
+                    document.getElementById('wifiEnabled').checked = config.wifiEnabled || false;
+
+                    // Generate pin configuration forms
+                    generatePinConfigs(config.pins || []);
+                })
+                .catch(error => {
+                    console.error('Error loading configuration:', error);
+                });
+        }
+
+        function generatePinConfigs(pins) {
+            const container = document.getElementById('pinConfigs');
+            container.innerHTML = '';
+
+            pins.forEach((pin, index) => {
+                const pinDiv = document.createElement('div');
+                pinDiv.className = 'pin-config';
+                
+                let typeDisplay = '';
+                if (pin.enabled && pin.type) {
+                    typeDisplay = ` - <span style="color: #ff6b35;">${pin.type}${pin.group ? ` (${pin.group})` : ''}</span>`;
+                }
+
+                pinDiv.innerHTML = `
+                    <div class="pin-header">
+                        <h4>🔌 Pin Slot ${index + 1}${typeDisplay}</h4>
+                    </div>
+                    <div class="form-row">
+                        <label>GPIO Pin:</label>
+                        <input type="number" name="gpio${index}" value="${pin.gpio || 0}" min="0" max="21">
+                    </div>
+                    <div class="form-row">
+                        <label>Pin Mode:</label>
+                        <select name="mode${index}">
+                            <option value="0" ${pin.mode === 0 ? 'selected' : ''}>Disabled</option>
+                            <option value="1" ${pin.mode === 1 ? 'selected' : ''}>Digital Output</option>
+                            <option value="2" ${pin.mode === 2 ? 'selected' : ''}>PWM Output</option>
+                            <option value="3" ${pin.mode === 3 ? 'selected' : ''}>WS2812B RGB</option>
+                            <option value="4" ${pin.mode === 4 ? 'selected' : ''}>Digital Input</option>
+                            <option value="5" ${pin.mode === 5 ? 'selected' : ''}>Analog Input</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>Pin Name:</label>
+                        <input type="text" name="name${index}" value="${pin.name || ''}" maxlength="16" placeholder="Descriptive name...">
+                    </div>
+                    <div class="form-row">
+                        <label>Enabled:</label>
+                        <input type="checkbox" name="enabled${index}" ${pin.enabled ? 'checked' : ''}>
+                    </div>
+                    <div class="form-row">
+                        <label>Pin Type:</label>
+                        <input type="text" name="type${index}" value="${pin.type || ''}" maxlength="20" placeholder="Engine, Weapon, Candle, Console...">
+                    </div>
+                    <div class="type-examples">Examples: Engine, Weapon, Candle, Console, Brazier, Spotlight</div>
+                    <div class="form-row">
+                        <label>Pin Group:</label>
+                        <input type="text" name="group${index}" value="${pin.group || ''}" maxlength="20" placeholder="Engine1, Weapon1, Candles...">
+                    </div>
+                    <div class="type-examples">Examples: Engine1, Engine2, Weapon1, Weapon2, MainCandles, SpotLights</div>
+                    <div class="form-row">
+                        <label>Brightness:</label>
+                        <input type="range" name="brightness${index}" value="${pin.brightness || 255}" min="0" max="255" oninput="document.getElementById('brightness${index}').innerText = this.value">
+                        <span class="brightness-display" id="brightness${index}">${pin.brightness || 255}</span>
+                    </div>
+                    <div class="form-row">
+                        <label>LED Count:</label>
+                        <input type="number" name="ledCount${index}" value="${pin.ledCount || 10}" min="1" max="100" placeholder="For WS2812B strips">
+                    </div>
+                    <div class="type-examples">Number of LEDs in strip (WS2812B only)</div>
+                `;
+                
+                container.appendChild(pinDiv);
+            });
+        }
+    </script>
+</body>
+</html>

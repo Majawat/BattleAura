@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>BattleAura - Audio Configuration</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>🎵 Audio Configuration</h1>
+        <p><a href="/" style="color: #ff6b35;">← Back to Control Panel</a></p>
+        <p style="font-size: 14px; color: #94a3b8;">Configure audio-to-effect mappings</p>
+    </div>
+
+    <form id="audioForm" method="POST">
+        <div class="status">
+            <h3>🔊 Audio File Mappings</h3>
+            <p>Map sound effects to audio files on SD card</p>
+            <div id="audioMappings">
+                <!-- Audio mappings will be loaded here by JavaScript -->
+            </div>
+        </div>
+
+        <input type="submit" value="💾 Save Audio Configuration" style="background: #4CAF50; color: white; border: none; padding: 12px 30px; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 20px;">
+    </form>
+
+    <div style="margin-top: 30px; padding: 15px; background: #0f1419; border-radius: 8px; font-size: 13px; color: #94a3b8;">
+        <h4>💡 Audio Tips:</h4>
+        <ul style="margin: 10px 0;">
+            <li><strong>File Numbers:</strong> Use files 0001-0255 on SD card</li>
+            <li><strong>Format:</strong> MP3 files, 22050 Hz, Mono recommended</li>
+            <li><strong>Zero means:</strong> No audio for this effect</li>
+            <li><strong>Test playback:</strong> Use control panel to test files</li>
+        </ul>
+    </div>
+
+    <script src="/app.js"></script>
+    <script>
+        // Audio configuration page specific JavaScript
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAudioConfiguration();
+        });
+
+        function loadAudioConfiguration() {
+            fetch('/api/config')
+                .then(response => response.json())
+                .then(config => {
+                    generateAudioMappings(config.audioMap || {});
+                })
+                .catch(error => {
+                    console.error('Error loading audio configuration:', error);
+                });
+        }
+
+        function generateAudioMappings(audioMap) {
+            const container = document.getElementById('audioMappings');
+            container.innerHTML = '';
+
+            const effects = [
+                { key: 'candleFlicker', name: 'Candle Flicker', description: 'Gentle ambient burning sound' },
+                { key: 'fade', name: 'Fade Effect', description: 'Soft transition sound' },
+                { key: 'pulse', name: 'Pulse Effect', description: 'Rhythmic pulsing sound' },
+                { key: 'strobe', name: 'Strobe Effect', description: 'Sharp strobing sound' },
+                { key: 'engineIdle', name: 'Engine Idle', description: 'Vehicle engine idling' },
+                { key: 'engineRev', name: 'Engine Rev', description: 'Engine revving up' },
+                { key: 'machineGun', name: 'Machine Gun', description: 'Rapid fire weapon' },
+                { key: 'flamethrower', name: 'Flamethrower', description: 'Whooshing flame sound' },
+                { key: 'takingHits', name: 'Taking Hits', description: 'Impact/damage sounds' },
+                { key: 'explosion', name: 'Explosion', description: 'Large explosion sound' },
+                { key: 'rocketLauncher', name: 'Rocket Launcher', description: 'Heavy weapon launch' },
+                { key: 'consoleRgb', name: 'Console RGB', description: 'Electronic beeping' }
+            ];
+
+            effects.forEach(effect => {
+                const row = document.createElement('div');
+                row.style.cssText = 'margin: 15px 0; display: flex; align-items: center; padding: 10px; background: #0f1419; border-radius: 4px;';
+                
+                row.innerHTML = `
+                    <div style="flex: 1;">
+                        <strong style="color: #ff6b35;">${effect.name}</strong>
+                        <br>
+                        <small style="color: #94a3b8;">${effect.description}</small>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label style="min-width: 80px;">File Number:</label>
+                        <input type="number" name="${effect.key}" value="${audioMap[effect.key] || 0}" min="0" max="255" 
+                               style="width: 80px; padding: 5px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 4px;">
+                        <button type="button" onclick="testAudio(${audioMap[effect.key] || 0})" 
+                                style="background: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">
+                            ▶ Test
+                        </button>
+                    </div>
+                `;
+                
+                container.appendChild(row);
+            });
+        }
+
+        function testAudio(fileNumber) {
+            if (fileNumber > 0) {
+                fetch(`/audio/play?file=${fileNumber}`)
+                    .then(response => response.text())
+                    .then(data => console.log('Audio test:', data))
+                    .catch(error => console.error('Audio test error:', error));
+            }
+        }
+    </script>
+</body>
+</html>

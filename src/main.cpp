@@ -8,6 +8,7 @@
 #include <Adafruit_NeoPixel.h>
 #include <DFRobotDFPlayerMini.h>
 #include <HardwareSerial.h>
+#include "webfiles.h"
 
 // Application constants
 const char* VERSION = "2.0.0-dev";
@@ -195,12 +196,10 @@ void setupWebServer();
 void setupGPIO();
 void startDefaultEffects();
 void handleRoot();
+void handleEmbeddedFile(const String& path);
 void handleStaticFile(const String& path, const String& contentType);
-void handleUpdate();
 void handleUpdateUpload();
-void handleConfig();
 void handleConfigSave();
-void handleAudioMapping();
 String getEffectName(EffectType effect);
 EffectType mapEffectNameToType(const String& effectName, PinMode mode);
 void handleLedControl(bool state);
@@ -386,9 +385,12 @@ void setupWebServer() {
     // Root handler
     server.on("/", HTTP_GET, handleRoot);
     
-    // Static file handlers
-    server.on("/styles.css", HTTP_GET, []() { handleStaticFile("/styles.css", "text/css"); });
-    server.on("/app.js", HTTP_GET, []() { handleStaticFile("/app.js", "application/javascript"); });
+    // Embedded static file handlers
+    server.on("/styles.css", HTTP_GET, []() { handleEmbeddedFile("/styles.css"); });
+    server.on("/app.js", HTTP_GET, []() { handleEmbeddedFile("/app.js"); });
+    server.on("/config.html", HTTP_GET, []() { handleEmbeddedFile("/config.html"); });
+    server.on("/update.html", HTTP_GET, []() { handleEmbeddedFile("/update.html"); });
+    server.on("/audio_map.html", HTTP_GET, []() { handleEmbeddedFile("/audio_map.html"); });
     
     // API status endpoint
     server.on("/api/status", HTTP_GET, []() {
@@ -416,6 +418,37 @@ void setupWebServer() {
         server.send(200, "application/json", response);
     });
     
+    // API endpoint to get current configuration as JSON
+    server.on("/api/config", HTTP_GET, []() {
+        JsonDocument configDoc;
+        
+        // System settings
+        configDoc["deviceName"] = config.deviceName;
+        configDoc["volume"] = config.volume;
+        configDoc["audioEnabled"] = config.audioEnabled;
+        configDoc["wifiSSID"] = config.wifiSSID;
+        configDoc["wifiPassword"] = config.wifiPassword;
+        configDoc["wifiEnabled"] = config.wifiEnabled;
+        
+        // Pin configurations
+        JsonArray pins = configDoc["pins"].to<JsonArray>();
+        for (uint8_t i = 0; i < MAX_PINS; i++) {
+            JsonObject pin = pins.add<JsonObject>();
+            pin["gpio"] = config.pins[i].gpio;
+            pin["mode"] = static_cast<int>(config.pins[i].mode);
+            pin["name"] = config.pins[i].name;
+            pin["enabled"] = config.pins[i].enabled;
+            pin["type"] = config.pins[i].type;
+            pin["group"] = config.pins[i].group;
+            pin["brightness"] = config.pins[i].brightness;
+            pin["ledCount"] = config.pins[i].ledCount;
+        }
+        
+        String response;
+        serializeJson(configDoc, response);
+        server.send(200, "application/json", response);
+    });
+
     // API endpoint for configured pin types (for dynamic UI generation)
     server.on("/api/types", HTTP_GET, []() {
         JsonDocument typesDoc;
@@ -485,11 +518,11 @@ void setupWebServer() {
     });
     
     // Configuration page
-    server.on("/config", HTTP_GET, handleConfig);
+    server.on("/config", HTTP_GET, []() { handleEmbeddedFile("/config.html"); });
     server.on("/config", HTTP_POST, handleConfigSave);
     
     // OTA update page
-    server.on("/update", HTTP_GET, handleUpdate);
+    server.on("/update", HTTP_GET, []() { handleEmbeddedFile("/update.html"); });
     server.on("/update", HTTP_POST, []() {
         server.send(200, F("text/html; charset=utf-8"), F(
             "<html><body style='font-family:Arial; background:#1a1a2e; color:white; text-align:center; padding:50px;'>"
@@ -727,7 +760,7 @@ void setupWebServer() {
         server.send(200, "text/plain", "Playing effect audio: " + String(effectType));
     });
     
-    server.on("/audio/map", HTTP_GET, handleAudioMapping);
+    server.on("/audio/map", HTTP_GET, []() { handleEmbeddedFile("/audio_map.html"); });
     
     // RGB LED test endpoints
     server.on("/rgb/test", HTTP_GET, []() {
@@ -1123,59 +1156,29 @@ EffectType mapEffectNameToType(const String& effectName, PinMode mode) {
 }
 
 void handleRoot() {
-    handleStaticFile("/index.html", "text/html");
+    handleEmbeddedFile("/index.html");
 }
 
-void handleStaticFile(const String& path, const String& contentType) {
-    File file = SPIFFS.open(path, "r");
-    if (!file) {
-        Serial.printf("Failed to open file: %s\n", path.c_str());
-        server.send(404, "text/plain", "File not found");
-        return;
+void handleEmbeddedFile(const String& path) {
+    // Look for the file in embedded files array
+    for (size_t i = 0; i < embeddedFilesCount; i++) {
+        if (String(embeddedFiles[i].path) == path) {
+            server.send(200, embeddedFiles[i].contentType, embeddedFiles[i].data);
+            return;
+        }
     }
     
-    server.streamFile(file, contentType);
-    file.close();
+    // File not found
+    Serial.printf("Embedded file not found: %s\n", path.c_str());
+    server.send(404, "text/plain", "File not found");
 }
 
-void handleUpdate() {
-    String html = F("<!DOCTYPE html>"
-                   "<html><head>"
-                   "<meta charset=\"UTF-8\">"
-                   "<title>BattleAura - Firmware Update</title>"
-                   "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
-                   "<style>"
-                   "body { font-family: Arial; margin: 20px; background: #1a1a2e; color: white; }"
-                   ".header { text-align: center; margin-bottom: 20px; }"
-                   ".form { background: #16213e; padding: 20px; border-radius: 8px; max-width: 500px; margin: 0 auto; }"
-                   "input[type=file] { width: 100%; padding: 10px; margin: 10px 0; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 4px; }"
-                   "input[type=submit] { background: #ff6b35; color: white; border: none; padding: 12px 30px; border-radius: 5px; cursor: pointer; font-size: 16px; }"
-                   "input[type=submit]:hover { background: #e55a2b; }"
-                   ".warning { background: #7c2d12; padding: 10px; border-radius: 4px; margin: 10px 0; }"
-                   "</style>"
-                   "</head><body>"
-                   "<div class=\"header\">"
-                   "<h1>🎯 Firmware Update</h1>"
-                   "<p><a href=\"/\" style=\"color: #ff6b35;\">← Back to Control Panel</a></p>"
-                   "</div>"
-                   "<div class=\"form\">"
-                   "<div class=\"warning\">"
-                   "<strong>⚠️ Warning:</strong> Only upload firmware.bin files built for ESP32-C3!"
-                   "</div>"
-                   "<h3>Upload New Firmware</h3>"
-                   "<form method='POST' enctype='multipart/form-data'>"
-                   "<p><strong>1.</strong> Build firmware: <code>platformio run</code></p>"
-                   "<p><strong>2.</strong> Locate file: <code>.pio/build/seeed_xiao_esp32c3/firmware.bin</code></p>"
-                   "<p><strong>3.</strong> Select and upload:</p>"
-                   "<input type='file' name='update' accept='.bin' required>"
-                   "<br><br>"
-                   "<input type='submit' value='Upload Firmware'>"
-                   "</form>"
-                   "</div>"
-                   "</body></html>");
-    
-    server.send(200, F("text/html; charset=utf-8"), html);
+// Legacy function for compatibility
+void handleStaticFile(const String& path, const String& contentType) {
+    handleEmbeddedFile(path);
 }
+
+// handleUpdate removed - now uses embedded /update.html
 
 void handleUpdateUpload() {
     HTTPUpload& upload = server.upload();

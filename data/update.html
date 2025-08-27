@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>BattleAura - Firmware Update</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        .form {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        input[type=file] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: white;
+            border-radius: 4px;
+        }
+        input[type=submit] {
+            background: #ff6b35;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        input[type=submit]:hover {
+            background: #e55a2b;
+        }
+        .warning {
+            background: #7c2d12;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 Firmware Update</h1>
+        <p><a href="/" style="color: #ff6b35;">← Back to Control Panel</a></p>
+    </div>
+
+    <div class="form">
+        <div class="warning">
+            <strong>⚠️ Warning:</strong> Only upload firmware.bin files built for ESP32-C3!
+        </div>
+        <h3>Upload New Firmware</h3>
+        <form method='POST' enctype='multipart/form-data'>
+            <p><strong>1.</strong> Build firmware: <code>platformio run</code></p>
+            <p><strong>2.</strong> Locate file: <code>.pio/build/seeed_xiao_esp32c3/firmware.bin</code></p>
+            <p><strong>3.</strong> Select and upload:</p>
+            <input type='file' name='update' accept='.bin' required>
+            <br><br>
+            <input type='submit' value='Upload Firmware'>
+        </form>
+    </div>
+</body>
+</html>
