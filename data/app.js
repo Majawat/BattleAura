@@ -138,21 +138,33 @@ function getEffectsForType(typeName, hasRGB, hasPWM) {
     } else if (name.includes('candle')) {
         effects.push({ action: 'flicker', label: 'Candle Flicker' });
         effects.push({ action: 'on', label: 'Bright' });
+        effects.push({ action: 'fade', label: 'Fade' });
     } else if (name.includes('console')) {
         if (hasRGB) {
             effects.push({ action: 'scroll', label: 'Data Scroll' });
             effects.push({ action: 'pulse', label: 'Alert Pulse' });
+            effects.push({ action: 'fade', label: 'Fade' });
         } else {
             effects.push({ action: 'pulse', label: 'Status Pulse' });
         }
+    } else if (name.includes('damage')) {
+        effects.push({ action: 'damage', label: 'Damage Sparks' });
+        effects.push({ action: 'strobe', label: 'System Failure' });
+    } else if (name.includes('ambient')) {
+        effects.push({ action: 'pulse', label: 'Pulse' });
+        effects.push({ action: 'strobe', label: 'Strobe' });
+        effects.push({ action: 'fade', label: 'Fade' });
     } else {
         // Generic type - add basic effects
         effects.push({ action: 'pulse', label: 'Pulse' });
         effects.push({ action: 'strobe', label: 'Strobe' });
+        effects.push({ action: 'fade', label: 'Fade' });
     }
     
-    // Add damage effect for all types
-    effects.push({ action: 'damage', label: 'Taking Damage' });
+    // Add universal controls for all types
+    effects.push({ action: 'on', label: '💡 On' });
+    effects.push({ action: 'off', label: '⚫ Off' });
+    effects.push({ action: 'damage', label: '💥 Taking Damage' });
     
     return effects;
 }

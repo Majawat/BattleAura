@@ -12,49 +12,24 @@
         <p>Tactical Lighting & Audio System</p>
     </div>
 
-    <div class="status">
-        <h3>System Status</h3>
-        <p><strong>Version:</strong> <span id="version">Loading...</span></p>
-        <p><strong>Status:</strong> <span class="ready">READY</span></p>
-        <p><strong>Free Memory:</strong> <span id="memory">Loading...</span> bytes</p>
-        <p><strong>Uptime:</strong> <span id="uptime">Loading...</span> seconds</p>
-    </div>
-
-    <div class="status">
-        <h3>GPIO Control</h3>
-        <div id="gpio-status">Loading...</div>
-        <button onclick="fetch('/led/on'); setTimeout(function(){location.reload();}, 100);" class="btn btn-green">LED ON</button>
-        <button onclick="fetch('/led/off'); setTimeout(function(){location.reload();}, 100);" class="btn btn-red">LED OFF</button>
-        <button onclick="fetch('/led/toggle'); setTimeout(function(){location.reload();}, 100);" class="btn btn-orange">TOGGLE</button>
-    </div>
-
-    <div id="dynamic-effects" class="status">
+    <!-- Main Control Section -->
+    <div id="dynamic-effects" class="status primary-section">
         <h3>⚡ Tactical Effects</h3>
-        <p>Effects are generated based on your pin configuration</p>
+        <p>Control your configured lighting and audio effects</p>
         <div class="loading">Loading configured effects...</div>
     </div>
 
     <div class="status">
-        <h3>🎨 Manual RGB Control</h3>
-        <p>Direct color control (overrides current effects)</p>
-        <div class="button-group">
-            <button onclick="setRgbColor('red')" class="btn rgb-red">Red</button>
-            <button onclick="setRgbColor('green')" class="btn rgb-green">Green</button>
-            <button onclick="setRgbColor('blue')" class="btn rgb-blue">Blue</button>
-            <button onclick="setRgbColor('white')" class="btn rgb-white">White</button>
-            <button onclick="setRgbColor('off')" class="btn rgb-off">OFF</button>
-        </div>
-        <div class="button-group">
-            <button onclick="stopAll()" class="btn btn-red">Stop All Effects</button>
-        </div>
-    </div>
-
-    <div class="status">
         <h3>💡 Global Brightness Control</h3>
-        <p>Master brightness for all LEDs (0-255)</p>
+        <p>Master brightness for all LEDs</p>
         <div class="brightness-control">
-            <label for="globalBrightness">Global Max Brightness:</label>
-            <input type="range" id="globalBrightness" min="0" max="255" value="255">
+            <div class="brightness-slider">
+                <label for="globalBrightness">Global Max Brightness:</label>
+                <div class="slider-container">
+                    <input type="range" id="globalBrightness" min="0" max="255" value="255">
+                    <span id="brightnessValue">255</span>
+                </div>
+            </div>
             <div class="brightness-presets">
                 <button onclick="setBrightness(0)" class="btn brightness-0">0%</button>
                 <button onclick="setBrightness(64)" class="btn brightness-25">25%</button>
@@ -62,26 +37,65 @@
                 <button onclick="setBrightness(192)" class="btn brightness-75">75%</button>
                 <button onclick="setBrightness(255)" class="btn brightness-100">100%</button>
             </div>
-            <span id="brightnessValue">255</span>
         </div>
     </div>
 
 
-    <div class="status">
-        <h3>Configuration</h3>
-        <p><a href="/config" class="link-green">⚙️ Device Configuration</a></p>
-        <p>Configure pins, WiFi, and system settings</p>
+    <!-- Configuration Links -->
+    <div class="status configuration-links">
+        <h3>⚙️ Configuration</h3>
+        <div class="config-grid">
+            <div class="config-item">
+                <a href="/config" class="config-link config-device">
+                    <div class="config-icon">⚙️</div>
+                    <div class="config-text">
+                        <h4>Device Configuration</h4>
+                        <p>Configure pins, WiFi, and system settings</p>
+                    </div>
+                </a>
+            </div>
+            <div class="config-item">
+                <a href="/audio/map" class="config-link config-audio">
+                    <div class="config-icon">🎵</div>
+                    <div class="config-text">
+                        <h4>Audio Configuration</h4>
+                        <p>Map sound effects to different actions</p>
+                    </div>
+                </a>
+            </div>
+            <div class="config-item">
+                <a href="/update" class="config-link config-update">
+                    <div class="config-icon">📡</div>
+                    <div class="config-text">
+                        <h4>Firmware Update</h4>
+                        <p>Upload new firmware over-the-air</p>
+                    </div>
+                </a>
+            </div>
+        </div>
     </div>
 
-    <div class="status">
-        <h3>Audio Mapping</h3>
-        <p><a href="/audio/map" class="link-blue">🎵 Audio Configuration</a></p>
-        <p>Configure audio-to-effect mappings</p>
-    </div>
-
-    <div class="status">
-        <h3>Firmware Update</h3>
-        <p><a href="/update" class="link-orange">📦 Upload New Firmware (.bin file)</a></p>
+    <!-- System Information -->
+    <div class="status system-info">
+        <h3>System Status</h3>
+        <div class="status-grid">
+            <div class="status-item">
+                <span class="status-label">Version:</span>
+                <span class="status-value" id="version">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Status:</span>
+                <span class="status-value ready">READY</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Memory:</span>
+                <span class="status-value" id="memory">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Uptime:</span>
+                <span class="status-value" id="uptime">Loading...</span>
+            </div>
+        </div>
     </div>
 
     <script src="/app.js"></script>
