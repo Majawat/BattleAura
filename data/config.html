@@ -151,9 +151,22 @@
                     </div>
                     <div class="form-row">
                         <label>Pin Type:</label>
-                        <input type="text" name="type${index}" value="${pin.type || ''}" maxlength="20" placeholder="Engine, Weapon, Candle, Console...">
+                        <select name="type${index}" onchange="updateTypeDescription(${index}, this.value)">
+                            <option value="">Select Type...</option>
+                            <option value="Engine" ${pin.type === 'Engine' ? 'selected' : ''}>Engine (idle, rev effects)</option>
+                            <option value="MachineGun" ${pin.type === 'MachineGun' ? 'selected' : ''}>Machine Gun (burst fire effect)</option>
+                            <option value="Flamethrower" ${pin.type === 'Flamethrower' ? 'selected' : ''}>Flamethrower (flame whoosh effect)</option>
+                            <option value="RocketLauncher" ${pin.type === 'RocketLauncher' ? 'selected' : ''}>Rocket Launcher (rocket launch effect)</option>
+                            <option value="MainCannon" ${pin.type === 'MainCannon' ? 'selected' : ''}>Main Cannon (cannon blast effect)</option>
+                            <option value="Candle" ${pin.type === 'Candle' ? 'selected' : ''}>Candle (flicker, bright effects)</option>
+                            <option value="Console" ${pin.type === 'Console' ? 'selected' : ''}>Console (data scroll, alert pulse)</option>
+                            <option value="Damage" ${pin.type === 'Damage' ? 'selected' : ''}>Damage (hit sparks, system failure)</option>
+                            <option value="Ambient" ${pin.type === 'Ambient' ? 'selected' : ''}>Ambient (general lighting effects)</option>
+                            <option value="Custom" ${pin.type && !['Engine','MachineGun','Flamethrower','RocketLauncher','MainCannon','Candle','Console','Damage','Ambient'].includes(pin.type) ? 'selected' : ''}>Custom Type</option>
+                        </select>
+                        <input type="text" name="customType${index}" id="customType${index}" value="${!['Engine','MachineGun','Flamethrower','RocketLauncher','MainCannon','Candle','Console','Damage','Ambient',''].includes(pin.type || '') ? pin.type : ''}" maxlength="20" placeholder="Enter custom type..." style="display: ${!['Engine','MachineGun','Flamethrower','RocketLauncher','MainCannon','Candle','Console','Damage','Ambient',''].includes(pin.type || '') ? 'inline-block' : 'none'}; margin-left: 10px; width: 150px;">
                     </div>
-                    <div class="type-examples">Examples: Engine, Weapon, Candle, Console, Brazier, Spotlight</div>
+                    <div class="type-examples" id="typeDescription${index}">Effect buttons that will appear on main page based on configured pin types</div>
                     <div class="form-row">
                         <label>Pin Group:</label>
                         <input type="text" name="group${index}" value="${pin.group || ''}" maxlength="20" placeholder="Engine1, Weapon1, Candles...">
@@ -185,6 +198,37 @@
             }
             if (ledCountHelp) {
                 ledCountHelp.style.display = isWS2812B ? 'block' : 'none';
+            }
+        }
+
+        function updateTypeDescription(pinIndex, typeValue) {
+            const customField = document.getElementById(`customType${pinIndex}`);
+            const description = document.getElementById(`typeDescription${pinIndex}`);
+            
+            // Show/hide custom type input
+            if (customField) {
+                customField.style.display = (typeValue === 'Custom') ? 'inline-block' : 'none';
+                if (typeValue !== 'Custom') {
+                    customField.value = ''; // Clear custom field when not using it
+                }
+            }
+            
+            // Update description based on selected type
+            if (description) {
+                const descriptions = {
+                    'Engine': 'Creates Engine Idle and Engine Rev effect buttons',
+                    'MachineGun': 'Creates Machine Gun Burst effect button',  
+                    'Flamethrower': 'Creates Flamethrower effect button',
+                    'RocketLauncher': 'Creates Rocket Launch effect button',
+                    'MainCannon': 'Creates Main Cannon Blast effect button',
+                    'Candle': 'Creates Candle Flicker and Bright effect buttons',
+                    'Console': 'Creates Console Data Scroll and Alert Pulse buttons',
+                    'Damage': 'Creates Damage/Hit Sparks effect button',
+                    'Ambient': 'Creates general lighting effect buttons',
+                    'Custom': 'Enter custom type name for specialized effects',
+                    '': 'Select a pin type to see available effects'
+                };
+                description.textContent = descriptions[typeValue] || 'Effect buttons based on configured pin types';
             }
         }
 

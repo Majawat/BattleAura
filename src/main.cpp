@@ -11,7 +11,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.8.3-alpha";
+const char* VERSION = "0.8.4-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -1519,7 +1519,18 @@ void handleConfigSave() {
         
         // NEW: Handle type and group fields
         if (server.hasArg(typeArg)) {
-            config.pins[i].type = server.arg(typeArg);
+            String typeValue = server.arg(typeArg);
+            if (typeValue == "Custom") {
+                // Use custom type field if "Custom" is selected
+                String customTypeArg = "customType" + String(i);
+                if (server.hasArg(customTypeArg)) {
+                    config.pins[i].type = server.arg(customTypeArg);
+                } else {
+                    config.pins[i].type = ""; // Clear if no custom type provided
+                }
+            } else {
+                config.pins[i].type = typeValue;
+            }
         }
         
         if (server.hasArg(groupArg)) {
