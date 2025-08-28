@@ -11,7 +11,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.8.1-alpha";
+const char* VERSION = "0.8.2-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -1152,10 +1152,16 @@ void handleRoot() {
 }
 
 void handleEmbeddedFile(const String& path) {
+    Serial.printf("handleEmbeddedFile called with path: '%s'\n", path.c_str());
+    
     // Look for the file in embedded files array
     for (size_t i = 0; i < embeddedFilesCount; i++) {
+        Serial.printf("Checking embedded file [%d]: '%s'\n", i, embeddedFiles[i].path);
         if (String(embeddedFiles[i].path) == path) {
-            server.send(200, embeddedFiles[i].contentType, embeddedFiles[i].data);
+            Serial.printf("Found match! Sending %s with content-type: %s, length: %d\n", 
+                         path.c_str(), embeddedFiles[i].contentType, embeddedFiles[i].length);
+            // Use send_P to send binary data from PROGMEM with specified length
+            server.send_P(200, embeddedFiles[i].contentType, embeddedFiles[i].data, embeddedFiles[i].length);
             return;
         }
     }
