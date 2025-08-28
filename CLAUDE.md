@@ -282,26 +282,28 @@ Beast config: Pin 0="Eyes", Pin 1="Claws", Pin 2="Wounds"
 
 ### **Core Architecture Rules:**
 1. **ALWAYS read CLAUDE.md first** - Understand the modular vision before changing ANY code
-2. **Think holistically towards end goal** - Don't do quick fixes that break the core user experience
-3. **Preserve the priority system** - Ambient effects should always run, active effects should interrupt and restore
-4. **Never break the type-based system** - Effects should target pin types, not hardcoded pins
-5. **Maintain the user workflow** - Configure once (setup), then use effect buttons (gameplay)
+2. **Ask questions to reduce ambiguity** - If requirements are unclear, ask before implementing
+3. **Think holistically towards end goal** - Don't do quick fixes that break the core user experience
+4. **Preserve the priority system** - Ambient effects should always run, active effects should interrupt and restore
+5. **Never break the type-based system** - Effects should target pin types, not hardcoded pins
+6. **Maintain the user workflow** - Configure once (setup), then use effect buttons (gameplay)
+7. **No unrelated changes** - Don't make unrelated changes without explicitly stating or asking first
 
 ### **Change Management Rules:**
-6. **Build and test before committing** - Ensure changes compile and don't break existing functionality
-7. **Update firmware version** - Always increment version for any functional change
-8. **Commit changes frequently and properly** - With descriptive messages explaining the "why"
-9. **Consider side effects** - How does this change affect other parts of the system?
-10. **Follow existing patterns** - Don't reinvent wheels, use established code patterns
+8. **Build and test before committing** - Ensure changes compile and don't break existing functionality
+9. **Update firmware version** - Always increment version for any functional change
+10. **Commit changes frequently and properly** - With descriptive messages explaining the "why"
+11. **Consider side effects** - How does this change affect other parts of the system?
+12. **Follow existing patterns** - Don't reinvent wheels, use established code patterns
 
 ### **Problem-Solving Rules:**
-11. **Fix root causes, not symptoms** - If RGB color doesn't work, fix the effects system, don't add bypasses
-12. **Preserve existing working features** - Don't break ambient effects while fixing manual controls
-13. **Test against the core vision** - Will a Tank user with candle flickers still have them after my change?
-14. **Ask "Does this help the end goal?"** - If it's just a band-aid, it's probably wrong
+13. **Fix root causes, not symptoms** - If RGB color doesn't work, fix the effects system, don't add bypasses
+14. **Preserve existing working features** - Don't break ambient effects while fixing manual controls
+15. **Test against the core vision** - Will a Tank user with candle flickers still have them after my change?
+16. **Ask "Does this help the end goal?"** - If it's just a band-aid, it's probably wrong
 
 ### **Code Quality Rules:**
-15. **Ensure best practices** - Clean, maintainable code, not just "working" code
-16. **Document breaking changes** - If you must break something, document why and how to restore it
-17. **Keep flash usage reasonable** - Monitor memory usage, optimize when needed
-18. **Remove old code aggressively** - We're pre-alpha, break backward compatibility to clean up architecture
+17. **Ensure best practices** - Clean, maintainable code, not just "working" code
+18. **Document breaking changes** - If you must break something, document why and how to restore it
+19. **Keep flash usage reasonable** - Monitor memory usage, optimize when needed
+20. **Remove old code aggressively** - We're pre-alpha, break backward compatibility to clean up architecture
