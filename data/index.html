@@ -1,99 +1,118 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BattleAura Control</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-    <div class="header">
-        <h1>🎯 BattleAura Control</h1>
-        <p>Tactical Lighting & Audio System</p>
-    </div>
+    <div class="container">
+        <!-- Hero Section -->
+        <header class="hero">
+            <h1>🎯 BattleAura</h1>
+            <p class="hero-subtitle">Tactical Lighting & Audio System</p>
+        </header>
 
-    <!-- Main Control Section -->
-    <div id="dynamic-effects" class="status primary-section">
-        <h3>⚡ Tactical Effects</h3>
-        <p>Control your configured lighting and audio effects</p>
-        <div class="loading">Loading configured effects...</div>
-    </div>
-
-    <div class="status">
-        <h3>💡 Global Brightness Control</h3>
-        <p>Master brightness for all LEDs</p>
-        <div class="brightness-control">
-            <div class="brightness-slider">
-                <label for="globalBrightness">Global Max Brightness:</label>
-                <div class="slider-container">
-                    <input type="range" id="globalBrightness" min="0" max="255" value="255">
-                    <span id="brightnessValue">255</span>
+        <!-- System Status Overview -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">📊</div>
+                <div>
+                    <h2 class="card-title">System Status</h2>
+                    <p class="card-description">Real-time device information and connectivity</p>
                 </div>
             </div>
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-label">Version</div>
+                    <div class="status-value" id="version">Loading...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Status</div>
+                    <div class="status-value ready" id="status">READY</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Memory</div>
+                    <div class="status-value" id="memory">Loading...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Uptime</div>
+                    <div class="status-value" id="uptime">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Brightness Control -->
+        <div class="brightness-section">
+            <div class="brightness-header">
+                <div class="brightness-title">
+                    <span>💡</span>
+                    <span>Global Brightness</span>
+                </div>
+                <div class="brightness-value" id="brightnessValue">255</div>
+            </div>
+            <div class="brightness-slider-container">
+                <input type="range" id="globalBrightness" class="brightness-slider" min="0" max="255" value="255">
+            </div>
             <div class="brightness-presets">
-                <button onclick="setBrightness(0)" class="btn brightness-0">0%</button>
-                <button onclick="setBrightness(64)" class="btn brightness-25">25%</button>
-                <button onclick="setBrightness(128)" class="btn brightness-50">50%</button>
-                <button onclick="setBrightness(192)" class="btn brightness-75">75%</button>
-                <button onclick="setBrightness(255)" class="btn brightness-100">100%</button>
+                <button onclick="setBrightness(0)" class="brightness-preset brightness-0">0%</button>
+                <button onclick="setBrightness(64)" class="brightness-preset brightness-25">25%</button>
+                <button onclick="setBrightness(128)" class="brightness-preset brightness-50">50%</button>
+                <button onclick="setBrightness(192)" class="brightness-preset brightness-75">75%</button>
+                <button onclick="setBrightness(255)" class="brightness-preset brightness-100">100%</button>
             </div>
         </div>
-    </div>
 
-
-    <!-- Configuration Links -->
-    <div class="status configuration-links">
-        <h3>⚙️ Configuration</h3>
-        <div class="config-grid">
-            <div class="config-item">
-                <a href="/config" class="config-link config-device">
-                    <div class="config-icon">⚙️</div>
-                    <div class="config-text">
-                        <h4>Device Configuration</h4>
-                        <p>Configure pins, WiFi, and system settings</p>
-                    </div>
-                </a>
+        <!-- Dynamic Effects Control -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">⚡</div>
+                <div>
+                    <h2 class="card-title">Tactical Effects</h2>
+                    <p class="card-description">Control your configured lighting and audio effects</p>
+                </div>
             </div>
-            <div class="config-item">
-                <a href="/audio/map" class="config-link config-audio">
-                    <div class="config-icon">🎵</div>
-                    <div class="config-text">
-                        <h4>Audio Configuration</h4>
-                        <p>Map sound effects to different actions</p>
-                    </div>
-                </a>
-            </div>
-            <div class="config-item">
-                <a href="/update" class="config-link config-update">
-                    <div class="config-icon">📡</div>
-                    <div class="config-text">
-                        <h4>Firmware Update</h4>
-                        <p>Upload new firmware over-the-air</p>
-                    </div>
-                </a>
+            <div id="dynamic-effects">
+                <div class="loading">Loading configured effects...</div>
             </div>
         </div>
-    </div>
 
-    <!-- System Information -->
-    <div class="status">
-        <h3>System Status</h3>
-        <div class="grid-4">
-            <div class="status-item">
-                <span class="text-secondary">Version:</span>
-                <span class="text-primary" id="version">Loading...</span>
-            </div>
-            <div class="status-item">
-                <span class="text-secondary">Status:</span>
-                <span class="text-success" id="status">READY</span>
-            </div>
-            <div class="status-item">
-                <span class="text-secondary">Memory:</span>
-                <span class="text-primary" id="memory">Loading...</span>
-            </div>
-            <div class="status-item">
-                <span class="text-secondary">Uptime:</span>
-                <span class="text-primary" id="uptime">Loading...</span>
+        <!-- Configuration Section -->
+        <div class="config-section">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">⚙️</div>
+                    <div>
+                        <h2 class="card-title">Configuration</h2>
+                        <p class="card-description">Setup and customize your BattleAura device</p>
+                    </div>
+                </div>
+                <div class="config-grid">
+                    <a href="/config" class="config-card device">
+                        <div class="config-card-icon">⚙️</div>
+                        <div class="config-card-content">
+                            <h3>Device Setup</h3>
+                            <p>Configure pins, WiFi, and system settings for your miniature type</p>
+                        </div>
+                    </a>
+                    
+                    <a href="/audio/map" class="config-card audio">
+                        <div class="config-card-icon">🎵</div>
+                        <div class="config-card-content">
+                            <h3>Audio Config</h3>
+                            <p>Map sound effects to different actions and weapons</p>
+                        </div>
+                    </a>
+                    
+                    <a href="/update" class="config-card update">
+                        <div class="config-card-icon">📡</div>
+                        <div class="config-card-content">
+                            <h3>Firmware Update</h3>
+                            <p>Upload new firmware over-the-air for latest features</p>
+                        </div>
+                    </a>
+                </div>
             </div>
         </div>
     </div>

@@ -43,25 +43,18 @@ function generateDynamicButtons(types) {
     
     if (types.length === 0) {
         effectsContainer.innerHTML = `
-            <h3>⚡ Tactical Effects</h3>
-            <p>No pin types configured yet.</p>
-            <p><a href="/config" style="color: #4CAF50;">Configure your pins →</a></p>
+            <div class="text-center">
+                <p class="text-secondary" style="margin: var(--space-6) 0;">No pin types configured yet.</p>
+                <a href="/config" class="btn btn-primary">Configure Your Pins →</a>
+            </div>
         `;
         return;
     }
     
-    let html = `
-        <h3>⚡ Tactical Effects</h3>
-        <p>Effects based on your configured pin types</p>
-    `;
+    let html = '';
     
+    // Generate effect cards for each pin type
     types.forEach(type => {
-        const typeClass = getTypeClass(type.type);
-        html += `<div class="type-group">`;
-        html += `<h4>${getTypeEmoji(type.type)} ${type.type} (${type.count} ${type.count === 1 ? 'pin' : 'pins'})</h4>`;
-        html += `<div class="type-buttons">`;
-        
-        // Add type-specific effects with appropriate styling
         const effects = getEffectsForType(type.type, type.hasRGB, type.hasPWM);
         
         // Group effects by type
@@ -69,44 +62,90 @@ function generateDynamicButtons(types) {
         const activeEffects = effects.filter(e => e.type === 'active');
         const controlEffects = effects.filter(e => e.type === 'control');
         
-        // Add ambient effects section
+        const typeEmoji = getTypeEmoji(type.type);
+        const pinCount = `${type.count} ${type.count === 1 ? 'pin' : 'pins'}`;
+        
+        // Ambient Effects Card
         if (ambientEffects.length > 0) {
-            html += `<div class="effect-section"><span class="effect-section-label">🔄 Ambient (Continuous)</span>`;
+            html += `
+                <div class="effect-card ambient">
+                    <div class="effect-header">
+                        <div class="effect-label ambient">🔄 Ambient • ${type.type}</div>
+                        <div class="effect-type-badge ambient">Continuous</div>
+                    </div>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: var(--space-3);">
+                        ${typeEmoji} Always-on effects for ${pinCount} • Runs continuously
+                    </p>
+                    <div class="effect-buttons">
+            `;
             ambientEffects.forEach(effect => {
-                html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}')" class="btn ${typeClass} btn-ambient" title="${effect.description}">${effect.label}</button>`;
+                html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}')" class="btn btn-success" title="${effect.description}">${effect.label}</button>`;
             });
-            html += `</div>`;
+            html += `
+                    </div>
+                </div>
+            `;
         }
         
-        // Add active effects section  
+        // Active Effects Card
         if (activeEffects.length > 0) {
-            html += `<div class="effect-section"><span class="effect-section-label">⚡ Active (Temporary)</span>`;
+            html += `
+                <div class="effect-card active">
+                    <div class="effect-header">
+                        <div class="effect-label active">⚡ Active • ${type.type}</div>
+                        <div class="effect-type-badge active">Temporary</div>
+                    </div>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: var(--space-3);">
+                        ${typeEmoji} Triggered effects for ${pinCount} • Plays once then stops
+                    </p>
+                    <div class="effect-buttons">
+            `;
             activeEffects.forEach(effect => {
-                html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}')" class="btn ${typeClass} btn-active" title="${effect.description}">${effect.label}</button>`;
+                html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}')" class="btn btn-warning" title="${effect.description}">${effect.label}</button>`;
             });
-            html += `</div>`;
+            html += `
+                    </div>
+                </div>
+            `;
         }
         
-        // Add control effects section
+        // Control Effects Card
         if (controlEffects.length > 0) {
-            html += `<div class="effect-section"><span class="effect-section-label">🎛️ Controls</span>`;
+            html += `
+                <div class="effect-card control">
+                    <div class="effect-header">
+                        <div class="effect-label control">🎛️ Control • ${type.type}</div>
+                        <div class="effect-type-badge control">Manual</div>
+                    </div>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: var(--space-3);">
+                        ${typeEmoji} Manual controls for ${pinCount} • Direct on/off control
+                    </p>
+                    <div class="effect-buttons">
+            `;
             controlEffects.forEach(effect => {
-                html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}')" class="btn ${typeClass} btn-control" title="${effect.description}">${effect.label}</button>`;
+                html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}')" class="btn btn-info" title="${effect.description}">${effect.label}</button>`;
             });
-            html += `</div>`;
+            html += `
+                    </div>
+                </div>
+            `;
         }
-        
-        html += `</div></div>`;
     });
     
-    // Add universal effects section
+    // Universal Effects Card
     html += `
-        <div class="type-group">
-            <h4>🎯 Universal Effects</h4>
-            <div class="type-buttons">
-                <button onclick="triggerGlobalEffect('damage')" class="btn btn-damage">All Taking Damage</button>
-                <button onclick="triggerGlobalEffect('explosion')" class="btn btn-damage">Explosion</button>
-                <button onclick="stopAllEffects()" class="btn btn-red">Stop All Effects</button>
+        <div class="effect-card control">
+            <div class="effect-header">
+                <div class="effect-label control">🎯 Global Effects</div>
+                <div class="effect-type-badge control">All Pins</div>
+            </div>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: var(--space-3);">
+                💥 Effects that target all configured pins simultaneously
+            </p>
+            <div class="effect-buttons">
+                <button onclick="triggerGlobalEffect('damage')" class="btn btn-primary">💥 Taking Damage</button>
+                <button onclick="triggerGlobalEffect('explosion')" class="btn btn-primary">🔥 Explosion</button>
+                <button onclick="stopAllEffects()" class="btn btn-secondary">⏹️ Stop All Effects</button>
             </div>
         </div>
     `;
