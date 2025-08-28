@@ -11,13 +11,30 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "2.1.0";
+const char* VERSION = "2.2.0";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
 
 // Configuration constants
 #define CONFIG_FILE "/config.json"
+
+// Audio file durations in milliseconds (estimated)
+// These match the audio files described in CLAUDE.md
+#define AUDIO_DURATION_TANK_IDLE       5000   // File 0001: Tank Idle (5s loop)
+#define AUDIO_DURATION_TANK_IDLE_2     5000   // File 0002: Tank Idle 2 (5s loop)  
+#define AUDIO_DURATION_MACHINE_GUN     2000   // File 0003: Machine Gun (2s burst)
+#define AUDIO_DURATION_FLAMETHROWER    3000   // File 0004: Flamethrower (3s)
+#define AUDIO_DURATION_TAKING_HITS     1500   // File 0005: Taking Hits (1.5s)
+#define AUDIO_DURATION_ENGINE_REVVING  4000   // File 0006: Engine Revving (4s)
+#define AUDIO_DURATION_EXPLOSION       2000   // File 0007: Explosion (2s)
+#define AUDIO_DURATION_ROCKET_LAUNCHER 1800   // File 0008: Rocket Launcher (1.8s)
+#define AUDIO_DURATION_KILL_CONFIRMED  1200   // File 0009: Kill Confirmed (1.2s)
+
+// Default effect durations when no audio is mapped
+#define DEFAULT_EFFECT_DURATION_SHORT  1000   // Quick effects (strobe, pulse)
+#define DEFAULT_EFFECT_DURATION_MEDIUM 2000   // Medium effects (machine gun, explosion)
+#define DEFAULT_EFFECT_DURATION_LONG   4000   // Long effects (engine rev)
 
 // Board-specific DFPlayer Mini pin configuration
 #if defined(CONFIG_IDF_TARGET_ESP32C3)
@@ -160,8 +177,9 @@ struct EffectState {
     uint16_t step;
     uint8_t currentBrightness;
     bool direction;
+    unsigned long effectEndTime; // When temporary effect should end (0 = permanent/ambient)
     
-    EffectState() : lastUpdate(0), step(0), currentBrightness(0), direction(true) {}
+    EffectState() : lastUpdate(0), step(0), currentBrightness(0), direction(true), effectEndTime(0) {}
 };
 
 EffectState effectStates[MAX_PINS];
@@ -208,6 +226,17 @@ void setNeoPixelColor(uint8_t pinIndex, uint32_t color, uint8_t brightness = 255
 void setNeoPixelState(uint8_t pinIndex, bool state);
 void updateEffects();
 void updateCandleFlicker(uint8_t pinIndex);
+void updateEngineIdle(uint8_t pinIndex);
+void updateEngineRev(uint8_t pinIndex);
+void updatePulse(uint8_t pinIndex);
+void updateStrobe(uint8_t pinIndex);
+void updateMachineGun(uint8_t pinIndex);
+void updateFlamethrower(uint8_t pinIndex);
+void updateTakingHits(uint8_t pinIndex);
+void updateExplosion(uint8_t pinIndex);
+void updateRocketLauncher(uint8_t pinIndex);
+void updateConsoleRGB(uint8_t pinIndex);
+void updateFade(uint8_t pinIndex);
 void startEffect(uint8_t pinIndex, EffectType effect);
 void stopEffect(uint8_t pinIndex);
 void startGroupEffect(uint8_t group, EffectType effect, uint16_t duration = 0);
@@ -222,6 +251,7 @@ void playScenarioAudio(const String& scenario);
 void setAudioVolume(uint8_t volume);
 void stopAudio();
 bool isAudioReady();
+uint16_t getEffectDuration(EffectType effect);
 void checkPinConflicts();
 void printSystemInfo();
 
@@ -922,32 +952,63 @@ void setupWebServer() {
         
         String type = server.arg("type");
         String effectName = server.arg("effect");
-        uint16_t duration = server.hasArg("duration") ? server.arg("duration").toInt() : 0;
+        uint16_t manualDuration = server.hasArg("duration") ? server.arg("duration").toInt() : 0;
         
-        // Find all pins matching this type
+        // Find all pins matching this type and determine the effect
         bool foundPins = false;
+        EffectType effect = EffectType::EFFECT_NONE;
+        
         for (uint8_t i = 0; i < MAX_PINS; i++) {
             if (!config.pins[i].enabled || !config.pins[i].type.equalsIgnoreCase(type)) continue;
             
             foundPins = true;
-            EffectType effect = mapEffectNameToType(effectName, config.pins[i].mode);
-            
-            if (effect != EffectType::EFFECT_NONE) {
-                startEffect(i, effect);
-                if (duration > 0) {
-                    // Set timeout to stop effect
-                    // Note: In a full implementation, you'd want a timer system here
-                }
-                Serial.printf("Type effect: %s.%s applied to pin %d (GPIO %d)\n", 
-                             type.c_str(), effectName.c_str(), i, config.pins[i].gpio);
-            }
+            effect = mapEffectNameToType(effectName, config.pins[i].mode);
+            break; // Just need one pin to determine the effect type
         }
         
         if (!foundPins) {
             server.send(404, "text/plain", "No enabled pins found for type: " + type);
-        } else {
-            server.send(200, "text/plain", "Effect " + effectName + " applied to type: " + type);
+            return;
         }
+        
+        if (effect == EffectType::EFFECT_NONE) {
+            server.send(400, "text/plain", "Unknown effect: " + effectName);
+            return;
+        }
+        
+        // Determine effect duration - prioritize manual duration, then audio duration
+        uint16_t effectDuration = manualDuration > 0 ? manualDuration : getEffectDuration(effect);
+        
+        // Play audio if available and enabled
+        if (config.audioEnabled && isAudioReady()) {
+            playEffectAudio(effect);
+            Serial.printf("🎵 Audio triggered for effect: %s\n", effectName.c_str());
+        }
+        
+        // Apply effect to all matching pins with synchronized timing
+        unsigned long effectEndTime = (effectDuration > 0) ? millis() + effectDuration : 0;
+        
+        for (uint8_t i = 0; i < MAX_PINS; i++) {
+            if (!config.pins[i].enabled || !config.pins[i].type.equalsIgnoreCase(type)) continue;
+            
+            startEffect(i, effect);
+            effectStates[i].effectEndTime = effectEndTime; // Synchronized end time
+            
+            Serial.printf("Type effect: %s.%s applied to pin %d (GPIO %d)", 
+                         type.c_str(), effectName.c_str(), i, config.pins[i].gpio);
+            if (effectDuration > 0) {
+                Serial.printf(" for %dms", effectDuration);
+            } else {
+                Serial.print(" (ambient)");
+            }
+            Serial.println();
+        }
+        
+        String response = "Effect " + effectName + " applied to type: " + type;
+        if (effectDuration > 0) {
+            response += " (duration: " + String(effectDuration) + "ms)";
+        }
+        server.send(200, "text/plain", response);
     });
     
     // Global effect endpoints
@@ -1028,7 +1089,8 @@ void setupWebServer() {
 
 // Helper function to map effect names to EffectType based on pin capabilities
 EffectType mapEffectNameToType(const String& effectName, PinMode mode) {
-    if (effectName == "off") return EffectType::EFFECT_NONE;
+    // Basic control
+    if (effectName == "off") return EffectType::EFFECT_STATIC_OFF;
     if (effectName == "on") return EffectType::EFFECT_STATIC_ON;
     
     // Engine effects
@@ -1036,24 +1098,28 @@ EffectType mapEffectNameToType(const String& effectName, PinMode mode) {
     if (effectName == "rev") return EffectType::EFFECT_ENGINE_REV;
     
     // Weapon effects  
-    if (effectName == "fire1" || effectName == "fire") return EffectType::EFFECT_MACHINE_GUN;
-    if (effectName == "fire2") return EffectType::EFFECT_FLAMETHROWER;
+    if (effectName == "fire" || effectName == "machinegun") return EffectType::EFFECT_MACHINE_GUN;
+    if (effectName == "flamethrower" || effectName == "flame") return EffectType::EFFECT_FLAMETHROWER;
+    if (effectName == "rocket" || effectName == "launcher") return EffectType::EFFECT_ROCKET_LAUNCHER;
+    
+    // Damage effects
+    if (effectName == "damage" || effectName == "hit" || effectName == "taking_hits") return EffectType::EFFECT_TAKING_HITS;
+    if (effectName == "explosion" || effectName == "explode") return EffectType::EFFECT_EXPLOSION;
     
     // Candle effects
     if (effectName == "flicker") return EffectType::EFFECT_CANDLE_FLICKER;
-    if (effectName == "bright") return EffectType::EFFECT_STATIC_ON;
-    
-    // Console effects (RGB only)
-    if (mode == PinMode::OUTPUT_WS2812B) {
-        if (effectName == "active") return EffectType::EFFECT_CONSOLE_RGB;
-        if (effectName == "alert") return EffectType::EFFECT_PULSE;
-    }
     
     // Generic effects
     if (effectName == "pulse") return EffectType::EFFECT_PULSE;
     if (effectName == "fade") return EffectType::EFFECT_FADE;
+    if (effectName == "strobe") return EffectType::EFFECT_STROBE;
     
-    return EffectType::EFFECT_NONE;
+    // Console/RGB specific effects
+    if (mode == PinMode::OUTPUT_WS2812B) {
+        if (effectName == "scroll" || effectName == "data" || effectName == "console") return EffectType::EFFECT_CONSOLE_RGB;
+    }
+    
+    return EffectType::EFFECT_NONE; // Unknown effect
 }
 
 void handleRoot() {
@@ -1563,11 +1629,59 @@ void setNeoPixelState(uint8_t pinIndex, bool state) {
 // Effects System Functions
 
 void updateEffects() {
+    unsigned long now = millis();
+    
     for (uint8_t i = 0; i < MAX_PINS; i++) {
-        if (config.pins[i].enabled && config.pins[i].effectActive) {
+        if (!config.pins[i].enabled) continue;
+        
+        // Check if temporary effect has expired
+        if (config.pins[i].effectActive && 
+            effectStates[i].effectEndTime > 0 && 
+            now >= effectStates[i].effectEndTime) {
+            
+            Serial.printf("Effect expired on pin %d, stopping\n", i);
+            stopEffect(i);
+            // TODO: Restore ambient effect here (for priority system)
+            continue;
+        }
+        
+        if (config.pins[i].effectActive) {
             switch (config.pins[i].effect) {
                 case EffectType::EFFECT_CANDLE_FLICKER:
                     updateCandleFlicker(i);
+                    break;
+                case EffectType::EFFECT_ENGINE_IDLE:
+                    updateEngineIdle(i);
+                    break;
+                case EffectType::EFFECT_ENGINE_REV:
+                    updateEngineRev(i);
+                    break;
+                case EffectType::EFFECT_PULSE:
+                    updatePulse(i);
+                    break;
+                case EffectType::EFFECT_STROBE:
+                    updateStrobe(i);
+                    break;
+                case EffectType::EFFECT_MACHINE_GUN:
+                    updateMachineGun(i);
+                    break;
+                case EffectType::EFFECT_FLAMETHROWER:
+                    updateFlamethrower(i);
+                    break;
+                case EffectType::EFFECT_TAKING_HITS:
+                    updateTakingHits(i);
+                    break;
+                case EffectType::EFFECT_EXPLOSION:
+                    updateExplosion(i);
+                    break;
+                case EffectType::EFFECT_ROCKET_LAUNCHER:
+                    updateRocketLauncher(i);
+                    break;
+                case EffectType::EFFECT_CONSOLE_RGB:
+                    updateConsoleRGB(i);
+                    break;
+                case EffectType::EFFECT_FADE:
+                    updateFade(i);
                     break;
                 default:
                     break;
@@ -1606,6 +1720,295 @@ void updateCandleFlicker(uint8_t pinIndex) {
         
         setPinBrightness(pinIndex, newBrightness);
         effectStates[pinIndex].currentBrightness = newBrightness;
+    }
+}
+
+void updateEngineIdle(uint8_t pinIndex) {
+    if (pinIndex >= MAX_PINS) return;
+    
+    unsigned long now = millis();
+    uint16_t interval = map(config.pins[pinIndex].effectSpeed, 1, 255, 800, 200); // Speed control
+    
+    if (now - effectStates[pinIndex].lastUpdate >= interval) {
+        effectStates[pinIndex].lastUpdate = now;
+        
+        // Gentle engine idle pulse - breath-like pattern
+        uint8_t baseBrightness = config.pins[pinIndex].brightness;
+        float breathCycle = sin(effectStates[pinIndex].step * 0.1) * 0.3 + 0.7; // 0.4 to 1.0 range
+        uint8_t newBrightness = baseBrightness * breathCycle;
+        
+        setPinBrightness(pinIndex, newBrightness);
+        effectStates[pinIndex].currentBrightness = newBrightness;
+        effectStates[pinIndex].step++;
+        if (effectStates[pinIndex].step >= 63) effectStates[pinIndex].step = 0; // Full sine cycle
+    }
+}
+
+void updateEngineRev(uint8_t pinIndex) {
+    if (pinIndex >= MAX_PINS) return;
+    
+    unsigned long now = millis();
+    uint16_t interval = map(config.pins[pinIndex].effectSpeed, 1, 255, 100, 20); // Fast revving
+    
+    if (now - effectStates[pinIndex].lastUpdate >= interval) {
+        effectStates[pinIndex].lastUpdate = now;
+        
+        // Aggressive engine rev - rapid brightness changes
+        uint8_t baseBrightness = config.pins[pinIndex].brightness;
+        uint8_t variation = random(baseBrightness * 0.6, baseBrightness + 1);
+        
+        setPinBrightness(pinIndex, variation);
+        effectStates[pinIndex].currentBrightness = variation;
+    }
+}
+
+void updatePulse(uint8_t pinIndex) {
+    if (pinIndex >= MAX_PINS) return;
+    
+    unsigned long now = millis();
+    uint16_t interval = map(config.pins[pinIndex].effectSpeed, 1, 255, 100, 30);
+    
+    if (now - effectStates[pinIndex].lastUpdate >= interval) {
+        effectStates[pinIndex].lastUpdate = now;
+        
+        // Smooth sine wave pulse
+        uint8_t baseBrightness = config.pins[pinIndex].brightness;
+        float pulseCycle = sin(effectStates[pinIndex].step * 0.2) * 0.5 + 0.5; // 0 to 1 range
+        uint8_t newBrightness = baseBrightness * pulseCycle;
+        
+        if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
+            // For RGB, pulse in the configured color
+            setNeoPixelColor(pinIndex, config.pins[pinIndex].color, newBrightness);
+        } else {
+            setPinBrightness(pinIndex, newBrightness);
+        }
+        
+        effectStates[pinIndex].currentBrightness = newBrightness;
+        effectStates[pinIndex].step++;
+        if (effectStates[pinIndex].step >= 32) effectStates[pinIndex].step = 0;
+    }
+}
+
+void updateStrobe(uint8_t pinIndex) {
+    if (pinIndex >= MAX_PINS) return;
+    
+    unsigned long now = millis();
+    uint16_t interval = map(config.pins[pinIndex].effectSpeed, 1, 255, 200, 50);
+    
+    if (now - effectStates[pinIndex].lastUpdate >= interval) {
+        effectStates[pinIndex].lastUpdate = now;
+        
+        // Sharp on/off strobe
+        uint8_t brightness = (effectStates[pinIndex].step % 2 == 0) ? config.pins[pinIndex].brightness : 0;
+        
+        if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
+            setNeoPixelColor(pinIndex, config.pins[pinIndex].color, brightness);
+        } else {
+            setPinBrightness(pinIndex, brightness);
+        }
+        
+        effectStates[pinIndex].currentBrightness = brightness;
+        effectStates[pinIndex].step++;
+    }
+}
+
+void updateMachineGun(uint8_t pinIndex) {
+    if (pinIndex >= MAX_PINS) return;
+    
+    unsigned long now = millis();
+    
+    if (now - effectStates[pinIndex].lastUpdate >= 80) { // Fast machine gun rate
+        effectStates[pinIndex].lastUpdate = now;
+        
+        // Rapid fire pattern - 3 quick flashes, pause, repeat
+        uint8_t brightness = 0;
+        uint8_t cyclePos = effectStates[pinIndex].step % 8;
+        
+        if (cyclePos < 3) {
+            brightness = config.pins[pinIndex].brightness; // Flash
+        } else {
+            brightness = config.pins[pinIndex].brightness * 0.1; // Dim between flashes
+        }
+        
+        if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
+            setNeoPixelColor(pinIndex, 0xFFFFFF, brightness); // White flashes
+        } else {
+            setPinBrightness(pinIndex, brightness);
+        }
+        
+        effectStates[pinIndex].currentBrightness = brightness;
+        effectStates[pinIndex].step++;
+    }
+}
+
+void updateFlamethrower(uint8_t pinIndex) {
+    if (pinIndex >= MAX_PINS) return;
+    
+    unsigned long now = millis();
+    
+    if (now - effectStates[pinIndex].lastUpdate >= 120) {
+        effectStates[pinIndex].lastUpdate = now;
+        
+        // Flickering flame effect
+        uint8_t baseBrightness = config.pins[pinIndex].brightness;
+        uint8_t flicker = random(baseBrightness * 0.6, baseBrightness + 1);
+        
+        if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
+            // Orange/red flame colors
+            uint32_t flameColors[] = {0xFF4500, 0xFF6600, 0xFF8800, 0xFFAA00};
+            uint32_t color = flameColors[random(0, 4)];
+            setNeoPixelColor(pinIndex, color, flicker);
+        } else {
+            setPinBrightness(pinIndex, flicker);
+        }
+        
+        effectStates[pinIndex].currentBrightness = flicker;
+    }
+}
+
+void updateTakingHits(uint8_t pinIndex) {
+    if (pinIndex >= MAX_PINS) return;
+    
+    unsigned long now = millis();
+    
+    if (now - effectStates[pinIndex].lastUpdate >= 150) {
+        effectStates[pinIndex].lastUpdate = now;
+        
+        // Rapid red flashing damage effect
+        uint8_t brightness = (effectStates[pinIndex].step % 2 == 0) ? config.pins[pinIndex].brightness : 0;
+        
+        if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
+            setNeoPixelColor(pinIndex, 0xFF0000, brightness); // Red damage
+        } else {
+            setPinBrightness(pinIndex, brightness);
+        }
+        
+        effectStates[pinIndex].currentBrightness = brightness;
+        effectStates[pinIndex].step++;
+    }
+}
+
+void updateExplosion(uint8_t pinIndex) {
+    if (pinIndex >= MAX_PINS) return;
+    
+    unsigned long now = millis();
+    
+    if (now - effectStates[pinIndex].lastUpdate >= 100) {
+        effectStates[pinIndex].lastUpdate = now;
+        
+        // Bright flash that fades quickly
+        uint8_t maxSteps = 10;
+        uint8_t brightness = 0;
+        
+        if (effectStates[pinIndex].step < maxSteps) {
+            // Fade from max to min
+            brightness = config.pins[pinIndex].brightness * (maxSteps - effectStates[pinIndex].step) / maxSteps;
+        }
+        
+        if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
+            setNeoPixelColor(pinIndex, 0xFFFFFF, brightness); // Bright white explosion
+        } else {
+            setPinBrightness(pinIndex, brightness);
+        }
+        
+        effectStates[pinIndex].currentBrightness = brightness;
+        effectStates[pinIndex].step++;
+        
+        if (effectStates[pinIndex].step > maxSteps + 5) {
+            effectStates[pinIndex].step = 0; // Reset for next explosion
+        }
+    }
+}
+
+void updateRocketLauncher(uint8_t pinIndex) {
+    if (pinIndex >= MAX_PINS) return;
+    
+    unsigned long now = millis();
+    
+    if (now - effectStates[pinIndex].lastUpdate >= 200) {
+        effectStates[pinIndex].lastUpdate = now;
+        
+        // Single bright flash followed by dim trail
+        uint8_t cyclePos = effectStates[pinIndex].step % 6;
+        uint8_t brightness = 0;
+        
+        if (cyclePos == 0) {
+            brightness = config.pins[pinIndex].brightness; // Launch flash
+        } else if (cyclePos < 4) {
+            brightness = config.pins[pinIndex].brightness * (4 - cyclePos) / 4; // Fading trail
+        }
+        
+        if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
+            setNeoPixelColor(pinIndex, 0xFFAA00, brightness); // Orange rocket
+        } else {
+            setPinBrightness(pinIndex, brightness);
+        }
+        
+        effectStates[pinIndex].currentBrightness = brightness;
+        effectStates[pinIndex].step++;
+    }
+}
+
+void updateConsoleRGB(uint8_t pinIndex) {
+    if (pinIndex >= MAX_PINS || config.pins[pinIndex].mode != PinMode::OUTPUT_WS2812B) return;
+    
+    unsigned long now = millis();
+    
+    if (now - effectStates[pinIndex].lastUpdate >= 300) {
+        effectStates[pinIndex].lastUpdate = now;
+        
+        // Scrolling data pattern across RGB strip
+        uint8_t ledCount = config.pins[pinIndex].ledCount;
+        uint32_t colors[] = {0x001100, 0x002200, 0x004400, 0x006600, 0x008800, 0x00AA00};
+        
+        // Simple scrolling effect
+        uint8_t offset = effectStates[pinIndex].step % ledCount;
+        for (uint8_t led = 0; led < ledCount; led++) {
+            uint8_t colorIndex = (led + offset) % 6;
+            // Note: This would need a setNeoPixelLED function for individual LED control
+            // For now, just change the whole strip color
+        }
+        
+        uint8_t colorIndex = effectStates[pinIndex].step % 6;
+        setNeoPixelColor(pinIndex, colors[colorIndex], config.pins[pinIndex].brightness);
+        
+        effectStates[pinIndex].step++;
+    }
+}
+
+void updateFade(uint8_t pinIndex) {
+    if (pinIndex >= MAX_PINS) return;
+    
+    unsigned long now = millis();
+    uint16_t interval = map(config.pins[pinIndex].effectSpeed, 1, 255, 150, 50);
+    
+    if (now - effectStates[pinIndex].lastUpdate >= interval) {
+        effectStates[pinIndex].lastUpdate = now;
+        
+        // Smooth fade in/out
+        uint8_t maxSteps = 20;
+        uint8_t brightness;
+        
+        if (effectStates[pinIndex].step <= maxSteps) {
+            // Fade in
+            brightness = config.pins[pinIndex].brightness * effectStates[pinIndex].step / maxSteps;
+        } else {
+            // Fade out
+            brightness = config.pins[pinIndex].brightness * (2 * maxSteps - effectStates[pinIndex].step) / maxSteps;
+        }
+        
+        if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
+            setNeoPixelColor(pinIndex, config.pins[pinIndex].color, brightness);
+        } else {
+            setPinBrightness(pinIndex, brightness);
+        }
+        
+        effectStates[pinIndex].currentBrightness = brightness;
+        effectStates[pinIndex].step++;
+        
+        if (effectStates[pinIndex].step >= 2 * maxSteps) {
+            effectStates[pinIndex].step = 0; // Reset cycle
+        }
     }
 }
 
@@ -1892,5 +2295,46 @@ String getEffectName(EffectType effect) {
         case EffectType::EFFECT_STATIC_ON: return "Static On";
         case EffectType::EFFECT_STATIC_OFF: return "Static Off";
         default: return "Unknown";
+    }
+}
+
+uint16_t getEffectDuration(EffectType effect) {
+    // First check if there's an audio file mapped for this effect
+    uint8_t audioFile = 0;
+    
+    switch (effect) {
+        case EffectType::EFFECT_ENGINE_IDLE:
+            audioFile = config.audioMap.engineIdle;
+            return (audioFile > 0) ? AUDIO_DURATION_TANK_IDLE : 0; // 0 = infinite/ambient
+        case EffectType::EFFECT_ENGINE_REV:
+            audioFile = config.audioMap.engineRev;
+            return (audioFile > 0) ? AUDIO_DURATION_ENGINE_REVVING : DEFAULT_EFFECT_DURATION_LONG;
+        case EffectType::EFFECT_MACHINE_GUN:
+            audioFile = config.audioMap.machineGun;
+            return (audioFile > 0) ? AUDIO_DURATION_MACHINE_GUN : DEFAULT_EFFECT_DURATION_MEDIUM;
+        case EffectType::EFFECT_FLAMETHROWER:
+            audioFile = config.audioMap.flamethrower;
+            return (audioFile > 0) ? AUDIO_DURATION_FLAMETHROWER : DEFAULT_EFFECT_DURATION_LONG;
+        case EffectType::EFFECT_TAKING_HITS:
+            audioFile = config.audioMap.takingHits;
+            return (audioFile > 0) ? AUDIO_DURATION_TAKING_HITS : DEFAULT_EFFECT_DURATION_SHORT;
+        case EffectType::EFFECT_EXPLOSION:
+            audioFile = config.audioMap.explosion;
+            return (audioFile > 0) ? AUDIO_DURATION_EXPLOSION : DEFAULT_EFFECT_DURATION_MEDIUM;
+        case EffectType::EFFECT_ROCKET_LAUNCHER:
+            audioFile = config.audioMap.rocketLauncher;
+            return (audioFile > 0) ? AUDIO_DURATION_ROCKET_LAUNCHER : DEFAULT_EFFECT_DURATION_MEDIUM;
+        case EffectType::EFFECT_CANDLE_FLICKER:
+            return 0; // Ambient effect - runs indefinitely
+        case EffectType::EFFECT_PULSE:
+            return DEFAULT_EFFECT_DURATION_MEDIUM;
+        case EffectType::EFFECT_STROBE:
+            return DEFAULT_EFFECT_DURATION_SHORT;
+        case EffectType::EFFECT_FADE:
+            return DEFAULT_EFFECT_DURATION_MEDIUM;
+        case EffectType::EFFECT_CONSOLE_RGB:
+            return 0; // Ambient effect - runs indefinitely
+        default:
+            return DEFAULT_EFFECT_DURATION_SHORT;
     }
 }
