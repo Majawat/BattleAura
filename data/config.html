@@ -63,6 +63,13 @@
 
         <input type="submit" value="💾 Save Modular Configuration">
     </form>
+    
+    <div style="margin-top: 15px; text-align: center;">
+        <button onclick="restartDevice()" style="background: #f59e0b; color: white; border: none; padding: 12px 30px; border-radius: 5px; cursor: pointer; font-size: 16px;">
+            🔄 Restart Device
+        </button>
+        <p style="font-size: 12px; color: #94a3b8; margin: 5px 0 0 0;">Required to apply WiFi changes</p>
+    </div>
 
     <div style="margin-top: 30px; padding: 15px; background: #0f1419; border-radius: 8px; font-size: 13px; color: #94a3b8;">
         <h4>💡 Configuration Tips:</h4>
@@ -166,6 +173,23 @@
                 
                 container.appendChild(pinDiv);
             });
+        }
+        
+        function restartDevice() {
+            if (confirm('Restart the device to apply WiFi configuration changes?\n\nThe device will be unavailable for about 10 seconds.')) {
+                fetch('/restart', {
+                    method: 'POST'
+                }).then(response => {
+                    if (response.ok) {
+                        // Show success message and redirect
+                        document.body.innerHTML = '<div style="font-family:Arial; background:#1a1a2e; color:white; text-align:center; padding:50px;"><h1>🔄 Device Restarting...</h1><p>Please wait while the device restarts and reconnects to your network.</p></div>';
+                    } else {
+                        alert('Failed to restart device. Please try power cycling manually.');
+                    }
+                }).catch(error => {
+                    alert('Error restarting device: ' + error.message);
+                });
+            }
         }
     </script>
 </body>

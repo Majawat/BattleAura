@@ -11,7 +11,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.7.0-alpha";
+const char* VERSION = "0.8.0-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -570,6 +570,19 @@ void setupWebServer() {
         delay(1000);
         ESP.restart();
     }, handleUpdateUpload);
+    
+    // System restart endpoint
+    server.on("/restart", HTTP_POST, []() {
+        server.send(200, F("text/html; charset=utf-8"), F(
+            "<html><body style='font-family:Arial; background:#1a1a2e; color:white; text-align:center; padding:50px;'>"
+            "<h1>🔄 Restarting Device...</h1>"
+            "<p>Device will restart in 3 seconds to apply network configuration.</p>"
+            "<p>Please wait for the device to reconnect to your network.</p>"
+            "<script>setTimeout(function(){ window.location='/'; }, 8000);</script>"
+            "</body></html>"));
+        delay(1000);
+        ESP.restart();
+    });
     
     // GPIO control endpoints
     server.on("/led/on", HTTP_GET, []() { handleLedControl(true); });
