@@ -11,7 +11,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "2.2.0";
+const char* VERSION = "2.3.0";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -178,8 +178,11 @@ struct EffectState {
     uint8_t currentBrightness;
     bool direction;
     unsigned long effectEndTime; // When temporary effect should end (0 = permanent/ambient)
+    EffectType savedAmbientEffect; // The ambient effect to restore after temporary effect ends
+    bool hasActiveOverride; // True when a temporary effect is overriding the ambient effect
     
-    EffectState() : lastUpdate(0), step(0), currentBrightness(0), direction(true), effectEndTime(0) {}
+    EffectState() : lastUpdate(0), step(0), currentBrightness(0), direction(true), effectEndTime(0), 
+                   savedAmbientEffect(EffectType::EFFECT_NONE), hasActiveOverride(false) {}
 };
 
 EffectState effectStates[MAX_PINS];
@@ -238,6 +241,9 @@ void updateRocketLauncher(uint8_t pinIndex);
 void updateConsoleRGB(uint8_t pinIndex);
 void updateFade(uint8_t pinIndex);
 void startEffect(uint8_t pinIndex, EffectType effect);
+void startAmbientEffect(uint8_t pinIndex, EffectType effect);
+void startTemporaryEffect(uint8_t pinIndex, EffectType effect, unsigned long duration);
+void restoreAmbientEffect(uint8_t pinIndex);
 void stopEffect(uint8_t pinIndex);
 void startGroupEffect(uint8_t group, EffectType effect, uint16_t duration = 0);
 void stopGroupEffect(uint8_t group);
@@ -985,14 +991,17 @@ void setupWebServer() {
             Serial.printf("🎵 Audio triggered for effect: %s\n", effectName.c_str());
         }
         
-        // Apply effect to all matching pins with synchronized timing
-        unsigned long effectEndTime = (effectDuration > 0) ? millis() + effectDuration : 0;
-        
+        // Apply effect to all matching pins using priority system
         for (uint8_t i = 0; i < MAX_PINS; i++) {
             if (!config.pins[i].enabled || !config.pins[i].type.equalsIgnoreCase(type)) continue;
             
-            startEffect(i, effect);
-            effectStates[i].effectEndTime = effectEndTime; // Synchronized end time
+            if (effectDuration > 0) {
+                // Temporary effect - use priority system
+                startTemporaryEffect(i, effect, effectDuration);
+            } else {
+                // Permanent/ambient effect
+                startAmbientEffect(i, effect);
+            }
             
             Serial.printf("Type effect: %s.%s applied to pin %d (GPIO %d)", 
                          type.c_str(), effectName.c_str(), i, config.pins[i].gpio);
@@ -1229,15 +1238,18 @@ void setupGPIO() {
 }
 
 void startDefaultEffects() {
-    Serial.println("=== Starting Default Effects ===");
+    Serial.println("=== Starting Default Ambient Effects ===");
     
     for (uint8_t i = 0; i < MAX_PINS; i++) {
         if (config.pins[i].enabled && config.pins[i].defaultEffect != EffectType::EFFECT_NONE) {
-            Serial.printf("Starting default effect %d on pin %d (GPIO %d)\n", 
-                         (int)config.pins[i].defaultEffect, i, config.pins[i].gpio);
-            startEffect(i, config.pins[i].defaultEffect);
+            Serial.printf("Starting ambient effect %d on pin %d (GPIO %d, %s)\n", 
+                         (int)config.pins[i].defaultEffect, i, config.pins[i].gpio,
+                         config.pins[i].type.c_str());
+            startAmbientEffect(i, config.pins[i].defaultEffect);
         }
     }
+    
+    Serial.println("✓ All ambient effects initialized");
 }
 
 void handleLedControl(bool state) {
@@ -1639,9 +1651,8 @@ void updateEffects() {
             effectStates[i].effectEndTime > 0 && 
             now >= effectStates[i].effectEndTime) {
             
-            Serial.printf("Effect expired on pin %d, stopping\n", i);
-            stopEffect(i);
-            // TODO: Restore ambient effect here (for priority system)
+            Serial.printf("Temporary effect expired on pin %d, restoring ambient\n", i);
+            restoreAmbientEffect(i);
             continue;
         }
         
@@ -2026,6 +2037,68 @@ void startEffect(uint8_t pinIndex, EffectType effect) {
     
     Serial.printf("Started effect %d on pin %d (offset: %dms)\n", 
                  (int)effect, pinIndex, effectStates[pinIndex].lastUpdate - millis());
+}
+
+void startAmbientEffect(uint8_t pinIndex, EffectType effect) {
+    if (pinIndex >= MAX_PINS || effect == EffectType::EFFECT_NONE) return;
+    
+    // Set this as the ambient effect (runs indefinitely)
+    effectStates[pinIndex].savedAmbientEffect = effect;
+    effectStates[pinIndex].hasActiveOverride = false;
+    effectStates[pinIndex].effectEndTime = 0; // Ambient effects run forever
+    
+    startEffect(pinIndex, effect);
+    Serial.printf("Started ambient effect %d on pin %d\n", (int)effect, pinIndex);
+}
+
+void startTemporaryEffect(uint8_t pinIndex, EffectType effect, unsigned long duration) {
+    if (pinIndex >= MAX_PINS || effect == EffectType::EFFECT_NONE) return;
+    
+    // Save current ambient effect if we haven't already
+    if (!effectStates[pinIndex].hasActiveOverride) {
+        if (config.pins[pinIndex].effectActive) {
+            effectStates[pinIndex].savedAmbientEffect = config.pins[pinIndex].effect;
+        } else {
+            effectStates[pinIndex].savedAmbientEffect = config.pins[pinIndex].defaultEffect;
+        }
+        effectStates[pinIndex].hasActiveOverride = true;
+        Serial.printf("Saving ambient effect %d for pin %d\n", 
+                     (int)effectStates[pinIndex].savedAmbientEffect, pinIndex);
+    }
+    
+    // Set end time for temporary effect
+    effectStates[pinIndex].effectEndTime = (duration > 0) ? millis() + duration : 0;
+    
+    startEffect(pinIndex, effect);
+    
+    if (duration > 0) {
+        Serial.printf("Started temporary effect %d on pin %d for %lums\n", 
+                     (int)effect, pinIndex, duration);
+    } else {
+        Serial.printf("Started permanent effect %d on pin %d\n", (int)effect, pinIndex);
+    }
+}
+
+void restoreAmbientEffect(uint8_t pinIndex) {
+    if (pinIndex >= MAX_PINS) return;
+    
+    // Clear the active override flag
+    effectStates[pinIndex].hasActiveOverride = false;
+    effectStates[pinIndex].effectEndTime = 0;
+    
+    // Restore the saved ambient effect
+    EffectType ambientEffect = effectStates[pinIndex].savedAmbientEffect;
+    if (ambientEffect == EffectType::EFFECT_NONE) {
+        ambientEffect = config.pins[pinIndex].defaultEffect;
+    }
+    
+    if (ambientEffect != EffectType::EFFECT_NONE) {
+        startEffect(pinIndex, ambientEffect);
+        Serial.printf("Restored ambient effect %d on pin %d\n", (int)ambientEffect, pinIndex);
+    } else {
+        stopEffect(pinIndex);
+        Serial.printf("No ambient effect to restore on pin %d, stopping\n", pinIndex);
+    }
 }
 
 void stopEffect(uint8_t pinIndex) {

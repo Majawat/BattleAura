@@ -28,24 +28,15 @@
         <button onclick="fetch('/led/toggle'); setTimeout(function(){location.reload();}, 100);" class="btn btn-orange">TOGGLE</button>
     </div>
 
-    <div class="status">
-        <h3>🕯️ Lighting Effects</h3>
-        <p>Control lighting effects on configured pins</p>
-        <div class="button-group">
-            <button onclick="startEffect(0, 1)" class="btn btn-green">Pin 0 Candle</button>
-            <button onclick="startEffect(1, 1)" class="btn btn-green">Pin 1 Candle</button>
-            <button onclick="startEffect(2, 1)" class="btn btn-green">Pin 2 Candle</button>
-        </div>
-        <div class="button-group">
-            <button onclick="groupEffect(1, 1)" class="btn btn-blue">Group 1 Effect</button>
-            <button onclick="groupEffect(2, 1)" class="btn btn-blue">Group 2 Effect</button>
-            <button onclick="stopAll()" class="btn btn-red">Stop All Effects</button>
-        </div>
+    <div id="dynamic-effects" class="status">
+        <h3>⚡ Tactical Effects</h3>
+        <p>Effects are generated based on your pin configuration</p>
+        <div class="loading">Loading configured effects...</div>
     </div>
 
     <div class="status">
-        <h3>🎨 RGB LED Control</h3>
-        <p>Direct RGB color control (stops active effects)</p>
+        <h3>🎨 Manual RGB Control</h3>
+        <p>Direct color control (overrides current effects)</p>
         <div class="button-group">
             <button onclick="setRgbColor('red')" class="btn rgb-red">Red</button>
             <button onclick="setRgbColor('green')" class="btn rgb-green">Green</button>
@@ -53,7 +44,9 @@
             <button onclick="setRgbColor('white')" class="btn rgb-white">White</button>
             <button onclick="setRgbColor('off')" class="btn rgb-off">OFF</button>
         </div>
-        <button onclick="startRainbow()" class="btn rainbow">🌈 Rainbow Test</button>
+        <div class="button-group">
+            <button onclick="stopAll()" class="btn btn-red">Stop All Effects</button>
+        </div>
     </div>
 
     <div class="status">

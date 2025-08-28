@@ -94,6 +94,60 @@ input[type=file] {
     border-radius: 4px;
     margin: 10px 0;
 }
+
+/* Dynamic effects styles */
+.type-group {
+    border: 1px solid #334155;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 8px;
+    background: #0f1419;
+}
+
+.type-group h4 {
+    margin: 0 0 10px 0;
+    color: #4CAF50;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+.type-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.type-buttons .btn {
+    margin: 0;
+    font-size: 12px;
+    padding: 6px 12px;
+}
+
+/* Effect-specific button colors */
+.btn-engine { background: #ff6b35; }
+.btn-engine:hover { background: #e55a2b; }
+
+.btn-weapon { background: #dc2626; }
+.btn-weapon:hover { background: #b91c1c; }
+
+.btn-candle { background: #f59e0b; }
+.btn-candle:hover { background: #d97706; }
+
+.btn-console { background: #10b981; }
+.btn-console:hover { background: #059669; }
+
+.btn-damage { background: #ef4444; }
+.btn-damage:hover { background: #dc2626; }
+
+.btn-ambient { background: #6366f1; }
+.btn-ambient:hover { background: #4f46e5; }
+
+.loading {
+    color: #94a3b8;
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+}
 body {
     font-family: Arial, sans-serif;
     margin: 20px;

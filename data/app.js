@@ -41,33 +41,103 @@ function generateDynamicButtons(types) {
     const effectsContainer = document.getElementById('dynamic-effects');
     if (!effectsContainer) return;
     
-    let html = '<h3>Available Effects</h3>';
+    if (types.length === 0) {
+        effectsContainer.innerHTML = `
+            <h3>⚡ Tactical Effects</h3>
+            <p>No pin types configured yet.</p>
+            <p><a href="/config" style="color: #4CAF50;">Configure your pins →</a></p>
+        `;
+        return;
+    }
+    
+    let html = `
+        <h3>⚡ Tactical Effects</h3>
+        <p>Effects based on your configured pin types</p>
+    `;
     
     types.forEach(type => {
+        const typeClass = getTypeClass(type.type);
         html += `<div class="type-group">`;
-        html += `<h4>${type.type} (${type.count} ${type.count === 1 ? 'pin' : 'pins'})</h4>`;
+        html += `<h4>${getTypeEmoji(type.type)} ${type.type} (${type.count} ${type.count === 1 ? 'pin' : 'pins'})</h4>`;
         html += `<div class="type-buttons">`;
         
-        // Add common effects for this type
-        if (type.type.toLowerCase().includes('engine')) {
-            html += `<button onclick="triggerTypeEffect('${type.type}', 'idle')">Engine Idle</button>`;
-            html += `<button onclick="triggerTypeEffect('${type.type}', 'rev', 2000)">Engine Rev</button>`;
-        } else if (type.type.toLowerCase().includes('weapon')) {
-            html += `<button onclick="triggerTypeEffect('${type.type}', 'fire', 500)">Weapon Fire</button>`;
-            html += `<button onclick="triggerTypeEffect('${type.type}', 'reload', 1000)">Reload</button>`;
-        } else if (type.type.toLowerCase().includes('candle')) {
-            html += `<button onclick="triggerTypeEffect('${type.type}', 'flicker')">Candle Flicker</button>`;
-        } else if (type.type.toLowerCase().includes('console')) {
-            html += `<button onclick="triggerTypeEffect('${type.type}', 'scroll')">Data Scroll</button>`;
-        }
-        
-        // Add universal damage effect for all types
-        html += `<button onclick="triggerTypeEffect('${type.type}', 'damage', 1500)" class="damage-btn">Taking Damage</button>`;
+        // Add type-specific effects with appropriate styling
+        const effects = getEffectsForType(type.type, type.hasRGB, type.hasPWM);
+        effects.forEach(effect => {
+            html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}'" class="btn ${typeClass}">${effect.label}</button>`;
+        });
         
         html += `</div></div>`;
     });
     
+    // Add universal effects section
+    html += `
+        <div class="type-group">
+            <h4>🎯 Universal Effects</h4>
+            <div class="type-buttons">
+                <button onclick="triggerGlobalEffect('damage')" class="btn btn-damage">All Taking Damage</button>
+                <button onclick="triggerGlobalEffect('explosion')" class="btn btn-damage">Explosion</button>
+                <button onclick="stopAllEffects()" class="btn btn-red">Stop All Effects</button>
+            </div>
+        </div>
+    `;
+    
     effectsContainer.innerHTML = html;
+}
+
+// Helper function to get appropriate CSS class for type
+function getTypeClass(typeName) {
+    const name = typeName.toLowerCase();
+    if (name.includes('engine')) return 'btn-engine';
+    if (name.includes('weapon')) return 'btn-weapon';
+    if (name.includes('candle')) return 'btn-candle';
+    if (name.includes('console')) return 'btn-console';
+    return 'btn-ambient';
+}
+
+// Helper function to get emoji for type
+function getTypeEmoji(typeName) {
+    const name = typeName.toLowerCase();
+    if (name.includes('engine')) return '🚗';
+    if (name.includes('weapon')) return '⚔️';
+    if (name.includes('candle')) return '🕯️';
+    if (name.includes('console')) return '💻';
+    if (name.includes('damage')) return '💥';
+    return '⚡';
+}
+
+// Helper function to get available effects for a type
+function getEffectsForType(typeName, hasRGB, hasPWM) {
+    const name = typeName.toLowerCase();
+    const effects = [];
+    
+    if (name.includes('engine')) {
+        effects.push({ action: 'idle', label: 'Engine Idle' });
+        effects.push({ action: 'rev', label: 'Engine Rev' });
+    } else if (name.includes('weapon')) {
+        effects.push({ action: 'fire', label: 'Weapon Fire' });
+        effects.push({ action: 'flamethrower', label: 'Flamethrower' });
+        effects.push({ action: 'rocket', label: 'Rocket' });
+    } else if (name.includes('candle')) {
+        effects.push({ action: 'flicker', label: 'Candle Flicker' });
+        effects.push({ action: 'on', label: 'Bright' });
+    } else if (name.includes('console')) {
+        if (hasRGB) {
+            effects.push({ action: 'scroll', label: 'Data Scroll' });
+            effects.push({ action: 'pulse', label: 'Alert Pulse' });
+        } else {
+            effects.push({ action: 'pulse', label: 'Status Pulse' });
+        }
+    } else {
+        // Generic type - add basic effects
+        effects.push({ action: 'pulse', label: 'Pulse' });
+        effects.push({ action: 'strobe', label: 'Strobe' });
+    }
+    
+    // Add damage effect for all types
+    effects.push({ action: 'damage', label: 'Taking Damage' });
+    
+    return effects;
 }
 
 // Update system information periodically
@@ -121,13 +191,6 @@ function groupEffect(group, effect) {
         .catch(error => console.error('Group effect error:', error));
 }
 
-function stopAll() {
-    for (let i = 0; i < 8; i++) {
-        fetch(`/effects/stop?pin=${i}`);
-    }
-    console.log('All effects stopped');
-}
-
 // RGB Control Functions (using new modular API)
 function setRgbColor(color) {
     // Find first RGB pin and set its color
@@ -162,6 +225,44 @@ function triggerTypeEffect(type, effect, duration = 0) {
         .catch(error => {
             console.error('Type effect error:', error);
             showFeedback('Effect Error', 'error');
+        });
+}
+
+// Global effects that target all pins
+function triggerGlobalEffect(effect) {
+    // Use the global endpoint for effects that should affect all pins
+    const formData = new FormData();
+    formData.append('effect', effect);
+    
+    fetch('/global', {
+        method: 'POST',
+        body: formData
+    })
+        .then(response => response.text())
+        .then(data => {
+            console.log(`Global effect: ${data}`);
+            showFeedback(`Global ${effect}`, 'success');
+        })
+        .catch(error => {
+            console.error('Global effect error:', error);
+            showFeedback('Global Effect Error', 'error');
+        });
+}
+
+// Stop all active effects
+function stopAllEffects() {
+    fetch('/global', {
+        method: 'POST',
+        body: new URLSearchParams({ effect: 'stop' })
+    })
+        .then(response => response.text())
+        .then(data => {
+            console.log(`Stop all: ${data}`);
+            showFeedback('All Effects Stopped', 'success');
+        })
+        .catch(error => {
+            console.error('Stop all error:', error);
+            showFeedback('Stop Error', 'error');
         });
 }
 
