@@ -9,8 +9,8 @@
 <body>
     <div class="header">
         <h1>🎵 Audio Configuration</h1>
-        <p><a href="/" style="color: #ff6b35;">← Back to Control Panel</a></p>
-        <p style="font-size: 14px; color: #94a3b8;">Configure audio-to-effect mappings</p>
+        <p><a href="/" class="link-orange">← Back to Control Panel</a></p>
+        <p class="text-secondary" style="font-size: 14px;">Configure audio-to-effect mappings</p>
     </div>
 
     <form id="audioForm" method="POST" action="/audio/map">
@@ -22,16 +22,16 @@
             </div>
         </div>
 
-        <input type="submit" value="💾 Save Config" style="background: #4CAF50; color: white; border: none; padding: 12px 30px; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 20px;">
+        <input type="submit" value="💾 Save Config" class="btn btn-primary" style="margin-top: 20px;">
     </form>
 
-    <div style="margin-top: 30px; padding: 15px; background: #0f1419; border-radius: 8px; font-size: 13px; color: #94a3b8;">
+    <div class="status">
         <h4>💡 Audio Tips:</h4>
         <ul style="margin: 10px 0;">
             <li><strong>File Numbers:</strong> Use files 0001-9999 on SD card</li>
             <li><strong>Format:</strong> MP3 files, 22050 Hz, Mono recommended</li>
             <li><strong>Zero means:</strong> No audio for this effect</li>
-            <li><strong>Test playback:</strong> Use control panel to test files</li>
+            <li><strong>Test playbook:</strong> Use control panel to test files</li>
         </ul>
     </div>
 
@@ -74,20 +74,20 @@
 
             effects.forEach(effect => {
                 const row = document.createElement('div');
-                row.style.cssText = 'margin: 15px 0; display: flex; align-items: center; padding: 10px; background: #0f1419; border-radius: 4px;';
+                row.className = 'flex flex-center status-item';
+                row.style.cssText = 'margin: 15px 0;';
                 
                 row.innerHTML = `
                     <div style="flex: 1;">
-                        <strong style="color: #ff6b35;">${effect.name}</strong>
+                        <strong class="text-accent">${effect.name}</strong>
                         <br>
-                        <small style="color: #94a3b8;">${effect.description}</small>
+                        <small class="text-secondary">${effect.description}</small>
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <label style="min-width: 80px;">File Number:</label>
                         <input type="number" name="${effect.key}" value="${audioMap[effect.key] || 0}" min="0" max="255" 
-                               style="width: 80px; padding: 5px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 4px;">
-                        <button type="button" onclick="testAudio(${audioMap[effect.key] || 0})" 
-                                style="background: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">
+                               style="width: 80px;">
+                        <button type="button" onclick="testAudio(${audioMap[effect.key] || 0})" class="btn btn-info" style="padding: 5px 10px;">
                             ▶ Test
                         </button>
                     </div>

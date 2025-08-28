@@ -9,11 +9,11 @@
 <body>
     <div class="header">
         <h1>🎯 Firmware Update</h1>
-        <p><a href="/" style="color: #ff6b35;">← Back to Control Panel</a></p>
+        <p><a href="/" class="link-orange">← Back to Control Panel</a></p>
     </div>
 
-    <div class="form">
-        <div class="warning">
+    <div class="status">
+        <div style="background: #7c2d12; padding: 10px; border-radius: 4px; margin: 10px 0;">
             <strong>⚠️ Warning:</strong> Only upload firmware.bin files built for ESP32-C3!
         </div>
         <h3>Upload New Firmware</h3>
@@ -23,7 +23,7 @@
             <p><strong>3.</strong> Select and upload:</p>
             <input type='file' name='update' accept='.bin' required>
             <br><br>
-            <input type='submit' value='Upload Firmware' class='update-btn'>
+            <input type='submit' value='Upload Firmware' class='btn btn-orange'>
         </form>
     </div>
 </body>

@@ -9,8 +9,8 @@
 <body>
     <div class="header">
         <h1>⚙️ Modular Device Configuration</h1>
-        <p><a href="/" style="color: #ff6b35;">← Back to Control Panel</a></p>
-        <p style="font-size: 14px; color: #94a3b8;">Configure pins by type and group for modular effect control</p>
+        <p><a href="/" class="link-orange">← Back to Control Panel</a></p>
+        <p class="text-secondary" style="font-size: 14px;">Configure pins by type and group for modular effect control</p>
     </div>
 
     <form id="configForm" method="POST">
@@ -52,7 +52,7 @@
         <!-- Pin Configuration -->
         <div class="status">
             <h3>🎯 Modular Pin Configuration</h3>
-            <p style="font-size: 13px; color: #94a3b8; margin-bottom: 20px;">
+            <p class="text-secondary" style="font-size: 13px; margin-bottom: 20px;">
                 Configure each pin with type and group for automatic effect targeting.
                 Same firmware works across different miniatures through configuration.
             </p>
@@ -64,14 +64,14 @@
         <input type="submit" value="💾 Save Config">
     </form>
     
-    <div style="margin-top: 15px; text-align: center;">
-        <button onclick="restartDevice()" style="background: #f59e0b; color: white; border: none; padding: 12px 30px; border-radius: 5px; cursor: pointer; font-size: 16px;">
+    <div class="text-center">
+        <button onclick="restartDevice()" class="btn btn-orange">
             🔄 Restart Device
         </button>
-        <p style="font-size: 12px; color: #94a3b8; margin: 5px 0 0 0;">Required to apply WiFi changes</p>
+        <p class="text-secondary" style="font-size: 12px; margin: 5px 0 0 0;">Required to apply WiFi changes</p>
     </div>
 
-    <div style="margin-top: 30px; padding: 15px; background: #0f1419; border-radius: 8px; font-size: 13px; color: #94a3b8;">
+    <div class="status">
         <h4>💡 Configuration Tips:</h4>
         <ul style="margin: 10px 0;">
             <li><strong>Types</strong> define what the pin controls (Engine, Weapon, etc.)</li>
@@ -119,7 +119,7 @@
                 
                 let typeDisplay = '';
                 if (pin.enabled && pin.type) {
-                    typeDisplay = ` - <span style="color: #ff6b35;">${pin.type}${pin.group ? ` (${pin.group})` : ''}</span>`;
+                    typeDisplay = ` - <span class="text-accent">${pin.type}${pin.group ? ` (${pin.group})` : ''}</span>`;
                 }
 
                 pinDiv.innerHTML = `
