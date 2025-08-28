@@ -89,6 +89,10 @@ function generateDynamicButtons(types) {
 function getTypeClass(typeName) {
     const name = typeName.toLowerCase();
     if (name.includes('engine')) return 'btn-engine';
+    if (name.includes('machinegun')) return 'btn-weapon';
+    if (name.includes('flamethrower')) return 'btn-weapon';
+    if (name.includes('rocketlauncher')) return 'btn-weapon';
+    if (name.includes('maincannon')) return 'btn-weapon';
     if (name.includes('weapon')) return 'btn-weapon';
     if (name.includes('candle')) return 'btn-candle';
     if (name.includes('console')) return 'btn-console';
@@ -99,6 +103,10 @@ function getTypeClass(typeName) {
 function getTypeEmoji(typeName) {
     const name = typeName.toLowerCase();
     if (name.includes('engine')) return '🚗';
+    if (name.includes('machinegun')) return '🔫';
+    if (name.includes('flamethrower')) return '🔥';
+    if (name.includes('rocketlauncher')) return '🚀';
+    if (name.includes('maincannon')) return '💥';
     if (name.includes('weapon')) return '⚔️';
     if (name.includes('candle')) return '🕯️';
     if (name.includes('console')) return '💻';
@@ -114,7 +122,16 @@ function getEffectsForType(typeName, hasRGB, hasPWM) {
     if (name.includes('engine')) {
         effects.push({ action: 'idle', label: 'Engine Idle' });
         effects.push({ action: 'rev', label: 'Engine Rev' });
+    } else if (name.includes('machinegun')) {
+        effects.push({ action: 'fire', label: 'Machine Gun Burst' });
+    } else if (name.includes('flamethrower')) {
+        effects.push({ action: 'fire', label: 'Flamethrower' });
+    } else if (name.includes('rocketlauncher')) {
+        effects.push({ action: 'fire', label: 'Rocket Launch' });
+    } else if (name.includes('maincannon')) {
+        effects.push({ action: 'fire', label: 'Cannon Blast' });
     } else if (name.includes('weapon')) {
+        // Legacy weapon support - shows all weapon effects
         effects.push({ action: 'fire', label: 'Weapon Fire' });
         effects.push({ action: 'flamethrower', label: 'Flamethrower' });
         effects.push({ action: 'rocket', label: 'Rocket' });
