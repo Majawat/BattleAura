@@ -13,7 +13,7 @@
         <p style="font-size: 14px; color: #94a3b8;">Configure audio-to-effect mappings</p>
     </div>
 
-    <form id="audioForm" method="POST">
+    <form id="audioForm" method="POST" action="/audio/map">
         <div class="status">
             <h3>🔊 Audio File Mappings</h3>
             <p>Map sound effects to audio files on SD card</p>
@@ -69,7 +69,7 @@
                 { key: 'takingHits', name: 'Taking Hits', description: 'Impact/damage sounds' },
                 { key: 'explosion', name: 'Explosion', description: 'Large explosion sound' },
                 { key: 'rocketLauncher', name: 'Rocket Launcher', description: 'Heavy weapon launch' },
-                { key: 'consoleRgb', name: 'Console RGB', description: 'Electronic beeping' }
+                { key: 'killConfirmed', name: 'Kill Confirmed', description: 'Victory confirmation sound' }
             ];
 
             effects.forEach(effect => {

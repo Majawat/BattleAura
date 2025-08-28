@@ -11,7 +11,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "2.4.0";
+const char* VERSION = "2.5.0";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -1539,6 +1539,60 @@ void handleConfigSave() {
     Serial.println("Configuration updated via web interface");
 }
 
+void handleAudioMapSave() {
+    // Parse audio mapping form data and update configuration
+    if (server.hasArg("candleFlicker")) {
+        config.audioMap.candleFlicker = constrain(server.arg("candleFlicker").toInt(), 0, 255);
+    }
+    if (server.hasArg("fade")) {
+        config.audioMap.fade = constrain(server.arg("fade").toInt(), 0, 255);
+    }
+    if (server.hasArg("pulse")) {
+        config.audioMap.pulse = constrain(server.arg("pulse").toInt(), 0, 255);
+    }
+    if (server.hasArg("strobe")) {
+        config.audioMap.strobe = constrain(server.arg("strobe").toInt(), 0, 255);
+    }
+    if (server.hasArg("engineIdle")) {
+        config.audioMap.engineIdle = constrain(server.arg("engineIdle").toInt(), 0, 255);
+    }
+    if (server.hasArg("engineRev")) {
+        config.audioMap.engineRev = constrain(server.arg("engineRev").toInt(), 0, 255);
+    }
+    if (server.hasArg("machineGun")) {
+        config.audioMap.machineGun = constrain(server.arg("machineGun").toInt(), 0, 255);
+    }
+    if (server.hasArg("flamethrower")) {
+        config.audioMap.flamethrower = constrain(server.arg("flamethrower").toInt(), 0, 255);
+    }
+    if (server.hasArg("takingHits")) {
+        config.audioMap.takingHits = constrain(server.arg("takingHits").toInt(), 0, 255);
+    }
+    if (server.hasArg("explosion")) {
+        config.audioMap.explosion = constrain(server.arg("explosion").toInt(), 0, 255);
+    }
+    if (server.hasArg("rocketLauncher")) {
+        config.audioMap.rocketLauncher = constrain(server.arg("rocketLauncher").toInt(), 0, 255);
+    }
+    if (server.hasArg("killConfirmed")) {
+        config.audioMap.killConfirmed = constrain(server.arg("killConfirmed").toInt(), 0, 255);
+    }
+
+    // Save configuration to file
+    saveConfiguration();
+    
+    // Send success response
+    server.send(200, F("text/html; charset=utf-8"), F(
+        "<html><body style='font-family:Arial; background:#1a1a2e; color:white; text-align:center; padding:50px;'>"
+        "<h1>✅ Audio Configuration Saved!</h1>"
+        "<p>Audio-to-effect mappings have been saved to flash memory.</p>"
+        "<p>Your custom audio mappings are now active.</p>"
+        "<p><a href=\"/audio/map\" style=\"color: #4CAF50;\">← Back to Audio Configuration</a></p>"
+        "<p><a href=\"/\" style=\"color: #ff6b35;\">← Back to Control Panel</a></p>"
+        "</body></html>"));
+    
+    Serial.println("Audio mapping configuration updated via web interface");
+}
 
 void printSystemInfo() {
     Serial.println();
