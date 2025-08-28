@@ -11,7 +11,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "2.5.0";
+const char* VERSION = "2.6.0";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -835,20 +835,21 @@ void setupWebServer() {
         
         config.pins[pin].brightness = brightness;
         
-        // Calculate actual brightness using global max
-        uint8_t actualBrightness = calculateActualBrightness(pin);
+        // Stop any running effects first
+        stopEffect(pin);
         
+        // Apply the new brightness immediately
         if (config.pins[pin].mode == PinMode::OUTPUT_WS2812B) {
-            // Stop effects and set brightness
-            config.pins[pin].effectActive = false;
+            uint8_t actualBrightness = calculateActualBrightness(pin);
             setNeoPixelColor(pin, config.pins[pin].color, actualBrightness);
-        } else if (config.pins[pin].mode == PinMode::OUTPUT_PWM) {
-            analogWrite(config.pins[pin].gpio, actualBrightness);
+        } else {
+            setPinBrightness(pin, config.pins[pin].brightness);
         }
         
         // Save configuration
         saveConfiguration();
         
+        uint8_t actualBrightness = calculateActualBrightness(pin);
         server.send(200, "text/plain", "Pin " + String(pin) + " brightness: " + String(brightness) + " (actual: " + String(actualBrightness) + ")");
     });
     
@@ -895,6 +896,9 @@ void setupWebServer() {
             return;
         }
         
+        // Stop any effects first
+        stopEffect(pinIndex);
+        
         // Toggle pin state
         bool newState = !pinStates[pinIndex];
         pinStates[pinIndex] = newState;
@@ -905,7 +909,6 @@ void setupWebServer() {
             uint8_t brightness = newState ? calculateActualBrightness(pinIndex) : 0;
             analogWrite(config.pins[pinIndex].gpio, brightness);
         } else if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
-            config.pins[pinIndex].effectActive = false;
             if (newState) {
                 uint8_t brightness = calculateActualBrightness(pinIndex);
                 setNeoPixelColor(pinIndex, config.pins[pinIndex].color, brightness);
@@ -915,6 +918,60 @@ void setupWebServer() {
         }
         
         server.send(200, "text/plain", "Pin " + String(pinIndex) + " " + (newState ? "ON" : "OFF"));
+    });
+    
+    // Manual pin on/off endpoints
+    server.on("/pin/on", HTTP_GET, []() {
+        if (!server.hasArg("pin")) {
+            server.send(400, "text/plain", F("Missing pin parameter"));
+            return;
+        }
+        
+        uint8_t pinIndex = server.arg("pin").toInt();
+        if (pinIndex >= MAX_PINS || !config.pins[pinIndex].enabled) {
+            server.send(400, "text/plain", F("Invalid or disabled pin"));
+            return;
+        }
+        
+        // Stop effects and turn pin on
+        stopEffect(pinIndex);
+        pinStates[pinIndex] = true;
+        
+        if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
+            uint8_t brightness = calculateActualBrightness(pinIndex);
+            setNeoPixelColor(pinIndex, config.pins[pinIndex].color, brightness);
+        } else {
+            setPinBrightness(pinIndex, config.pins[pinIndex].brightness);
+        }
+        
+        server.send(200, "text/plain", "Pin " + String(pinIndex) + " ON");
+    });
+    
+    server.on("/pin/off", HTTP_GET, []() {
+        if (!server.hasArg("pin")) {
+            server.send(400, "text/plain", F("Missing pin parameter"));
+            return;
+        }
+        
+        uint8_t pinIndex = server.arg("pin").toInt();
+        if (pinIndex >= MAX_PINS || !config.pins[pinIndex].enabled) {
+            server.send(400, "text/plain", F("Invalid or disabled pin"));
+            return;
+        }
+        
+        // Stop effects and turn pin off
+        stopEffect(pinIndex);
+        pinStates[pinIndex] = false;
+        
+        if (config.pins[pinIndex].mode == PinMode::OUTPUT_DIGITAL) {
+            digitalWrite(config.pins[pinIndex].gpio, LOW);
+        } else if (config.pins[pinIndex].mode == PinMode::OUTPUT_PWM) {
+            analogWrite(config.pins[pinIndex].gpio, 0);
+        } else if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
+            setNeoPixelColor(pinIndex, 0x000000, 0);
+        }
+        
+        server.send(200, "text/plain", "Pin " + String(pinIndex) + " OFF");
     });
     
     server.on("/pin/color", HTTP_GET, []() {
@@ -944,7 +1001,9 @@ void setupWebServer() {
         else if (color == "off") colorValue = 0x000000;
         
         config.pins[pinIndex].color = colorValue;
-        config.pins[pinIndex].effectActive = false;
+        
+        // Stop any running effects on this pin
+        stopEffect(pinIndex);
         
         uint8_t brightness = calculateActualBrightness(pinIndex);
         setNeoPixelColor(pinIndex, colorValue, brightness);
@@ -2391,12 +2450,24 @@ void restoreAmbientEffect(uint8_t pinIndex) {
 void stopEffect(uint8_t pinIndex) {
     if (pinIndex >= MAX_PINS) return;
     
+    // Stop both active and ambient effects
     config.pins[pinIndex].effectActive = false;
+    effectStates[pinIndex].hasActiveOverride = false;
+    effectStates[pinIndex].effectEndTime = 0;
     
-    // Reset to original brightness
-    setPinBrightness(pinIndex, config.pins[pinIndex].brightness);
+    // Reset effect state
+    effectStates[pinIndex].step = 0;
+    effectStates[pinIndex].lastUpdate = 0;
     
-    Serial.printf("Stopped effect on pin %d\n", pinIndex);
+    // Reset to configured brightness and color for manual control
+    if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
+        uint8_t brightness = calculateActualBrightness(pinIndex);
+        setNeoPixelColor(pinIndex, config.pins[pinIndex].color, brightness);
+    } else {
+        setPinBrightness(pinIndex, config.pins[pinIndex].brightness);
+    }
+    
+    Serial.printf("Stopped effect on pin %d - manual control active\n", pinIndex);
 }
 
 void setPinBrightness(uint8_t pinIndex, uint8_t brightness) {
@@ -2405,16 +2476,24 @@ void setPinBrightness(uint8_t pinIndex, uint8_t brightness) {
     PinMode mode = config.pins[pinIndex].mode;
     uint8_t gpio = config.pins[pinIndex].gpio;
     
+    // Apply global brightness scaling for PWM/Digital pins
+    uint8_t scaledBrightness = brightness;
+    if (mode == PinMode::OUTPUT_PWM || mode == PinMode::OUTPUT_DIGITAL) {
+        scaledBrightness = (brightness * config.globalMaxBrightness) / 255;
+    }
+    
     switch (mode) {
         case PinMode::OUTPUT_PWM:
-            analogWrite(gpio, brightness);
+            analogWrite(gpio, scaledBrightness);
             break;
         case PinMode::OUTPUT_DIGITAL:
-            digitalWrite(gpio, brightness > 128 ? HIGH : LOW);
+            digitalWrite(gpio, scaledBrightness > 128 ? HIGH : LOW);
             break;
         case PinMode::OUTPUT_WS2812B:
             if (neoPixels[pinIndex] != nullptr) {
-                setNeoPixelColor(pinIndex, config.pins[pinIndex].color, brightness);
+                // For RGB, brightness is already scaled in setNeoPixelColor
+                uint8_t rgbBrightness = (brightness * config.globalMaxBrightness) / 255;
+                setNeoPixelColor(pinIndex, config.pins[pinIndex].color, rgbBrightness);
             }
             break;
         default:
