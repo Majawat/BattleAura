@@ -11,7 +11,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.8.2-alpha";
+const char* VERSION = "0.8.3-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -1331,7 +1331,7 @@ void initializeDefaults() {
     
     // Set up one default pin for testing
     config.pins[0].gpio = 2;
-    config.pins[0].mode = PinMode::OUTPUT_DIGITAL;
+    config.pins[0].mode = PinMode::OUTPUT_PWM;
     config.pins[0].name = "Test LED";
     config.pins[0].enabled = true;
     config.pins[0].brightness = 255;
@@ -1341,10 +1341,9 @@ void initializeDefaults() {
 }
 
 void loadConfiguration() {
-    initializeDefaults();  // Always start with defaults
-    
     if (!SPIFFS.exists(CONFIG_FILE)) {
-        Serial.println("⚠ Config file not found - using defaults");
+        Serial.println("⚠ Config file not found - initializing defaults");
+        initializeDefaults();
         configLoaded = false;
         return;
     }
@@ -1361,7 +1360,8 @@ void loadConfiguration() {
     file.close();
     
     if (error) {
-        Serial.printf("✗ Failed to parse config: %s - using defaults\n", error.c_str());
+        Serial.printf("✗ Failed to parse config: %s - reinitializing defaults\n", error.c_str());
+        initializeDefaults();
         configLoaded = false;
         return;
     }

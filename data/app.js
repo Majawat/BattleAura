@@ -286,6 +286,11 @@ function setupBrightnessSlider() {
     const slider = document.getElementById('globalBrightness');
     const valueDisplay = document.getElementById('brightnessValue');
     
+    // Only setup if elements exist (not all pages have brightness slider)
+    if (!slider || !valueDisplay) {
+        return;
+    }
+    
     slider.addEventListener('input', function() {
         const value = this.value;
         valueDisplay.textContent = value;

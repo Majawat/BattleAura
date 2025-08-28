@@ -132,7 +132,7 @@
                     </div>
                     <div class="form-row">
                         <label>Pin Mode:</label>
-                        <select name="mode${index}">
+                        <select name="mode${index}" onchange="toggleLedCountField(${index}, this.value)">
                             <option value="0" ${pin.mode === 0 ? 'selected' : ''}>Disabled</option>
                             <option value="1" ${pin.mode === 1 ? 'selected' : ''}>Digital Output</option>
                             <option value="2" ${pin.mode === 2 ? 'selected' : ''}>PWM Output</option>
@@ -164,17 +164,30 @@
                         <input type="range" name="brightness${index}" value="${pin.brightness || 255}" min="0" max="255" oninput="document.getElementById('brightness${index}').innerText = this.value">
                         <span class="brightness-display" id="brightness${index}">${pin.brightness || 255}</span>
                     </div>
-                    <div class="form-row">
+                    <div class="form-row" id="ledCountRow${index}" style="display: ${pin.mode == 3 ? 'flex' : 'none'};">
                         <label>LED Count:</label>
                         <input type="number" name="ledCount${index}" value="${pin.ledCount || 10}" min="1" max="100" placeholder="For WS2812B strips">
                     </div>
-                    <div class="type-examples">Number of LEDs in strip (WS2812B only)</div>
+                    <div class="type-examples" id="ledCountHelp${index}" style="display: ${pin.mode == 3 ? 'block' : 'none'};">Number of LEDs in strip (WS2812B only)</div>
                 `;
                 
                 container.appendChild(pinDiv);
             });
         }
         
+        function toggleLedCountField(pinIndex, modeValue) {
+            const ledCountRow = document.getElementById(`ledCountRow${pinIndex}`);
+            const ledCountHelp = document.getElementById(`ledCountHelp${pinIndex}`);
+            const isWS2812B = (modeValue == 3); // WS2812B mode
+            
+            if (ledCountRow) {
+                ledCountRow.style.display = isWS2812B ? 'flex' : 'none';
+            }
+            if (ledCountHelp) {
+                ledCountHelp.style.display = isWS2812B ? 'block' : 'none';
+            }
+        }
+
         function restartDevice() {
             if (confirm('Restart the device to apply WiFi configuration changes?\n\nThe device will be unavailable for about 10 seconds.')) {
                 fetch('/restart', {
