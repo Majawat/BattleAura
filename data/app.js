@@ -3,6 +3,7 @@
 // Initialize page when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     loadSystemInfo();
+    loadAvailableTypes();
     setupBrightnessSlider();
     setInterval(updateSystemInfo, 5000); // Update every 5 seconds
 });
@@ -21,6 +22,52 @@ function loadSystemInfo() {
             console.log('Status API not available, using basic mode');
             // Fallback for basic functionality
         });
+}
+
+// Load available types for dynamic UI generation
+function loadAvailableTypes() {
+    fetch('/api/types')
+        .then(response => response.json())
+        .then(data => {
+            generateDynamicButtons(data.types);
+        })
+        .catch(error => {
+            console.log('Types API not available, using static interface');
+        });
+}
+
+// Generate dynamic buttons based on configured types
+function generateDynamicButtons(types) {
+    const effectsContainer = document.getElementById('dynamic-effects');
+    if (!effectsContainer) return;
+    
+    let html = '<h3>Available Effects</h3>';
+    
+    types.forEach(type => {
+        html += `<div class="type-group">`;
+        html += `<h4>${type.type} (${type.count} ${type.count === 1 ? 'pin' : 'pins'})</h4>`;
+        html += `<div class="type-buttons">`;
+        
+        // Add common effects for this type
+        if (type.type.toLowerCase().includes('engine')) {
+            html += `<button onclick="triggerTypeEffect('${type.type}', 'idle')">Engine Idle</button>`;
+            html += `<button onclick="triggerTypeEffect('${type.type}', 'rev', 2000)">Engine Rev</button>`;
+        } else if (type.type.toLowerCase().includes('weapon')) {
+            html += `<button onclick="triggerTypeEffect('${type.type}', 'fire', 500)">Weapon Fire</button>`;
+            html += `<button onclick="triggerTypeEffect('${type.type}', 'reload', 1000)">Reload</button>`;
+        } else if (type.type.toLowerCase().includes('candle')) {
+            html += `<button onclick="triggerTypeEffect('${type.type}', 'flicker')">Candle Flicker</button>`;
+        } else if (type.type.toLowerCase().includes('console')) {
+            html += `<button onclick="triggerTypeEffect('${type.type}', 'scroll')">Data Scroll</button>`;
+        }
+        
+        // Add universal damage effect for all types
+        html += `<button onclick="triggerTypeEffect('${type.type}', 'damage', 1500)" class="damage-btn">Taking Damage</button>`;
+        
+        html += `</div></div>`;
+    });
+    
+    effectsContainer.innerHTML = html;
 }
 
 // Update system information periodically
@@ -81,9 +128,10 @@ function stopAll() {
     console.log('All effects stopped');
 }
 
-// RGB Control Functions
+// RGB Control Functions (using new modular API)
 function setRgbColor(color) {
-    fetch(`/rgb/${color}`)
+    // Find first RGB pin and set its color
+    fetch('/pin/color?color=' + color)
         .then(response => response.text())
         .then(data => {
             console.log(`RGB color set: ${data}`);
@@ -95,16 +143,25 @@ function setRgbColor(color) {
         });
 }
 
-function startRainbow() {
-    fetch('/rgb/test')
+// Type-based effect functions for modular system
+function triggerTypeEffect(type, effect, duration = 0) {
+    const formData = new FormData();
+    formData.append('type', type);
+    formData.append('effect', effect);
+    if (duration > 0) formData.append('duration', duration);
+    
+    fetch('/effect', {
+        method: 'POST',
+        body: formData
+    })
         .then(response => response.text())
         .then(data => {
-            console.log(`Rainbow test: ${data}`);
-            showFeedback('Rainbow Test Started', 'success');
+            console.log(`Type effect: ${data}`);
+            showFeedback(`${type} ${effect}`, 'success');
         })
         .catch(error => {
-            console.error('Rainbow error:', error);
-            showFeedback('Rainbow Test Error', 'error');
+            console.error('Type effect error:', error);
+            showFeedback('Effect Error', 'error');
         });
 }
 

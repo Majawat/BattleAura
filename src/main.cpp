@@ -2,16 +2,16 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Update.h>
-#include <SPIFFS.h>
 #include <ArduinoJson.h>
 #include <ESPmDNS.h>
 #include <Adafruit_NeoPixel.h>
 #include <DFRobotDFPlayerMini.h>
 #include <HardwareSerial.h>
+#include <SPIFFS.h>
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "2.0.0-dev";
+const char* VERSION = "2.1.0";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -507,10 +507,6 @@ void setupWebServer() {
         server.send(200, "application/json", response);
     });
     
-    // Legacy status endpoint
-    server.on("/status", HTTP_GET, []() {
-        server.send(200, "text/plain", F("OK"));
-    });
     
     // Favicon handler (prevents 404 errors)
     server.on("/favicon.ico", HTTP_GET, []() {
@@ -761,101 +757,6 @@ void setupWebServer() {
     });
     
     server.on("/audio/map", HTTP_GET, []() { handleEmbeddedFile("/audio_map.html"); });
-    
-    // RGB LED test endpoints
-    server.on("/rgb/test", HTTP_GET, []() {
-        // Test RGB LEDs with rainbow colors
-        for (uint8_t i = 0; i < MAX_PINS; i++) {
-            if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
-                // Cycle through rainbow colors
-                uint32_t colors[] = {0xFF0000, 0xFF8000, 0xFFFF00, 0x00FF00, 0x0000FF, 0x8000FF, 0xFF00FF};
-                for (int c = 0; c < 7; c++) {
-                    setNeoPixelColor(i, colors[c], 128);
-                    delay(300);
-                }
-                setNeoPixelColor(i, 0x000000, 0); // Turn off
-                Serial.printf("RGB test completed on pin %d (GPIO %d)\n", i, config.pins[i].gpio);
-                server.send(200, "text/plain", F("RGB Test Complete"));
-                return;
-            }
-        }
-        server.send(404, "text/plain", F("No RGB LEDs configured"));
-    });
-    
-    server.on("/rgb/red", HTTP_GET, []() {
-        for (uint8_t i = 0; i < MAX_PINS; i++) {
-            if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
-                // Stop any active effects on this pin
-                config.pins[i].effectActive = false;
-                config.pins[i].color = 0xFF0000; // Save the color
-                uint8_t brightness = calculateActualBrightness(i);
-                setNeoPixelColor(i, 0xFF0000, brightness);
-                Serial.printf("RGB Red set on pin %d (effects stopped, brightness: %d)\n", i, brightness);
-                server.send(200, "text/plain", F("RGB Red"));
-                return;
-            }
-        }
-        server.send(404, "text/plain", F("No RGB LEDs configured"));
-    });
-    
-    server.on("/rgb/green", HTTP_GET, []() {
-        for (uint8_t i = 0; i < MAX_PINS; i++) {
-            if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
-                // Stop any active effects on this pin
-                config.pins[i].effectActive = false;
-                config.pins[i].color = 0x00FF00; // Save the color
-                uint8_t brightness = calculateActualBrightness(i);
-                setNeoPixelColor(i, 0x00FF00, brightness);
-                server.send(200, "text/plain", F("RGB Green"));
-                return;
-            }
-        }
-        server.send(404, "text/plain", F("No RGB LEDs configured"));
-    });
-    
-    server.on("/rgb/blue", HTTP_GET, []() {
-        for (uint8_t i = 0; i < MAX_PINS; i++) {
-            if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
-                // Stop any active effects on this pin
-                config.pins[i].effectActive = false;
-                config.pins[i].color = 0x0000FF; // Save the color
-                uint8_t brightness = calculateActualBrightness(i);
-                setNeoPixelColor(i, 0x0000FF, brightness);
-                server.send(200, "text/plain", F("RGB Blue"));
-                return;
-            }
-        }
-        server.send(404, "text/plain", F("No RGB LEDs configured"));
-    });
-    
-    server.on("/rgb/white", HTTP_GET, []() {
-        for (uint8_t i = 0; i < MAX_PINS; i++) {
-            if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
-                // Stop any active effects on this pin
-                config.pins[i].effectActive = false;
-                config.pins[i].color = 0xFFFFFF; // Save the color
-                uint8_t brightness = calculateActualBrightness(i);
-                setNeoPixelColor(i, 0xFFFFFF, brightness);
-                server.send(200, "text/plain", F("RGB White"));
-                return;
-            }
-        }
-        server.send(404, "text/plain", F("No RGB LEDs configured"));
-    });
-    
-    server.on("/rgb/off", HTTP_GET, []() {
-        for (uint8_t i = 0; i < MAX_PINS; i++) {
-            if (config.pins[i].enabled && config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
-                // Stop any active effects on this pin
-                config.pins[i].effectActive = false;
-                config.pins[i].color = 0x000000; // Save the color (off)
-                setNeoPixelColor(i, 0x000000, 0); // Off
-                server.send(200, "text/plain", F("RGB Off"));
-                return;
-            }
-        }
-        server.send(404, "text/plain", F("No RGB LEDs configured"));
-    });
     
     // Global brightness control endpoint
     server.on("/brightness", HTTP_GET, []() {
@@ -1173,10 +1074,6 @@ void handleEmbeddedFile(const String& path) {
     server.send(404, "text/plain", "File not found");
 }
 
-// Legacy function for compatibility
-void handleStaticFile(const String& path, const String& contentType) {
-    handleEmbeddedFile(path);
-}
 
 // handleUpdate removed - now uses embedded /update.html
 
@@ -1476,217 +1373,6 @@ void saveConfiguration() {
     Serial.printf("✓ Configuration saved (%d bytes)\n", bytesWritten);
 }
 
-void handleConfig() {
-    String html = F("<!DOCTYPE html>"
-                   "<html><head>"
-                   "<meta charset=\"UTF-8\">"
-                   "<title>BattleAura - Configuration</title>"
-                   "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
-                   "<style>"
-                   "body { font-family: Arial; margin: 20px; background: #1a1a2e; color: white; }"
-                   ".header { text-align: center; margin-bottom: 20px; }"
-                   ".section { background: #16213e; padding: 20px; border-radius: 8px; margin-bottom: 20px; }"
-                   ".form-row { margin: 10px 0; display: flex; align-items: center; }"
-                   ".form-row label { min-width: 140px; font-weight: bold; }"
-                   "input, select { padding: 8px; margin-left: 10px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 4px; flex: 1; max-width: 200px; }"
-                   "input[type=range] { max-width: 150px; }"
-                   "input[type=checkbox] { width: auto; flex: none; }"
-                   "input[type=submit] { background: #4CAF50; color: white; border: none; padding: 12px 30px; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 20px; }"
-                   "input[type=submit]:hover { background: #45a049; }"
-                   ".pin-config { border: 1px solid #334155; padding: 15px; margin: 10px 0; border-radius: 8px; background: #0f1419; }"
-                   ".pin-header { background: #1e293b; padding: 10px; border-radius: 4px; margin-bottom: 15px; }"
-                   ".type-examples { font-size: 11px; color: #94a3b8; margin-left: 150px; }"
-                   ".brightness-display { min-width: 40px; text-align: center; color: #94a3b8; }"
-                   "</style>"
-                   "</head><body>"
-                   "<div class=\"header\">"
-                   "<h1>⚙️ Modular Device Configuration</h1>"
-                   "<p><a href=\"/\" style=\"color: #ff6b35;\">← Back to Control Panel</a></p>"
-                   "<p style=\"font-size: 14px; color: #94a3b8;\">Configure pins by type and group for modular effect control</p>"
-                   "</div>"
-                   "<form method=\"POST\">"
-                   "<div class=\"section\">"
-                   "<h3>🔧 System Settings</h3>");
-    
-    html += F("<div class=\"form-row\">"
-             "<label>Device Name:</label>"
-             "<input type=\"text\" name=\"deviceName\" value=\"");
-    html += config.deviceName;
-    html += F("\" maxlength=\"32\" placeholder=\"Tank, Beast, Dreadnought...\">"
-             "</div>"
-             "<div class=\"form-row\">"
-             "<label>Audio Volume:</label>"
-             "<input type=\"range\" name=\"volume\" value=\"");
-    html += config.volume;
-    html += F("\" min=\"0\" max=\"30\" oninput=\"document.getElementById('volDisplay').innerText = this.value\">"
-             "<span class=\"brightness-display\" id=\"volDisplay\">");
-    html += config.volume;
-    html += F("</span>"
-             "</div>"
-             "<div class=\"form-row\">"
-             "<label>Audio Enabled:</label>"
-             "<input type=\"checkbox\" name=\"audioEnabled\"");
-    if (config.audioEnabled) html += F(" checked");
-    html += F("></div></div>");
-    
-    html += F("<div class=\"section\">"
-             "<h3>📡 WiFi Settings</h3>"
-             "<div class=\"form-row\">"
-             "<label>WiFi SSID:</label>"
-             "<input type=\"text\" name=\"wifiSSID\" value=\"");
-    html += config.wifiSSID;
-    html += F("\" maxlength=\"32\">"
-             "</div>"
-             "<div class=\"form-row\">"
-             "<label>WiFi Password:</label>"
-             "<input type=\"password\" name=\"wifiPassword\" value=\"");
-    html += config.wifiPassword;
-    html += F("\" maxlength=\"64\">"
-             "</div>"
-             "<div class=\"form-row\">"
-             "<label>WiFi Enabled:</label>"
-             "<input type=\"checkbox\" name=\"wifiEnabled\"");
-    if (config.wifiEnabled) html += F(" checked");
-    html += F("></div></div>");
-    
-    // Pin configurations - completely redesigned for modular system
-    html += F("<div class=\"section\">"
-             "<h3>🎯 Modular Pin Configuration</h3>"
-             "<p style=\"font-size: 13px; color: #94a3b8; margin-bottom: 20px;\">"
-             "Configure each pin with type and group for automatic effect targeting. "
-             "Same firmware works across different miniatures through configuration.</p>");
-    
-    for (uint8_t i = 0; i < MAX_PINS; i++) {
-        html += F("<div class=\"pin-config\">"
-                 "<div class=\"pin-header\">"
-                 "<h4>🔌 Pin Slot ");
-        html += i + 1;
-        
-        // Show current assignment in header if configured
-        if (config.pins[i].enabled && config.pins[i].type.length() > 0) {
-            html += F(" - <span style=\"color: #ff6b35;\">");
-            html += config.pins[i].type;
-            if (config.pins[i].group.length() > 0) {
-                html += F(" (");
-                html += config.pins[i].group;
-                html += F(")");
-            }
-            html += F("</span>");
-        }
-        
-        html += F("</h4></div>");
-        
-        // Basic pin setup
-        html += F("<div class=\"form-row\">"
-                 "<label>GPIO Pin:</label>"
-                 "<input type=\"number\" name=\"gpio");
-        html += i;
-        html += F("\" value=\"");
-        html += config.pins[i].gpio;
-        html += F("\" min=\"0\" max=\"21\">"
-                 "</div>"
-                 "<div class=\"form-row\">"
-                 "<label>Pin Mode:</label>"
-                 "<select name=\"mode");
-        html += i;
-        html += F("\">");
-        
-        // Pin mode options
-        const char* modes[] = {"Disabled", "Digital Output", "PWM Output", "WS2812B RGB", "Digital Input", "Analog Input"};
-        for (int m = 0; m < 6; m++) {
-            html += F("<option value=\"");
-            html += m;
-            html += F("\"");
-            if (static_cast<int>(config.pins[i].mode) == m) html += F(" selected");
-            html += F(">");
-            html += modes[m];
-            html += F("</option>");
-        }
-        
-        html += F("</select>"
-                 "</div>"
-                 "<div class=\"form-row\">"
-                 "<label>Pin Name:</label>"
-                 "<input type=\"text\" name=\"name");
-        html += i;
-        html += F("\" value=\"");
-        html += config.pins[i].name;
-        html += F("\" maxlength=\"16\" placeholder=\"Descriptive name...\">"
-                 "</div>"
-                 "<div class=\"form-row\">"
-                 "<label>Enabled:</label>"
-                 "<input type=\"checkbox\" name=\"enabled");
-        html += i;
-        html += F("\"");
-        if (config.pins[i].enabled) html += F(" checked");
-        html += F("></div>");
-        
-        // NEW: Type and Group fields for modular system
-        html += F("<div class=\"form-row\">"
-                 "<label>Pin Type:</label>"
-                 "<input type=\"text\" name=\"type");
-        html += i;
-        html += F("\" value=\"");
-        html += config.pins[i].type;
-        html += F("\" maxlength=\"20\" placeholder=\"Engine, Weapon, Candle, Console...\">"
-                 "</div>"
-                 "<div class=\"type-examples\">Examples: Engine, Weapon, Candle, Console, Brazier, Spotlight</div>"
-                 "<div class=\"form-row\">"
-                 "<label>Pin Group:</label>"
-                 "<input type=\"text\" name=\"group");
-        html += i;
-        html += F("\" value=\"");
-        html += config.pins[i].group;
-        html += F("\" maxlength=\"20\" placeholder=\"Engine1, Weapon1, Candles...\">"
-                 "</div>"
-                 "<div class=\"type-examples\">Examples: Engine1, Engine2, Weapon1, Weapon2, MainCandles, SpotLights</div>");
-        
-        // Per-pin brightness control
-        html += F("<div class=\"form-row\">"
-                 "<label>Brightness:</label>"
-                 "<input type=\"range\" name=\"brightness");
-        html += i;
-        html += F("\" value=\"");
-        html += config.pins[i].brightness;
-        html += F("\" min=\"0\" max=\"255\" oninput=\"document.getElementById('brightness");
-        html += i;
-        html += F("').innerText = this.value\">"
-                 "<span class=\"brightness-display\" id=\"brightness");
-        html += i;
-        html += F("\">");
-        html += config.pins[i].brightness;
-        html += F("</span>"
-             "</div>");
-        
-        // LED count for WS2812B strips
-        html += F("<div class=\"form-row\">"
-                 "<label>LED Count:</label>"
-                 "<input type=\"number\" name=\"ledCount");
-        html += i;
-        html += F("\" value=\"");
-        html += config.pins[i].ledCount;
-        html += F("\" min=\"1\" max=\"100\" placeholder=\"For WS2812B strips\">"
-                 "</div>"
-                 "<div class=\"type-examples\">Number of LEDs in strip (WS2812B only)</div>"
-                 "</div>");
-    }
-    
-    html += F("</div>"
-             "<input type=\"submit\" value=\"💾 Save Modular Configuration\">"
-             "</form>"
-             "<div style=\"margin-top: 30px; padding: 15px; background: #0f1419; border-radius: 8px; font-size: 13px; color: #94a3b8;\">"
-             "<h4>💡 Configuration Tips:</h4>"
-             "<ul style=\"margin: 10px 0;\">"
-             "<li><strong>Types</strong> define what the pin controls (Engine, Weapon, etc.)</li>"
-             "<li><strong>Groups</strong> allow multiple pins of same type (Engine1, Engine2)</li>"
-             "<li><strong>Effects</strong> will target types, not individual pins</li>"
-             "<li><strong>Same firmware</strong> works for Tank, Beast, Dreadnought through config</li>"
-             "</ul></div>"
-             "</body></html>");
-    
-    server.send(200, F("text/html; charset=utf-8"), html);
-}
-
 void handleConfigSave() {
     // Parse form data and update configuration
     if (server.hasArg("deviceName")) {
@@ -1769,135 +1455,6 @@ void handleConfigSave() {
     Serial.println("Configuration updated via web interface");
 }
 
-void handleAudioMapping() {
-    String html = F("<!DOCTYPE html>"
-                   "<html><head>"
-                   "<meta charset=\"UTF-8\">"
-                   "<title>BattleAura - Audio Mapping</title>"
-                   "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
-                   "<style>"
-                   "body { font-family: Arial; margin: 20px; background: #1a1a2e; color: white; }"
-                   ".header { text-align: center; margin-bottom: 20px; }"
-                   ".section { background: #16213e; padding: 20px; border-radius: 8px; margin-bottom: 20px; }"
-                   ".mapping-row { margin: 10px 0; display: flex; align-items: center; }"
-                   ".mapping-row label { width: 200px; display: inline-block; }"
-                   ".mapping-row input { flex: 1; padding: 5px; margin-left: 10px; background: #0f1626; color: white; border: 1px solid #555; border-radius: 3px; }"
-                   ".btn { padding: 10px 20px; margin: 5px; color: white; text-decoration: none; border-radius: 5px; display: inline-block; }"
-                   ".btn-primary { background: #4CAF50; }"
-                   ".btn-secondary { background: #ff6b35; }"
-                   "</style>"
-                   "</head><body>");
-    
-    html += F("<div class=\"header\">"
-             "<h1>🎵 Audio Mapping Configuration</h1>"
-             "<p>Map audio files to effects and scenarios</p>"
-             "</div>");
-    
-    html += F("<div class=\"section\">"
-             "<h3>Current Audio Mapping</h3>");
-    
-    // Effect mappings
-    html += F("<div class=\"mapping-row\">"
-             "<label>Candle Flicker:</label>"
-             "<span>File ");
-    html += config.audioMap.candleFlicker;
-    html += F("</span></div>");
-    
-    html += F("<div class=\"mapping-row\">"
-             "<label>Fade:</label>"
-             "<span>File ");
-    html += config.audioMap.fade;
-    html += F("</span></div>");
-    
-    html += F("<div class=\"mapping-row\">"
-             "<label>Pulse:</label>"
-             "<span>File ");
-    html += config.audioMap.pulse;
-    html += F("</span></div>");
-    
-    html += F("<div class=\"mapping-row\">"
-             "<label>Strobe:</label>"
-             "<span>File ");
-    html += config.audioMap.strobe;
-    html += F("</span></div>");
-    
-    // Scenario mappings
-    html += F("<h4>Scenario Mappings:</h4>");
-    
-    html += F("<div class=\"mapping-row\">"
-             "<label>Engine Idle:</label>"
-             "<span>File ");
-    html += config.audioMap.engineIdle;
-    html += F("</span></div>");
-    
-    html += F("<div class=\"mapping-row\">"
-             "<label>Engine Rev:</label>"
-             "<span>File ");
-    html += config.audioMap.engineRev;
-    html += F("</span></div>");
-    
-    html += F("<div class=\"mapping-row\">"
-             "<label>Machine Gun:</label>"
-             "<span>File ");
-    html += config.audioMap.machineGun;
-    html += F("</span></div>");
-    
-    html += F("<div class=\"mapping-row\">"
-             "<label>Flamethrower:</label>"
-             "<span>File ");
-    html += config.audioMap.flamethrower;
-    html += F("</span></div>");
-    
-    html += F("<div class=\"mapping-row\">"
-             "<label>Taking Hits:</label>"
-             "<span>File ");
-    html += config.audioMap.takingHits;
-    html += F("</span></div>");
-    
-    html += F("<div class=\"mapping-row\">"
-             "<label>Explosion:</label>"
-             "<span>File ");
-    html += config.audioMap.explosion;
-    html += F("</span></div>");
-    
-    html += F("<div class=\"mapping-row\">"
-             "<label>Rocket Launcher:</label>"
-             "<span>File ");
-    html += config.audioMap.rocketLauncher;
-    html += F("</span></div>");
-    
-    html += F("<div class=\"mapping-row\">"
-             "<label>Kill Confirmed:</label>"
-             "<span>File ");
-    html += config.audioMap.killConfirmed;
-    html += F("</span></div>");
-    
-    html += F("</div>");
-    
-    // Test controls
-    html += F("<div class=\"section\">"
-             "<h3>Test Audio</h3>"
-             "<p>Play scenarios to test your mapping:</p>");
-    
-    html += F("<a href=\"/audio/scenario?name=engine_idle\" class=\"btn btn-primary\">🏎️ Engine Idle</a>");
-    html += F("<a href=\"/audio/scenario?name=engine_rev\" class=\"btn btn-primary\">🚗 Engine Rev</a>");
-    html += F("<a href=\"/audio/scenario?name=machine_gun\" class=\"btn btn-primary\">🔫 Machine Gun</a>");
-    html += F("<a href=\"/audio/scenario?name=flamethrower\" class=\"btn btn-primary\">🔥 Flamethrower</a>");
-    html += F("<a href=\"/audio/scenario?name=explosion\" class=\"btn btn-primary\">💥 Explosion</a>");
-    html += F("<a href=\"/audio/stop\" class=\"btn btn-secondary\">⏹️ Stop Audio</a>");
-    
-    html += F("</div>");
-    
-    // Navigation
-    html += F("<div class=\"section\">"
-             "<a href=\"/config\" class=\"btn btn-secondary\">⚙️ Back to Configuration</a>"
-             "<a href=\"/\" class=\"btn btn-primary\">🏠 Control Panel</a>"
-             "</div>");
-    
-    html += F("</body></html>");
-    
-    server.send(200, F("text/html; charset=utf-8"), html);
-}
 
 void printSystemInfo() {
     Serial.println();
@@ -2137,7 +1694,6 @@ void startGroupEffect(uint8_t group, EffectType effect, uint16_t duration) {
     Serial.printf("Started group %d effect %d on %d pins", group, (int)effect, pinsAffected);
     if (duration > 0) {
         Serial.printf(" for %dms", duration);
-        // TODO: Implement duration timer
     }
     Serial.println();
 }

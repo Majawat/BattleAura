@@ -5,42 +5,6 @@
     <title>BattleAura - Firmware Update</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/styles.css">
-    <style>
-        .form {
-            background: #16213e;
-            padding: 20px;
-            border-radius: 8px;
-            max-width: 500px;
-            margin: 0 auto;
-        }
-        input[type=file] {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            background: #0f172a;
-            border: 1px solid #334155;
-            color: white;
-            border-radius: 4px;
-        }
-        input[type=submit] {
-            background: #ff6b35;
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        input[type=submit]:hover {
-            background: #e55a2b;
-        }
-        .warning {
-            background: #7c2d12;
-            padding: 10px;
-            border-radius: 4px;
-            margin: 10px 0;
-        }
-    </style>
 </head>
 <body>
     <div class="header">
@@ -59,7 +23,7 @@
             <p><strong>3.</strong> Select and upload:</p>
             <input type='file' name='update' accept='.bin' required>
             <br><br>
-            <input type='submit' value='Upload Firmware'>
+            <input type='submit' value='Upload Firmware' class='update-btn'>
         </form>
     </div>
 </body>
