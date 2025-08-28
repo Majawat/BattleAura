@@ -63,9 +63,38 @@ function generateDynamicButtons(types) {
         
         // Add type-specific effects with appropriate styling
         const effects = getEffectsForType(type.type, type.hasRGB, type.hasPWM);
-        effects.forEach(effect => {
-            html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}'" class="btn ${typeClass}">${effect.label}</button>`;
-        });
+        
+        // Group effects by type
+        const ambientEffects = effects.filter(e => e.type === 'ambient');
+        const activeEffects = effects.filter(e => e.type === 'active');
+        const controlEffects = effects.filter(e => e.type === 'control');
+        
+        // Add ambient effects section
+        if (ambientEffects.length > 0) {
+            html += `<div class="effect-section"><span class="effect-section-label">🔄 Ambient (Continuous)</span>`;
+            ambientEffects.forEach(effect => {
+                html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}')" class="btn ${typeClass} btn-ambient" title="${effect.description}">${effect.label}</button>`;
+            });
+            html += `</div>`;
+        }
+        
+        // Add active effects section  
+        if (activeEffects.length > 0) {
+            html += `<div class="effect-section"><span class="effect-section-label">⚡ Active (Temporary)</span>`;
+            activeEffects.forEach(effect => {
+                html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}')" class="btn ${typeClass} btn-active" title="${effect.description}">${effect.label}</button>`;
+            });
+            html += `</div>`;
+        }
+        
+        // Add control effects section
+        if (controlEffects.length > 0) {
+            html += `<div class="effect-section"><span class="effect-section-label">🎛️ Controls</span>`;
+            controlEffects.forEach(effect => {
+                html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}')" class="btn ${typeClass} btn-control" title="${effect.description}">${effect.label}</button>`;
+            });
+            html += `</div>`;
+        }
         
         html += `</div></div>`;
     });
@@ -120,51 +149,51 @@ function getEffectsForType(typeName, hasRGB, hasPWM) {
     const effects = [];
     
     if (name.includes('engine')) {
-        effects.push({ action: 'idle', label: 'Engine Idle' });
-        effects.push({ action: 'rev', label: 'Engine Rev' });
+        effects.push({ action: 'idle', label: '🔄 Engine Idle', type: 'ambient', description: 'Continuous engine running' });
+        effects.push({ action: 'rev', label: '⚡ Engine Rev', type: 'active', description: 'Temporary engine acceleration' });
     } else if (name.includes('machinegun')) {
-        effects.push({ action: 'fire', label: 'Machine Gun Burst' });
+        effects.push({ action: 'fire', label: '🔫 Machine Gun Burst', type: 'active', description: 'Burst fire effect' });
     } else if (name.includes('flamethrower')) {
-        effects.push({ action: 'fire', label: 'Flamethrower' });
+        effects.push({ action: 'fire', label: '🔥 Flamethrower', type: 'active', description: 'Flame whoosh effect' });
     } else if (name.includes('rocketlauncher')) {
-        effects.push({ action: 'fire', label: 'Rocket Launch' });
+        effects.push({ action: 'fire', label: '🚀 Rocket Launch', type: 'active', description: 'Rocket launch effect' });
     } else if (name.includes('maincannon')) {
-        effects.push({ action: 'fire', label: 'Cannon Blast' });
+        effects.push({ action: 'fire', label: '💥 Cannon Blast', type: 'active', description: 'Heavy cannon fire' });
     } else if (name.includes('weapon')) {
         // Legacy weapon support - shows all weapon effects
-        effects.push({ action: 'fire', label: 'Weapon Fire' });
-        effects.push({ action: 'flamethrower', label: 'Flamethrower' });
-        effects.push({ action: 'rocket', label: 'Rocket' });
+        effects.push({ action: 'fire', label: 'Weapon Fire', type: 'active', description: 'Generic weapon fire' });
+        effects.push({ action: 'flamethrower', label: 'Flamethrower', type: 'active', description: 'Flame effect' });
+        effects.push({ action: 'rocket', label: 'Rocket', type: 'active', description: 'Rocket effect' });
     } else if (name.includes('candle')) {
-        effects.push({ action: 'flicker', label: 'Candle Flicker' });
-        effects.push({ action: 'on', label: 'Bright' });
-        effects.push({ action: 'fade', label: 'Fade' });
+        effects.push({ action: 'flicker', label: '🕯️ Candle Flicker', type: 'ambient', description: 'Continuous flickering' });
+        effects.push({ action: 'on', label: '💡 Bright', type: 'ambient', description: 'Steady bright light' });
+        effects.push({ action: 'fade', label: '🌙 Fade', type: 'ambient', description: 'Gentle fading effect' });
     } else if (name.includes('console')) {
         if (hasRGB) {
-            effects.push({ action: 'scroll', label: 'Data Scroll' });
-            effects.push({ action: 'pulse', label: 'Alert Pulse' });
-            effects.push({ action: 'fade', label: 'Fade' });
+            effects.push({ action: 'scroll', label: '📊 Data Scroll', type: 'ambient', description: 'Continuous data display' });
+            effects.push({ action: 'pulse', label: '⚠️ Alert Pulse', type: 'active', description: 'Alert notification' });
+            effects.push({ action: 'fade', label: '🌙 Fade', type: 'ambient', description: 'Gentle console glow' });
         } else {
-            effects.push({ action: 'pulse', label: 'Status Pulse' });
+            effects.push({ action: 'pulse', label: '💓 Status Pulse', type: 'ambient', description: 'System status indicator' });
         }
     } else if (name.includes('damage')) {
-        effects.push({ action: 'damage', label: 'Damage Sparks' });
-        effects.push({ action: 'strobe', label: 'System Failure' });
+        effects.push({ action: 'damage', label: '💥 Damage Sparks', type: 'active', description: 'Hit impact effect' });
+        effects.push({ action: 'strobe', label: '⚡ System Failure', type: 'active', description: 'Critical system alert' });
     } else if (name.includes('ambient')) {
-        effects.push({ action: 'pulse', label: 'Pulse' });
-        effects.push({ action: 'strobe', label: 'Strobe' });
-        effects.push({ action: 'fade', label: 'Fade' });
+        effects.push({ action: 'pulse', label: '💓 Pulse', type: 'ambient', description: 'Rhythmic pulsing' });
+        effects.push({ action: 'strobe', label: '⚡ Strobe', type: 'active', description: 'Fast strobe effect' });
+        effects.push({ action: 'fade', label: '🌙 Fade', type: 'ambient', description: 'Smooth fading' });
     } else {
         // Generic type - add basic effects
-        effects.push({ action: 'pulse', label: 'Pulse' });
-        effects.push({ action: 'strobe', label: 'Strobe' });
-        effects.push({ action: 'fade', label: 'Fade' });
+        effects.push({ action: 'pulse', label: '💓 Pulse', type: 'ambient', description: 'Rhythmic pulsing' });
+        effects.push({ action: 'strobe', label: '⚡ Strobe', type: 'active', description: 'Fast strobe effect' });
+        effects.push({ action: 'fade', label: '🌙 Fade', type: 'ambient', description: 'Smooth fading' });
     }
     
-    // Add universal controls for all types
-    effects.push({ action: 'on', label: '💡 On' });
-    effects.push({ action: 'off', label: '⚫ Off' });
-    effects.push({ action: 'damage', label: '💥 Taking Damage' });
+    // Add universal controls for all types  
+    effects.push({ action: 'on', label: '💡 On', type: 'control', description: 'Turn on steady light' });
+    effects.push({ action: 'off', label: '⚫ Off', type: 'control', description: 'Turn off completely' });
+    effects.push({ action: 'damage', label: '💥 Taking Damage', type: 'active', description: 'Damage/hit response' });
     
     return effects;
 }

@@ -348,6 +348,70 @@ body {
 .config-audio:hover .config-icon { color: #3b82f6; }
 .config-update:hover .config-icon { color: #f59e0b; }
 
+/* Effect Section Styling */
+.effect-section {
+    margin: 10px 0;
+    padding: 8px;
+    background: rgba(15, 20, 25, 0.5);
+    border-radius: 4px;
+    border-left: 3px solid #334155;
+}
+
+.effect-section-label {
+    display: block;
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #94a3b8;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Effect Button Types */
+.btn-ambient {
+    border-left: 3px solid #22c55e !important;
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.btn-ambient:hover {
+    background: rgba(34, 197, 94, 0.2);
+    border-left-color: #16a34a !important;
+}
+
+.btn-active {
+    border-left: 3px solid #f59e0b !important;
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.btn-active:hover {
+    background: rgba(245, 158, 11, 0.2);
+    border-left-color: #d97706 !important;
+}
+
+.btn-control {
+    border-left: 3px solid #6b7280 !important;
+    background: rgba(107, 114, 128, 0.1);
+    font-size: 0.9em;
+}
+
+.btn-control:hover {
+    background: rgba(107, 114, 128, 0.2);
+    border-left-color: #4b5563 !important;
+}
+
+/* Ambient section styling */
+.effect-section:has(.btn-ambient) {
+    border-left-color: #22c55e;
+}
+
+.effect-section:has(.btn-active) {
+    border-left-color: #f59e0b;
+}
+
+.effect-section:has(.btn-control) {
+    border-left-color: #6b7280;
+}
+
 /* Responsive Design */
 @media (min-width: 768px) {
     .config-grid {
@@ -422,8 +486,16 @@ body {
 .brightness-presets {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 10px;
+    margin-top: 15px;
+    gap: 8px;
     flex-wrap: wrap;
+}
+
+.brightness-presets .btn {
+    flex: 1;
+    min-width: 50px;
+    padding: 8px 4px;
+    font-size: 0.9em;
 }
 
 .brightness-0 {
