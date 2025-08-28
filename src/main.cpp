@@ -221,6 +221,7 @@ void handleEmbeddedFile(const String& path);
 void handleStaticFile(const String& path, const String& contentType);
 void handleUpdateUpload();
 void handleConfigSave();
+void handleAudioMapSave();
 String getEffectName(EffectType effect);
 EffectType mapEffectNameToType(const String& effectName, PinMode mode);
 void handleLedControl(bool state);
@@ -797,6 +798,7 @@ void setupWebServer() {
     });
     
     server.on("/audio/map", HTTP_GET, []() { handleEmbeddedFile("/audio_map.html"); });
+    server.on("/audio/map", HTTP_POST, handleAudioMapSave);
     
     // Global brightness control endpoint
     server.on("/brightness", HTTP_GET, []() {
