@@ -11,7 +11,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "2.3.0";
+const char* VERSION = "2.4.0";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -226,6 +226,10 @@ EffectType mapEffectNameToType(const String& effectName, PinMode mode);
 void handleLedControl(bool state);
 void initializeNeoPixel(uint8_t pinIndex);
 void setNeoPixelColor(uint8_t pinIndex, uint32_t color, uint8_t brightness = 255);
+void setNeoPixelLED(uint8_t pinIndex, uint8_t ledIndex, uint32_t color, uint8_t brightness = 255);
+void setNeoPixelRange(uint8_t pinIndex, uint8_t startLED, uint8_t endLED, uint32_t color, uint8_t brightness = 255);
+void setNeoPixelAll(uint8_t pinIndex, uint32_t color, uint8_t brightness = 255);
+void clearNeoPixelStrip(uint8_t pinIndex);
 void setNeoPixelState(uint8_t pinIndex, bool state);
 void updateEffects();
 void updateCandleFlicker(uint8_t pinIndex);
@@ -1638,6 +1642,61 @@ void setNeoPixelState(uint8_t pinIndex, bool state) {
     }
 }
 
+void setNeoPixelLED(uint8_t pinIndex, uint8_t ledIndex, uint32_t color, uint8_t brightness) {
+    if (pinIndex >= MAX_PINS || neoPixels[pinIndex] == nullptr) return;
+    
+    uint16_t numLEDs = neoPixels[pinIndex]->numPixels();
+    if (ledIndex >= numLEDs) return;
+    
+    // Apply brightness scaling
+    uint8_t r = (uint8_t)((color >> 16) & 0xFF);
+    uint8_t g = (uint8_t)((color >> 8) & 0xFF);
+    uint8_t b = (uint8_t)(color & 0xFF);
+    
+    r = (r * brightness) / 255;
+    g = (g * brightness) / 255;
+    b = (b * brightness) / 255;
+    
+    uint32_t scaledColor = neoPixels[pinIndex]->Color(r, g, b);
+    neoPixels[pinIndex]->setPixelColor(ledIndex, scaledColor);
+    neoPixels[pinIndex]->show();
+}
+
+void setNeoPixelRange(uint8_t pinIndex, uint8_t startLED, uint8_t endLED, uint32_t color, uint8_t brightness) {
+    if (pinIndex >= MAX_PINS || neoPixels[pinIndex] == nullptr) return;
+    
+    uint16_t numLEDs = neoPixels[pinIndex]->numPixels();
+    if (startLED >= numLEDs || endLED >= numLEDs || startLED > endLED) return;
+    
+    // Apply brightness scaling
+    uint8_t r = (uint8_t)((color >> 16) & 0xFF);
+    uint8_t g = (uint8_t)((color >> 8) & 0xFF);
+    uint8_t b = (uint8_t)(color & 0xFF);
+    
+    r = (r * brightness) / 255;
+    g = (g * brightness) / 255;
+    b = (b * brightness) / 255;
+    
+    uint32_t scaledColor = neoPixels[pinIndex]->Color(r, g, b);
+    
+    for (uint8_t i = startLED; i <= endLED; i++) {
+        neoPixels[pinIndex]->setPixelColor(i, scaledColor);
+    }
+    neoPixels[pinIndex]->show();
+}
+
+void setNeoPixelAll(uint8_t pinIndex, uint32_t color, uint8_t brightness) {
+    // This is essentially the same as setNeoPixelColor, but explicit for clarity
+    setNeoPixelColor(pinIndex, color, brightness);
+}
+
+void clearNeoPixelStrip(uint8_t pinIndex) {
+    if (pinIndex >= MAX_PINS || neoPixels[pinIndex] == nullptr) return;
+    
+    neoPixels[pinIndex]->clear();
+    neoPixels[pinIndex]->show();
+}
+
 // Effects System Functions
 
 void updateEffects() {
@@ -1716,21 +1775,51 @@ void updateCandleFlicker(uint8_t pinIndex) {
         uint8_t minBrightness = baseBrightness - flickerRange;
         uint8_t maxBrightness = baseBrightness;
         
-        // Create realistic candle flicker pattern
-        uint8_t newBrightness;
-        if (random(100) < 85) {
-            // 85% chance of subtle variation
-            newBrightness = random(baseBrightness - flickerRange/2, baseBrightness + 1);
+        if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
+            uint8_t ledCount = config.pins[pinIndex].ledCount;
+            
+            if (ledCount <= 1) {
+                // Single LED - simple orange flicker
+                uint8_t newBrightness;
+                if (random(100) < 85) {
+                    newBrightness = random(baseBrightness - flickerRange/2, baseBrightness + 1);
+                } else {
+                    newBrightness = random(minBrightness, maxBrightness + 1);
+                }
+                newBrightness = constrain(newBrightness, minBrightness, maxBrightness);
+                setNeoPixelColor(pinIndex, 0xFF6600, newBrightness); // Warm orange
+            } else {
+                // Multi-LED independent candle flicker
+                uint32_t candleColors[] = {0xFF3300, 0xFF4400, 0xFF5500, 0xFF6600, 0xFF7700};
+                
+                for (uint8_t led = 0; led < ledCount; led++) {
+                    // Each LED flickers independently
+                    uint8_t ledBrightness;
+                    if (random(100) < 85) {
+                        ledBrightness = random(baseBrightness - flickerRange/2, baseBrightness + 1);
+                    } else {
+                        ledBrightness = random(minBrightness, maxBrightness + 1);
+                    }
+                    ledBrightness = constrain(ledBrightness, minBrightness, maxBrightness);
+                    
+                    // Slight color variation for each LED
+                    uint32_t color = candleColors[random(0, 5)];
+                    setNeoPixelLED(pinIndex, led, color, ledBrightness);
+                }
+            }
         } else {
-            // 15% chance of dramatic flicker
-            newBrightness = random(minBrightness, maxBrightness + 1);
+            // PWM LED - original behavior
+            uint8_t newBrightness;
+            if (random(100) < 85) {
+                newBrightness = random(baseBrightness - flickerRange/2, baseBrightness + 1);
+            } else {
+                newBrightness = random(minBrightness, maxBrightness + 1);
+            }
+            newBrightness = constrain(newBrightness, minBrightness, maxBrightness);
+            
+            setPinBrightness(pinIndex, newBrightness);
+            effectStates[pinIndex].currentBrightness = newBrightness;
         }
-        
-        // Ensure brightness stays within bounds
-        newBrightness = constrain(newBrightness, minBrightness, maxBrightness);
-        
-        setPinBrightness(pinIndex, newBrightness);
-        effectStates[pinIndex].currentBrightness = newBrightness;
     }
 }
 
@@ -1842,7 +1931,42 @@ void updateMachineGun(uint8_t pinIndex) {
         }
         
         if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
-            setNeoPixelColor(pinIndex, 0xFFFFFF, brightness); // White flashes
+            uint8_t ledCount = config.pins[pinIndex].ledCount;
+            
+            if (ledCount <= 1) {
+                // Single LED - simple white flash
+                setNeoPixelColor(pinIndex, 0xFFFFFF, brightness);
+            } else {
+                // Multi-LED muzzle flash effect
+                clearNeoPixelStrip(pinIndex);
+                
+                if (cyclePos < 3) {
+                    // During flash - create muzzle flash pattern
+                    // Bright white center, orange/yellow edges
+                    uint8_t flashRange = min(ledCount, (uint8_t)4);
+                    
+                    for (uint8_t led = 0; led < flashRange; led++) {
+                        uint32_t color;
+                        uint8_t ledBrightness;
+                        
+                        if (led == 0) {
+                            // Center - bright white
+                            color = 0xFFFFFF;
+                            ledBrightness = brightness;
+                        } else if (led == 1) {
+                            // Near center - bright yellow
+                            color = 0xFFFF00;
+                            ledBrightness = brightness * 0.8;
+                        } else {
+                            // Edges - orange glow
+                            color = 0xFF8800;
+                            ledBrightness = brightness * 0.4;
+                        }
+                        
+                        setNeoPixelLED(pinIndex, led, color, ledBrightness);
+                    }
+                }
+            }
         } else {
             setPinBrightness(pinIndex, brightness);
         }
@@ -1865,10 +1989,29 @@ void updateFlamethrower(uint8_t pinIndex) {
         uint8_t flicker = random(baseBrightness * 0.6, baseBrightness + 1);
         
         if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
-            // Orange/red flame colors
-            uint32_t flameColors[] = {0xFF4500, 0xFF6600, 0xFF8800, 0xFFAA00};
-            uint32_t color = flameColors[random(0, 4)];
-            setNeoPixelColor(pinIndex, color, flicker);
+            uint8_t ledCount = config.pins[pinIndex].ledCount;
+            
+            if (ledCount <= 1) {
+                // Single LED - simple color flicker
+                uint32_t flameColors[] = {0xFF4500, 0xFF6600, 0xFF8800, 0xFFAA00};
+                uint32_t color = flameColors[random(0, 4)];
+                setNeoPixelColor(pinIndex, color, flicker);
+            } else {
+                // Multi-LED flame propagation effect
+                uint32_t flameColors[] = {0xFF1100, 0xFF3300, 0xFF5500, 0xFF7700, 0xFF9900, 0xFFBB00};
+                clearNeoPixelStrip(pinIndex);
+                
+                // Create flame pattern from base outward
+                uint8_t flameLength = random(ledCount * 0.4, ledCount * 0.8);
+                for (uint8_t led = 0; led < flameLength && led < ledCount; led++) {
+                    // Flames get cooler (more orange/yellow) toward the tip
+                    uint8_t colorIndex = map(led, 0, ledCount - 1, 0, 5);
+                    uint8_t ledBrightness = map(led, 0, flameLength - 1, baseBrightness, baseBrightness * 0.3);
+                    ledBrightness = random(ledBrightness * 0.7, ledBrightness + 1); // Individual flicker
+                    
+                    setNeoPixelLED(pinIndex, led, flameColors[colorIndex], ledBrightness);
+                }
+            }
         } else {
             setPinBrightness(pinIndex, flicker);
         }
@@ -1889,7 +2032,33 @@ void updateTakingHits(uint8_t pinIndex) {
         uint8_t brightness = (effectStates[pinIndex].step % 2 == 0) ? config.pins[pinIndex].brightness : 0;
         
         if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
-            setNeoPixelColor(pinIndex, 0xFF0000, brightness); // Red damage
+            uint8_t ledCount = config.pins[pinIndex].ledCount;
+            
+            if (ledCount <= 1) {
+                // Single LED - simple red flash
+                setNeoPixelColor(pinIndex, 0xFF0000, brightness);
+            } else {
+                // Multi-LED damage ripple effect
+                clearNeoPixelStrip(pinIndex);
+                
+                if (brightness > 0) {
+                    // Create damage wave that moves across the strip
+                    uint8_t waveCenter = effectStates[pinIndex].step % (ledCount * 2);
+                    uint32_t damageColors[] = {0xFF0000, 0xCC0000, 0x990000, 0x660000};
+                    
+                    for (uint8_t led = 0; led < ledCount; led++) {
+                        // Calculate distance from wave center
+                        uint8_t distance = abs((int8_t)led - (int8_t)(waveCenter % ledCount));
+                        
+                        if (distance <= 2) {
+                            // Within damage wave
+                            uint32_t color = damageColors[min(distance, (uint8_t)3)];
+                            uint8_t ledBrightness = map(distance, 0, 2, brightness, brightness / 4);
+                            setNeoPixelLED(pinIndex, led, color, ledBrightness);
+                        }
+                    }
+                }
+            }
         } else {
             setPinBrightness(pinIndex, brightness);
         }
@@ -1917,7 +2086,48 @@ void updateExplosion(uint8_t pinIndex) {
         }
         
         if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
-            setNeoPixelColor(pinIndex, 0xFFFFFF, brightness); // Bright white explosion
+            uint8_t ledCount = config.pins[pinIndex].ledCount;
+            
+            if (ledCount <= 1) {
+                // Single LED - simple white flash
+                setNeoPixelColor(pinIndex, 0xFFFFFF, brightness);
+            } else {
+                // Multi-LED explosion ripple effect
+                clearNeoPixelStrip(pinIndex);
+                
+                if (effectStates[pinIndex].step < maxSteps) {
+                    // Create expanding shockwave effect
+                    uint8_t center = ledCount / 2;
+                    uint8_t maxRadius = ledCount / 2 + 1;
+                    uint8_t currentRadius = map(effectStates[pinIndex].step, 0, maxSteps - 1, 0, maxRadius);
+                    
+                    // White hot center fading to orange edges
+                    for (uint8_t led = 0; led < ledCount; led++) {
+                        uint8_t distance = abs((int8_t)led - (int8_t)center);
+                        
+                        if (distance <= currentRadius) {
+                            uint32_t color;
+                            uint8_t ledBrightness;
+                            
+                            if (distance == 0) {
+                                // Center - bright white
+                                color = 0xFFFFFF;
+                                ledBrightness = brightness;
+                            } else if (distance == 1) {
+                                // Near center - yellow
+                                color = 0xFFFF00;
+                                ledBrightness = brightness * 0.8;
+                            } else {
+                                // Outer edge - orange/red
+                                color = (distance == currentRadius) ? 0xFF4400 : 0xFF8800;
+                                ledBrightness = brightness * 0.5;
+                            }
+                            
+                            setNeoPixelLED(pinIndex, led, color, ledBrightness);
+                        }
+                    }
+                }
+            }
         } else {
             setPinBrightness(pinIndex, brightness);
         }
@@ -1964,24 +2174,45 @@ void updateConsoleRGB(uint8_t pinIndex) {
     if (pinIndex >= MAX_PINS || config.pins[pinIndex].mode != PinMode::OUTPUT_WS2812B) return;
     
     unsigned long now = millis();
+    uint16_t interval = map(config.pins[pinIndex].effectSpeed, 1, 255, 500, 100);
     
-    if (now - effectStates[pinIndex].lastUpdate >= 300) {
+    if (now - effectStates[pinIndex].lastUpdate >= interval) {
         effectStates[pinIndex].lastUpdate = now;
         
-        // Scrolling data pattern across RGB strip
         uint8_t ledCount = config.pins[pinIndex].ledCount;
-        uint32_t colors[] = {0x001100, 0x002200, 0x004400, 0x006600, 0x008800, 0x00AA00};
-        
-        // Simple scrolling effect
-        uint8_t offset = effectStates[pinIndex].step % ledCount;
-        for (uint8_t led = 0; led < ledCount; led++) {
-            uint8_t colorIndex = (led + offset) % 6;
-            // Note: This would need a setNeoPixelLED function for individual LED control
-            // For now, just change the whole strip color
+        if (ledCount <= 1) {
+            // Single LED - just cycle colors
+            uint32_t colors[] = {0x001100, 0x002200, 0x004400, 0x006600, 0x008800, 0x00AA00};
+            uint8_t colorIndex = effectStates[pinIndex].step % 6;
+            setNeoPixelColor(pinIndex, colors[colorIndex], config.pins[pinIndex].brightness);
+        } else {
+            // Multiple LEDs - create scrolling data effect
+            uint32_t baseColors[] = {0x001100, 0x003300, 0x005500, 0x007700, 0x009900, 0x00BB00};
+            
+            // Clear the strip first
+            clearNeoPixelStrip(pinIndex);
+            
+            // Create a scrolling pattern with varying intensities
+            uint8_t offset = effectStates[pinIndex].step % (ledCount * 2);
+            
+            for (uint8_t led = 0; led < ledCount; led++) {
+                // Create a wave pattern that moves across the strip
+                int8_t wavePos = (led + offset) % (ledCount * 2);
+                if (wavePos < ledCount) {
+                    // Forward wave
+                    uint8_t intensity = map(wavePos, 0, ledCount - 1, 255, 50);
+                    uint8_t colorIndex = (led + (effectStates[pinIndex].step / 3)) % 6;
+                    setNeoPixelLED(pinIndex, led, baseColors[colorIndex], 
+                                 (intensity * config.pins[pinIndex].brightness) / 255);
+                } else {
+                    // Reverse wave (dimmer)
+                    uint8_t intensity = map(wavePos - ledCount, 0, ledCount - 1, 50, 10);
+                    uint8_t colorIndex = (led + (effectStates[pinIndex].step / 4)) % 6;
+                    setNeoPixelLED(pinIndex, led, baseColors[colorIndex], 
+                                 (intensity * config.pins[pinIndex].brightness) / 255);
+                }
+            }
         }
-        
-        uint8_t colorIndex = effectStates[pinIndex].step % 6;
-        setNeoPixelColor(pinIndex, colors[colorIndex], config.pins[pinIndex].brightness);
         
         effectStates[pinIndex].step++;
     }
