@@ -406,7 +406,7 @@ void setupWiFiAP() {
 }
 
 void setupmDNS() {
-    String hostname = config.deviceName.length() > 0 ? config.deviceName : "battlearua";
+    String hostname = config.deviceName.length() > 0 ? config.deviceName : "battleaura";
     
     // Remove spaces and convert to lowercase for hostname
     hostname.toLowerCase();
@@ -1606,7 +1606,7 @@ void printSystemInfo() {
         Serial.printf("  Web Interface: http://%s/\n", WiFi.localIP().toString().c_str());
         
         // Show mDNS hostname if available
-        String hostname = config.deviceName.length() > 0 ? config.deviceName : "battlearua";
+        String hostname = config.deviceName.length() > 0 ? config.deviceName : "battleaura";
         hostname.toLowerCase();
         hostname.replace(" ", "-");
         Serial.printf("  mDNS: http://%s.local/\n", hostname.c_str());
