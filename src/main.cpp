@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Update.h>
+#include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <ESPmDNS.h>
 #include <Adafruit_NeoPixel.h>
@@ -11,7 +12,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.9.0-alpha";
+const char* VERSION = "0.9.1-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -1101,6 +1102,141 @@ void setupWebServer() {
         } else {
             server.send(400, "text/plain", "Unknown global effect: " + effectName);
         }
+    });
+    
+    // Firmware update check endpoint
+    server.on("/api/update/check", HTTP_GET, []() {
+        if (!WiFi.isConnected()) {
+            server.send(503, "application/json", F("{\"error\":\"WiFi not connected\"}"));
+            return;
+        }
+        
+        Serial.println("Checking for firmware updates...");
+        
+        WiFiClient client;
+        HTTPClient http;
+        
+        // Check version from battlesync.me
+        http.begin(client, "https://battlesync.me/api/battleaura/firmware");
+        http.addHeader("User-Agent", String("BattleAura/") + VERSION);
+        
+        int httpCode = http.GET();
+        JsonDocument response;
+        
+        if (httpCode == HTTP_CODE_OK) {
+            String payload = http.getString();
+            DeserializationError error = deserializeJson(response, payload);
+            
+            if (!error) {
+                String latestVersion = response["version"] | "";
+                String currentVersion = VERSION;
+                
+                response.clear();
+                response["currentVersion"] = currentVersion;
+                response["latestVersion"] = latestVersion;
+                response["hasUpdate"] = (latestVersion.length() > 0 && latestVersion != currentVersion);
+                
+                if (response["hasUpdate"]) {
+                    const char* downloadUrl = response["downloadUrl"];
+                    if (!downloadUrl) {
+                        response["downloadUrl"] = String("https://battlesync.me/api/battleaura/firmware/") + latestVersion + "/firmware.bin";
+                    }
+                    const char* changelog = response["changelog"];
+                    if (!changelog) {
+                        response["changelog"] = "Bug fixes and improvements";
+                    }
+                }
+                
+                String responseJson;
+                serializeJson(response, responseJson);
+                server.send(200, "application/json", responseJson);
+            } else {
+                server.send(500, "application/json", F("{\"error\":\"Failed to parse version response\"}"));
+            }
+        } else {
+            // Fallback - no update available or server unreachable
+            response["currentVersion"] = VERSION;
+            response["latestVersion"] = "";
+            response["hasUpdate"] = false;
+            response["error"] = "Update server unreachable";
+            
+            String responseJson;
+            serializeJson(response, responseJson);
+            server.send(200, "application/json", responseJson);
+        }
+        
+        http.end();
+    });
+    
+    // Remote firmware update endpoint (requires explicit user confirmation)
+    server.on("/api/update/download", HTTP_POST, []() {
+        if (!server.hasArg("url") || !server.hasArg("confirmed")) {
+            server.send(400, "application/json", F("{\"error\":\"Missing url or confirmation\"}"));
+            return;
+        }
+        
+        if (server.arg("confirmed") != "true") {
+            server.send(400, "application/json", F("{\"error\":\"User confirmation required\"}"));
+            return;
+        }
+        
+        String firmwareUrl = server.arg("url");
+        
+        // Validate URL is from battlesync.me for security
+        if (!firmwareUrl.startsWith("https://battlesync.me/")) {
+            server.send(400, "application/json", F("{\"error\":\"Invalid firmware URL - only battlesync.me allowed\"}"));
+            return;
+        }
+        
+        Serial.println("Starting remote firmware update from: " + firmwareUrl);
+        
+        server.send(200, "application/json", F("{\"status\":\"starting\",\"message\":\"Downloading firmware...\"}"));
+        
+        WiFiClient client;
+        HTTPClient http;
+        
+        http.begin(client, firmwareUrl);
+        int httpCode = http.GET();
+        
+        if (httpCode == HTTP_CODE_OK) {
+            int contentLength = http.getSize();
+            
+            if (contentLength > 0) {
+                bool canBegin = Update.begin(contentLength);
+                
+                if (canBegin) {
+                    WiFiClient* stream = http.getStreamPtr();
+                    size_t written = Update.writeStream(*stream);
+                    
+                    if (written == contentLength) {
+                        Serial.println("Written : " + String(written) + " successfully");
+                    } else {
+                        Serial.println("Written only : " + String(written) + "/" + String(contentLength));
+                    }
+                    
+                    if (Update.end()) {
+                        Serial.println("OTA done!");
+                        if (Update.isFinished()) {
+                            Serial.println("Update successfully completed. Rebooting.");
+                            delay(1000);
+                            ESP.restart();
+                        } else {
+                            Serial.println("Update not finished? Something went wrong!");
+                        }
+                    } else {
+                        Serial.println("Error Occurred. Error #: " + String(Update.getError()));
+                    }
+                } else {
+                    Serial.println("Not enough space to begin OTA");
+                }
+            } else {
+                Serial.println("There was no content in the response");
+            }
+        } else {
+            Serial.println("HTTP error: " + String(httpCode));
+        }
+        
+        http.end();
     });
     
     // 404 handler

@@ -488,3 +488,132 @@ if ('serviceWorker' in navigator) {
         // Future: register service worker for offline functionality
     });
 }
+
+// Firmware Update Functions
+let updateInfo = null;
+
+function checkForUpdates() {
+    const checkBtn = document.getElementById('check-updates-btn');
+    checkBtn.disabled = true;
+    checkBtn.textContent = '🔍 Checking...';
+    
+    fetch('/api/update/check')
+        .then(response => response.json())
+        .then(data => {
+            if (data.hasUpdate) {
+                updateInfo = data;
+                showUpdateNotification(data);
+            } else {
+                showFeedback('No updates available', 'success');
+            }
+        })
+        .catch(error => {
+            console.error('Update check error:', error);
+            showFeedback('Update check failed', 'error');
+        })
+        .finally(() => {
+            checkBtn.disabled = false;
+            checkBtn.textContent = '🔍 Check for Updates';
+        });
+}
+
+function showUpdateNotification(data) {
+    const notification = document.getElementById('update-notification');
+    const details = document.getElementById('update-details');
+    
+    details.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-3);">
+            <div class="status-item">
+                <div class="status-label">Current Version</div>
+                <div class="status-value">${data.currentVersion}</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">Latest Version</div>
+                <div class="status-value text-success">${data.latestVersion}</div>
+            </div>
+        </div>
+        <div style="background: var(--bg-tertiary); padding: var(--space-3); border-radius: var(--radius-sm);">
+            <strong>What's New:</strong><br>
+            <span style="color: var(--text-secondary);">${data.changelog || 'Bug fixes and improvements'}</span>
+        </div>
+        <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; padding: var(--space-3); border-radius: var(--radius-sm); margin-top: var(--space-3);">
+            <strong style="color: #fca5a5;">⚠️ Important:</strong> Device will restart after update. Ensure device stays powered during installation.
+        </div>
+    `;
+    
+    notification.style.display = 'block';
+    notification.scrollIntoView({ behavior: 'smooth' });
+}
+
+function downloadUpdate() {
+    if (!updateInfo || !updateInfo.downloadUrl) {
+        showFeedback('Update information not available', 'error');
+        return;
+    }
+    
+    // Require explicit user confirmation
+    const confirmed = confirm(
+        `Are you sure you want to download and install firmware ${updateInfo.latestVersion}?\n\n` +
+        `This will:\n` +
+        `• Download firmware from battlesync.me\n` +
+        `• Install the update automatically\n` +
+        `• Restart the device\n\n` +
+        `Device must stay powered during installation!\n\n` +
+        `Continue with update?`
+    );
+    
+    if (!confirmed) {
+        return;
+    }
+    
+    const downloadBtn = document.getElementById('download-btn');
+    downloadBtn.disabled = true;
+    downloadBtn.innerHTML = '⏳ Downloading...';
+    
+    const formData = new FormData();
+    formData.append('url', updateInfo.downloadUrl);
+    formData.append('confirmed', 'true');
+    
+    fetch('/api/update/download', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'starting') {
+            downloadBtn.innerHTML = '🔄 Installing...';
+            showFeedback('Update installing - device will restart', 'info');
+            
+            // Show progress message
+            setTimeout(() => {
+                document.body.innerHTML = `
+                    <div style="font-family: var(--font-body); background: var(--bg-primary); color: var(--text-primary); text-align:center; padding:50px; min-height: 100vh; display: flex; flex-direction: column; justify-content: center;">
+                        <h1>🔄 Installing Firmware Update</h1>
+                        <p>Please wait while the update installs...</p>
+                        <p style="color: var(--warning);">⚠️ Keep device powered - do not disconnect!</p>
+                        <div style="margin: 20px auto; width: 200px; height: 4px; background: var(--bg-tertiary); border-radius: 2px; overflow: hidden;">
+                            <div style="width: 100%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light)); animation: pulse 2s infinite;"></div>
+                        </div>
+                        <p style="font-size: 0.9em; color: var(--text-secondary);">Device will restart automatically when complete</p>
+                    </div>
+                `;
+            }, 2000);
+        } else {
+            downloadBtn.disabled = false;
+            downloadBtn.innerHTML = '📥 Download & Install Update';
+            showFeedback(data.message || 'Update failed', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Update download error:', error);
+        downloadBtn.disabled = false;
+        downloadBtn.innerHTML = '📥 Download & Install Update';
+        showFeedback('Update download failed', 'error');
+    });
+}
+
+function dismissUpdate() {
+    const notification = document.getElementById('update-notification');
+    notification.style.display = 'none';
+    updateInfo = null;
+}

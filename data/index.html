@@ -87,6 +87,28 @@
             </div>
         </div>
 
+        <!-- Update Notification (hidden by default) -->
+        <div id="update-notification" class="card" style="display: none; border-left: 4px solid var(--warning); background: linear-gradient(90deg, rgba(245, 158, 11, 0.1), var(--bg-card));">
+            <div class="card-header">
+                <div class="card-icon">🚀</div>
+                <div>
+                    <h2 class="card-title">Firmware Update Available</h2>
+                    <p class="card-description">A newer version of BattleAura firmware is available</p>
+                </div>
+            </div>
+            <div id="update-details" style="margin-bottom: var(--space-4);">
+                <!-- Update details will be populated here -->
+            </div>
+            <div style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
+                <button onclick="downloadUpdate()" class="btn btn-warning" id="download-btn">
+                    📥 Download & Install Update
+                </button>
+                <button onclick="dismissUpdate()" class="btn btn-secondary">
+                    ✖️ Not Now
+                </button>
+            </div>
+        </div>
+
         <!-- System Status moved to bottom -->
         <div class="card system-status">
             <div class="card-header">
@@ -113,6 +135,13 @@
                     <div class="status-label">Uptime</div>
                     <div class="status-value" id="uptime">Loading...</div>
                 </div>
+            </div>
+            
+            <!-- Manual update check button -->
+            <div style="margin-top: var(--space-4); text-align: center;">
+                <button onclick="checkForUpdates()" class="btn btn-secondary" id="check-updates-btn">
+                    🔍 Check for Updates
+                </button>
             </div>
         </div>
     </div>
