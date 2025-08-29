@@ -12,7 +12,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.9.3-alpha";
+const char* VERSION = "0.9.4-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -1691,7 +1691,17 @@ void handleConfigSave() {
         String ledCountArg = "ledCount" + String(i);
         
         if (server.hasArg(gpioArg)) {
-            config.pins[i].gpio = constrain(server.arg(gpioArg).toInt(), 0, 21);
+            uint8_t requestedGPIO = server.arg(gpioArg).toInt();
+            // Prevent assignment of DFPlayer pins when audio is enabled
+            if (config.audioEnabled && (requestedGPIO == DFPLAYER_RX_PIN || requestedGPIO == DFPLAYER_TX_PIN)) {
+                Serial.printf("⚠ GPIO %d blocked - reserved for DFPlayer (Audio enabled)\n", requestedGPIO);
+                // Keep existing GPIO or assign a safe default
+                if (config.pins[i].gpio == DFPLAYER_RX_PIN || config.pins[i].gpio == DFPLAYER_TX_PIN) {
+                    config.pins[i].gpio = 2; // Safe default
+                }
+            } else {
+                config.pins[i].gpio = constrain(requestedGPIO, 0, 21);
+            }
         }
         
         if (server.hasArg(modeArg)) {

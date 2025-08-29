@@ -5,6 +5,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BattleAura - Audio Configuration</title>
     <link rel="stylesheet" href="/styles.css">
+    <style>
+        .diagnostic-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-3);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: var(--space-4);
+        }
+        
+        .diagnostic-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-2) 0;
+        }
+        
+        .status-ok { color: var(--success); font-weight: 600; }
+        .status-warning { color: var(--warning); font-weight: 600; }
+        .status-error { color: var(--error); font-weight: 600; }
+        
+        .conflict-warning {
+            background: var(--error-bg);
+            border: 1px solid var(--error);
+            border-radius: var(--radius-md);
+            padding: var(--space-4);
+            margin-top: var(--space-4);
+        }
+        
+        @media (max-width: 768px) {
+            .diagnostic-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -24,6 +59,20 @@
                         <p class="card-description">Map sound effects to audio files on SD card</p>
                     </div>
                 </div>
+                
+                <!-- Audio Diagnostics Section -->
+                <div style="margin-bottom: var(--space-6);">
+                    <h3 style="margin-bottom: var(--space-4); color: var(--text-primary);">🔧 Audio System Status</h3>
+                    <div id="audioSystemStatus" class="diagnostic-grid">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                    <div style="display: flex; gap: var(--space-3); margin-top: var(--space-4); flex-wrap: wrap;">
+                        <button onclick="refreshAudioStatus()" class="btn btn-secondary">🔄 Refresh Status</button>
+                        <button onclick="reinitializeAudio()" class="btn btn-warning">⚡ Reinitialize Audio</button>
+                    </div>
+                    <div id="pinConflicts" style="margin-top: var(--space-4);"></div>
+                </div>
+                
                 <div id="audioMappings">
                     <!-- Audio mappings will be loaded here by JavaScript -->
                 </div>
@@ -50,6 +99,7 @@
         // Audio configuration page specific JavaScript
         document.addEventListener('DOMContentLoaded', function() {
             loadAudioConfiguration();
+            refreshAudioStatus(); // Load diagnostics when page loads
         });
 
         function loadAudioConfiguration() {
@@ -118,6 +168,102 @@
                     .then(response => response.text())
                     .then(data => console.log('Audio test:', data))
                     .catch(error => console.error('Audio test error:', error));
+            }
+        }
+
+        // Audio diagnostics functions
+        async function refreshAudioStatus() {
+            try {
+                const response = await fetch('/audio/status');
+                const audioStatus = await response.json();
+                updateAudioStatusDisplay(audioStatus);
+                checkPinConflicts(audioStatus);
+            } catch (error) {
+                console.error('Failed to refresh audio status:', error);
+                document.getElementById('audioSystemStatus').innerHTML = '<p class="status-error">Failed to load audio status</p>';
+            }
+        }
+
+        function updateAudioStatusDisplay(audioStatus) {
+            const statusContainer = document.getElementById('audioSystemStatus');
+            statusContainer.innerHTML = `
+                <div class="diagnostic-item">
+                    <span>System Enabled:</span>
+                    <span class="${audioStatus.enabled ? 'status-ok' : 'status-warning'}">${audioStatus.enabled ? 'Yes' : 'No'}</span>
+                </div>
+                <div class="diagnostic-item">
+                    <span>DFPlayer Ready:</span>
+                    <span class="${audioStatus.ready ? 'status-ok' : 'status-error'}">${audioStatus.ready ? 'Ready' : 'Not Ready'}</span>
+                </div>
+                <div class="diagnostic-item">
+                    <span>Pin Configuration:</span>
+                    <span>RX:${audioStatus.rxPin || '?'} TX:${audioStatus.txPin || '?'}</span>
+                </div>
+                <div class="diagnostic-item">
+                    <span>SD Card Files:</span>
+                    <span class="${(audioStatus.fileCount > 0) ? 'status-ok' : 'status-warning'}">${audioStatus.fileCount || 0} files</span>
+                </div>
+                <div class="diagnostic-item">
+                    <span>Current Volume:</span>
+                    <span>${audioStatus.currentVolume || '?'}/30</span>
+                </div>
+                <div class="diagnostic-item">
+                    <span>Communication:</span>
+                    <span class="${audioStatus.initialized ? 'status-ok' : 'status-error'}">${audioStatus.initialized ? 'OK' : 'Failed'}</span>
+                </div>
+            `;
+        }
+
+        async function checkPinConflicts(audioStatus) {
+            try {
+                const configResponse = await fetch('/api/config');
+                const config = await configResponse.json();
+                
+                let conflicts = [];
+                config.pins.forEach((pin, index) => {
+                    if (pin.enabled && (pin.gpio === audioStatus.rxPin || pin.gpio === audioStatus.txPin)) {
+                        conflicts.push({
+                            pinIndex: index,
+                            gpio: pin.gpio,
+                            name: pin.name,
+                            type: pin.type || 'Unknown'
+                        });
+                    }
+                });
+
+                const conflictEl = document.getElementById('pinConflicts');
+                if (conflicts.length > 0) {
+                    let html = '<div class="conflict-warning">';
+                    html += '<h4 style="margin: 0 0 var(--space-3) 0; color: var(--error);">⚠️ CRITICAL: Pin Conflicts Detected</h4>';
+                    html += '<p>The following LED pins conflict with DFPlayer audio (GPIO20/21):</p><ul>';
+                    conflicts.forEach(conflict => {
+                        html += `<li><strong>Pin ${conflict.pinIndex}</strong>: ${conflict.name} (${conflict.type}) uses GPIO${conflict.gpio}</li>`;
+                    });
+                    html += '</ul>';
+                    html += '<p><strong>Solution:</strong> Disable audio system in <a href="/config.html">Configuration</a> or change these pins to different GPIO numbers.</p>';
+                    html += '<p><strong>Why this causes noise:</strong> GPIO conflicts cause partial/corrupted communication with DFPlayer.</p>';
+                    html += '</div>';
+                    conflictEl.innerHTML = html;
+                } else if (audioStatus.enabled) {
+                    conflictEl.innerHTML = '<div style="color: var(--success); font-weight: 600;">✅ No pin conflicts detected</div>';
+                } else {
+                    conflictEl.innerHTML = '';
+                }
+            } catch (error) {
+                console.error('Failed to check pin conflicts:', error);
+                document.getElementById('pinConflicts').innerHTML = '<p class="status-warning">Failed to check for conflicts</p>';
+            }
+        }
+
+        async function reinitializeAudio() {
+            try {
+                const response = await fetch('/audio/reinit', { method: 'POST' });
+                const result = await response.text();
+                alert(result);
+                setTimeout(refreshAudioStatus, 1000); // Refresh after reinit
+            } catch (error) {
+                console.error('Failed to reinitialize audio:', error);
+                alert('Failed to reinitialize audio system');
             }
         }
     </script>

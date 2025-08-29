@@ -618,3 +618,76 @@ function dismissUpdate() {
     notification.style.display = 'none';
     updateInfo = null;
 }
+
+// Global control functions
+function updateGlobalBrightness(value) {
+    document.getElementById('brightnessValue').textContent = value;
+    
+    fetch('/brightness', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    })
+    .then(() => {
+        fetch('/brightness?value=' + value, { method: 'GET' })
+        .then(response => response.text())
+        .then(data => {
+            console.log('Brightness updated:', data);
+            showFeedback(`Brightness: ${Math.round(value/255*100)}%`, 'success');
+        });
+    })
+    .catch(error => {
+        console.error('Brightness update error:', error);
+        showFeedback('Brightness update failed', 'error');
+    });
+}
+
+function setGlobalBrightness(value) {
+    document.getElementById('globalBrightness').value = value;
+    updateGlobalBrightness(value);
+}
+
+function updateAudioVolume(value) {
+    document.getElementById('volumeValue').textContent = value;
+    
+    fetch('/audio/volume?volume=' + value, { method: 'GET' })
+    .then(response => response.text())
+    .then(data => {
+        console.log('Volume updated:', data);
+        const percentage = Math.round(value/30*100);
+        showFeedback(`Volume: ${percentage}%`, 'success');
+    })
+    .catch(error => {
+        console.error('Volume update error:', error);
+        showFeedback('Volume update failed', 'error');
+    });
+}
+
+function setAudioVolume(value) {
+    document.getElementById('audioVolume').value = value;
+    updateAudioVolume(value);
+}
+
+// Load current values on page load
+async function loadGlobalSettings() {
+    try {
+        // Load current brightness
+        const configResponse = await fetch('/api/config');
+        const config = await configResponse.json();
+        
+        if (config.globalMaxBrightness !== undefined) {
+            document.getElementById('globalBrightness').value = config.globalMaxBrightness;
+            document.getElementById('brightnessValue').textContent = config.globalMaxBrightness;
+        }
+        
+        // Load current volume
+        const audioResponse = await fetch('/audio/status');
+        const audioStatus = await audioResponse.json();
+        
+        if (audioStatus.volume !== undefined) {
+            document.getElementById('audioVolume').value = audioStatus.volume;
+            document.getElementById('volumeValue').textContent = audioStatus.volume;
+        }
+    } catch (error) {
+        console.error('Failed to load global settings:', error);
+    }
+}

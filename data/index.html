@@ -49,6 +49,45 @@
             </div>
         </div>
 
+        <!-- Global Controls -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">🎛️</div>
+                <div>
+                    <h2 class="card-title">Global Controls</h2>
+                    <p class="card-description">System-wide brightness and audio controls</p>
+                </div>
+            </div>
+            <div class="control-grid">
+                <div class="control-item">
+                    <label for="globalBrightness">Global Brightness</label>
+                    <div class="slider-container">
+                        <input type="range" id="globalBrightness" min="0" max="255" value="255" oninput="updateGlobalBrightness(this.value)">
+                        <span id="brightnessValue">255</span>
+                    </div>
+                    <div class="brightness-presets">
+                        <button onclick="setGlobalBrightness(64)" class="btn btn-small">25%</button>
+                        <button onclick="setGlobalBrightness(128)" class="btn btn-small">50%</button>
+                        <button onclick="setGlobalBrightness(191)" class="btn btn-small">75%</button>
+                        <button onclick="setGlobalBrightness(255)" class="btn btn-small">100%</button>
+                    </div>
+                </div>
+                <div class="control-item">
+                    <label for="audioVolume">Audio Volume</label>
+                    <div class="slider-container">
+                        <input type="range" id="audioVolume" min="0" max="30" value="15" oninput="updateAudioVolume(this.value)">
+                        <span id="volumeValue">15</span>
+                    </div>
+                    <div class="volume-presets">
+                        <button onclick="setAudioVolume(0)" class="btn btn-small">🔇</button>
+                        <button onclick="setAudioVolume(8)" class="btn btn-small">🔉</button>
+                        <button onclick="setAudioVolume(15)" class="btn btn-small">🔊</button>
+                        <button onclick="setAudioVolume(30)" class="btn btn-small">📢</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Configuration Section -->
         <div class="config-section">
             <div class="card">
@@ -147,5 +186,11 @@
     </div>
 
     <script src="/app.js"></script>
+    <script>
+        // Initialize global controls when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadGlobalSettings();
+        });
+    </script>
 </body>
 </html>
