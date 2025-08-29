@@ -12,7 +12,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.9.1-alpha";
+const char* VERSION = "0.9.2-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -485,6 +485,21 @@ void setupWebServer() {
             pin["brightness"] = config.pins[i].brightness;
             pin["ledCount"] = config.pins[i].ledCount;
         }
+        
+        // Audio mapping configuration
+        JsonObject audioMap = configDoc["audioMap"].to<JsonObject>();
+        audioMap["candleFlicker"] = config.audioMap.candleFlicker;
+        audioMap["fade"] = config.audioMap.fade;
+        audioMap["pulse"] = config.audioMap.pulse;
+        audioMap["strobe"] = config.audioMap.strobe;
+        audioMap["engineIdle"] = config.audioMap.engineIdle;
+        audioMap["engineRev"] = config.audioMap.engineRev;
+        audioMap["machineGun"] = config.audioMap.machineGun;
+        audioMap["flamethrower"] = config.audioMap.flamethrower;
+        audioMap["takingHits"] = config.audioMap.takingHits;
+        audioMap["explosion"] = config.audioMap.explosion;
+        audioMap["rocketLauncher"] = config.audioMap.rocketLauncher;
+        audioMap["killConfirmed"] = config.audioMap.killConfirmed;
         
         String response;
         serializeJson(configDoc, response);
@@ -975,6 +990,7 @@ void setupWebServer() {
         
         String type = server.arg("type");
         String effectName = server.arg("effect");
+        String intent = server.hasArg("intent") ? server.arg("intent") : "auto"; // ambient, active, control, or auto
         uint16_t manualDuration = server.hasArg("duration") ? server.arg("duration").toInt() : 0;
         
         // Find all pins matching this type and determine the effect
@@ -999,11 +1015,25 @@ void setupWebServer() {
             return;
         }
         
-        // Determine effect duration - prioritize manual duration, then audio duration
-        uint16_t effectDuration = manualDuration > 0 ? manualDuration : getEffectDuration(effect);
+        // Determine if this should be ambient or temporary based on intent
+        bool shouldBeAmbient = false;
+        uint16_t effectDuration = 0;
         
-        // Play audio if available and enabled
-        if (config.audioEnabled && isAudioReady()) {
+        if (intent == "ambient") {
+            shouldBeAmbient = true;
+            effectDuration = 0; // Ambient effects run forever
+        } else if (intent == "active" || intent == "control") {
+            shouldBeAmbient = false;
+            effectDuration = manualDuration > 0 ? manualDuration : getEffectDuration(effect);
+        } else {
+            // Auto mode - use effect's intrinsic duration to decide
+            effectDuration = manualDuration > 0 ? manualDuration : getEffectDuration(effect);
+            shouldBeAmbient = (effectDuration == 0);
+        }
+        
+        // Play audio if available and enabled (but not for static control effects)
+        if (config.audioEnabled && isAudioReady() && 
+            effect != EffectType::EFFECT_STATIC_ON && effect != EffectType::EFFECT_STATIC_OFF) {
             playEffectAudio(effect);
             Serial.printf("🎵 Audio triggered for effect: %s\n", effectName.c_str());
         }
@@ -1012,12 +1042,12 @@ void setupWebServer() {
         for (uint8_t i = 0; i < MAX_PINS; i++) {
             if (!config.pins[i].enabled || !config.pins[i].type.equalsIgnoreCase(type)) continue;
             
-            if (effectDuration > 0) {
-                // Temporary effect - use priority system
-                startTemporaryEffect(i, effect, effectDuration);
-            } else {
+            if (shouldBeAmbient) {
                 // Permanent/ambient effect
                 startAmbientEffect(i, effect);
+            } else {
+                // Temporary effect - use priority system
+                startTemporaryEffect(i, effect, effectDuration);
             }
             
             Serial.printf("Type effect: %s.%s applied to pin %d (GPIO %d)", 
@@ -2399,11 +2429,13 @@ void updateConsoleRGB(uint8_t pinIndex) {
         effectStates[pinIndex].lastUpdate = now;
         
         uint8_t ledCount = config.pins[pinIndex].ledCount;
+        uint8_t actualBrightness = calculateActualBrightness(pinIndex);
+        
         if (ledCount <= 1) {
             // Single LED - just cycle colors
             uint32_t colors[] = {0x001100, 0x002200, 0x004400, 0x006600, 0x008800, 0x00AA00};
             uint8_t colorIndex = effectStates[pinIndex].step % 6;
-            setNeoPixelColor(pinIndex, colors[colorIndex], config.pins[pinIndex].brightness);
+            setNeoPixelColor(pinIndex, colors[colorIndex], actualBrightness);
         } else {
             // Multiple LEDs - create scrolling data effect
             uint32_t baseColors[] = {0x001100, 0x003300, 0x005500, 0x007700, 0x009900, 0x00BB00};
@@ -2422,13 +2454,13 @@ void updateConsoleRGB(uint8_t pinIndex) {
                     uint8_t intensity = map(wavePos, 0, ledCount - 1, 255, 50);
                     uint8_t colorIndex = (led + (effectStates[pinIndex].step / 3)) % 6;
                     setNeoPixelLED(pinIndex, led, baseColors[colorIndex], 
-                                 (intensity * config.pins[pinIndex].brightness) / 255);
+                                 (intensity * actualBrightness) / 255);
                 } else {
                     // Reverse wave (dimmer)
                     uint8_t intensity = map(wavePos - ledCount, 0, ledCount - 1, 50, 10);
                     uint8_t colorIndex = (led + (effectStates[pinIndex].step / 4)) % 6;
                     setNeoPixelLED(pinIndex, led, baseColors[colorIndex], 
-                                 (intensity * config.pins[pinIndex].brightness) / 255);
+                                 (intensity * actualBrightness) / 255);
                 }
             }
         }
@@ -2476,6 +2508,38 @@ void updateFade(uint8_t pinIndex) {
 void startEffect(uint8_t pinIndex, EffectType effect) {
     if (pinIndex >= MAX_PINS) return;
     
+    // Handle static effects immediately
+    if (effect == EffectType::EFFECT_STATIC_OFF) {
+        stopEffect(pinIndex);
+        pinStates[pinIndex] = false;
+        if (config.pins[pinIndex].mode == PinMode::OUTPUT_DIGITAL) {
+            digitalWrite(config.pins[pinIndex].gpio, LOW);
+        } else if (config.pins[pinIndex].mode == PinMode::OUTPUT_PWM) {
+            analogWrite(config.pins[pinIndex].gpio, 0);
+        } else if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
+            setNeoPixelColor(pinIndex, 0x000000, 0);
+        }
+        Serial.printf("Static OFF applied to pin %d\n", pinIndex);
+        return;
+    }
+    
+    if (effect == EffectType::EFFECT_STATIC_ON) {
+        stopEffect(pinIndex);
+        pinStates[pinIndex] = true;
+        if (config.pins[pinIndex].mode == PinMode::OUTPUT_DIGITAL) {
+            digitalWrite(config.pins[pinIndex].gpio, HIGH);
+        } else if (config.pins[pinIndex].mode == PinMode::OUTPUT_PWM) {
+            uint8_t brightness = calculateActualBrightness(pinIndex);
+            analogWrite(config.pins[pinIndex].gpio, brightness);
+        } else if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
+            uint8_t brightness = calculateActualBrightness(pinIndex);
+            setNeoPixelColor(pinIndex, config.pins[pinIndex].color, brightness);
+        }
+        Serial.printf("Static ON applied to pin %d\n", pinIndex);
+        return;
+    }
+    
+    // Handle dynamic effects
     config.pins[pinIndex].effect = effect;
     config.pins[pinIndex].effectActive = true;
     

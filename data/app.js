@@ -87,7 +87,7 @@ function generateDynamicButtons(types) {
                     <div class="sub-card-buttons">
             `;
             ambientEffects.forEach(effect => {
-                html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}')" class="btn btn-success" title="${effect.description}">${effect.label}</button>`;
+                html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}', 0, 'ambient')" class="btn btn-success" title="${effect.description}">${effect.label}</button>`;
             });
             html += `
                     </div>
@@ -106,7 +106,7 @@ function generateDynamicButtons(types) {
                     <div class="sub-card-buttons">
             `;
             activeEffects.forEach(effect => {
-                html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}')" class="btn btn-warning" title="${effect.description}">${effect.label}</button>`;
+                html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}', 0, 'active')" class="btn btn-warning" title="${effect.description}">${effect.label}</button>`;
             });
             html += `
                     </div>
@@ -125,7 +125,7 @@ function generateDynamicButtons(types) {
                     <div class="sub-card-buttons">
             `;
             controlEffects.forEach(effect => {
-                html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}')" class="btn btn-info" title="${effect.description}">${effect.label}</button>`;
+                html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}', 0, 'control')" class="btn btn-info" title="${effect.description}">${effect.label}</button>`;
             });
             html += `
                     </div>
@@ -326,11 +326,12 @@ function setRgbColor(color) {
 }
 
 // Type-based effect functions for modular system
-function triggerTypeEffect(type, effect, duration = 0) {
+function triggerTypeEffect(type, effect, duration = 0, intent = 'auto') {
     const formData = new FormData();
     formData.append('type', type);
     formData.append('effect', effect);
     if (duration > 0) formData.append('duration', duration);
+    if (intent !== 'auto') formData.append('intent', intent);
     
     fetch('/effect', {
         method: 'POST',

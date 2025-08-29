@@ -659,6 +659,12 @@ body {
 }
 
 /* Responsive Design */
+@media (max-width: 1024px) {
+    .pin-type-sub-card {
+        min-width: 180px;
+    }
+}
+
 @media (max-width: 768px) {
     .container {
         padding: var(--space-4);
@@ -691,6 +697,17 @@ body {
     .brightness-presets {
         grid-template-columns: repeat(3, 1fr);
         gap: var(--space-3);
+    }
+    
+    /* Pin type sub-cards responsive design */
+    .pin-type-sub-cards {
+        flex-direction: column;
+        overflow-x: visible;
+    }
+    
+    .pin-type-sub-card {
+        min-width: unset;
+        width: 100%;
     }
 }
 

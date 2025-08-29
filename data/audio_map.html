@@ -63,6 +63,12 @@
                 });
         }
 
+        function formatAudioNumber(num) {
+            // Convert to 4-digit zero-padded string, but don't pad if it's 0
+            if (num === 0) return '0';
+            return String(num).padStart(4, '0');
+        }
+
         function generateAudioMappings(audioMap) {
             const container = document.getElementById('audioMappings');
             container.innerHTML = '';
@@ -93,7 +99,8 @@
                     </div>
                     <div class="audio-mapping-controls">
                         <label style="font-size: 0.85rem; color: var(--text-secondary);">File Number:</label>
-                        <input type="number" name="${effect.key}" value="${audioMap[effect.key] || 0}" min="0" max="255" 
+                        <input type="text" name="${effect.key}" value="${formatAudioNumber(audioMap[effect.key] || 0)}" 
+                               pattern="[0-9]{1,4}" maxlength="4" placeholder="0000"
                                class="audio-file-input form-input">
                         <button type="button" onclick="testAudio(${audioMap[effect.key] || 0})" class="btn btn-info" style="padding: var(--space-2) var(--space-3);">
                             ▶ Test
