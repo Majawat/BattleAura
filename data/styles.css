@@ -106,6 +106,28 @@ body {
     font-weight: 400;
 }
 
+.hero-compact {
+    text-align: center;
+    padding: var(--space-6) 0 var(--space-4);
+    margin-bottom: var(--space-6);
+}
+
+.hero-compact h1 {
+    font-size: clamp(1.5rem, 4vw, 2rem);
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: var(--space-2);
+}
+
+.hero-compact .hero-subtitle {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
 /* Card System */
 .card {
     background: var(--bg-card);
@@ -148,7 +170,112 @@ body {
     margin-top: var(--space-1);
 }
 
-/* Effect Control Cards */
+/* Pin Type Group Cards */
+.pin-type-group {
+    background: var(--bg-card);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    margin-bottom: var(--space-4);
+    transition: all 0.3s ease;
+}
+
+.pin-type-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+.pin-type-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.pin-type-count {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+}
+
+.pin-type-sub-cards {
+    display: flex;
+    gap: var(--space-3);
+    overflow-x: auto;
+    padding-bottom: var(--space-2);
+}
+
+.pin-type-sub-card {
+    flex: 0 0 auto;
+    min-width: 200px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    border: 1px solid var(--border-primary);
+    transition: all 0.2s ease;
+}
+
+.pin-type-sub-card:hover {
+    border-color: var(--border-accent);
+    transform: translateY(-1px);
+}
+
+.pin-type-sub-card.ambient {
+    border-left: 3px solid var(--success);
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.05), var(--bg-tertiary));
+}
+
+.pin-type-sub-card.active {
+    border-left: 3px solid var(--warning);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.05), var(--bg-tertiary));
+}
+
+.pin-type-sub-card.control {
+    border-left: 3px solid var(--info);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), var(--bg-tertiary));
+}
+
+.sub-card-header {
+    margin-bottom: var(--space-3);
+}
+
+.sub-card-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--space-1);
+}
+
+.sub-card-title.ambient { color: var(--success); }
+.sub-card-title.active { color: var(--warning); }
+.sub-card-title.control { color: var(--info); }
+
+.sub-card-description {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.sub-card-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.sub-card-buttons .btn {
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.85rem;
+    min-height: 32px;
+}
+
+/* Legacy Effect Control Cards for compatibility */
 .effect-card {
     background: var(--bg-card);
     border: 1px solid var(--border-secondary);

@@ -8,40 +8,11 @@
 </head>
 <body>
     <div class="container">
-        <!-- Hero Section -->
-        <header class="hero">
+        <!-- Compact Hero Section -->
+        <header class="hero-compact">
             <h1>🎯 BattleAura</h1>
-            <p class="hero-subtitle">Tactical Lighting & Audio System</p>
+            <p class="hero-subtitle">Tactical Lighting Control</p>
         </header>
-
-        <!-- System Status Overview -->
-        <div class="card">
-            <div class="card-header">
-                <div class="card-icon">📊</div>
-                <div>
-                    <h2 class="card-title">System Status</h2>
-                    <p class="card-description">Real-time device information and connectivity</p>
-                </div>
-            </div>
-            <div class="status-grid">
-                <div class="status-item">
-                    <div class="status-label">Version</div>
-                    <div class="status-value" id="version">Loading...</div>
-                </div>
-                <div class="status-item">
-                    <div class="status-label">Status</div>
-                    <div class="status-value ready" id="status">READY</div>
-                </div>
-                <div class="status-item">
-                    <div class="status-label">Memory</div>
-                    <div class="status-value" id="memory">Loading...</div>
-                </div>
-                <div class="status-item">
-                    <div class="status-label">Uptime</div>
-                    <div class="status-value" id="uptime">Loading...</div>
-                </div>
-            </div>
-        </div>
 
         <!-- Brightness Control -->
         <div class="brightness-section">
@@ -112,6 +83,35 @@
                             <p>Upload new firmware over-the-air for latest features</p>
                         </div>
                     </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Status moved to bottom -->
+        <div class="card system-status">
+            <div class="card-header">
+                <div class="card-icon">📊</div>
+                <div>
+                    <h2 class="card-title">System Status</h2>
+                    <p class="card-description">Device information and connectivity</p>
+                </div>
+            </div>
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-label">Version</div>
+                    <div class="status-value" id="version">Loading...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Status</div>
+                    <div class="status-value ready" id="status">READY</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Memory</div>
+                    <div class="status-value" id="memory">Loading...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Uptime</div>
+                    <div class="status-value" id="uptime">Loading...</div>
                 </div>
             </div>
         </div>

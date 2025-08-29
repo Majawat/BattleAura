@@ -1,38 +1,48 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BattleAura - Audio Configuration</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-    <div class="header">
-        <h1>🎵 Audio Configuration</h1>
-        <p><a href="/" class="link-orange">← Back to Control Panel</a></p>
-        <p class="text-secondary" style="font-size: 14px;">Configure audio-to-effect mappings</p>
-    </div>
+    <div class="container">
+        <!-- Header -->
+        <header class="text-center" style="margin-bottom: var(--space-6);">
+            <h1 style="font-size: 2rem; margin-bottom: var(--space-3);">🎵 Audio Configuration</h1>
+            <p><a href="/" class="link-primary">← Back to Control Panel</a></p>
+            <p class="text-secondary">Configure audio-to-effect mappings</p>
+        </header>
 
-    <form id="audioForm" method="POST" action="/audio/map">
-        <div class="status">
-            <h3>🔊 Audio File Mappings</h3>
-            <p>Map sound effects to audio files on SD card</p>
-            <div id="audioMappings">
-                <!-- Audio mappings will be loaded here by JavaScript -->
+        <form id="audioForm" method="POST" action="/audio/map">
+            <div class="form-container">
+                <div class="card-header">
+                    <div class="card-icon">🔊</div>
+                    <div>
+                        <h2 class="card-title">Audio File Mappings</h2>
+                        <p class="card-description">Map sound effects to audio files on SD card</p>
+                    </div>
+                </div>
+                <div id="audioMappings">
+                    <!-- Audio mappings will be loaded here by JavaScript -->
+                </div>
+                
+                <div class="text-center" style="margin-top: var(--space-6);">
+                    <input type="submit" value="💾 Save Configuration" class="btn btn-primary">
+                </div>
             </div>
+        </form>
+
+        <div class="card">
+            <h3 style="margin-bottom: var(--space-4);">💡 Audio Tips</h3>
+            <ul style="color: var(--text-secondary); line-height: 1.6;">
+                <li><strong>File Numbers:</strong> Use files 0001-9999 on SD card</li>
+                <li><strong>Format:</strong> MP3 files, 22050 Hz, Mono recommended</li>
+                <li><strong>Zero means:</strong> No audio for this effect</li>
+                <li><strong>Test playback:</strong> Use control panel to test files</li>
+            </ul>
         </div>
-
-        <input type="submit" value="💾 Save Config" class="btn btn-primary" style="margin-top: 20px;">
-    </form>
-
-    <div class="status">
-        <h4>💡 Audio Tips:</h4>
-        <ul style="margin: 10px 0;">
-            <li><strong>File Numbers:</strong> Use files 0001-9999 on SD card</li>
-            <li><strong>Format:</strong> MP3 files, 22050 Hz, Mono recommended</li>
-            <li><strong>Zero means:</strong> No audio for this effect</li>
-            <li><strong>Test playbook:</strong> Use control panel to test files</li>
-        </ul>
     </div>
 
     <script src="/app.js"></script>
@@ -74,20 +84,18 @@
 
             effects.forEach(effect => {
                 const row = document.createElement('div');
-                row.className = 'flex flex-center status-item';
-                row.style.cssText = 'margin: 15px 0;';
+                row.className = 'audio-mapping';
                 
                 row.innerHTML = `
-                    <div style="flex: 1;">
-                        <strong class="text-accent">${effect.name}</strong>
-                        <br>
-                        <small class="text-secondary">${effect.description}</small>
+                    <div class="audio-mapping-info">
+                        <div class="audio-mapping-name">${effect.name}</div>
+                        <div class="audio-mapping-description">${effect.description}</div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <label style="min-width: 80px;">File Number:</label>
+                    <div class="audio-mapping-controls">
+                        <label style="font-size: 0.85rem; color: var(--text-secondary);">File Number:</label>
                         <input type="number" name="${effect.key}" value="${audioMap[effect.key] || 0}" min="0" max="255" 
-                               style="width: 80px;">
-                        <button type="button" onclick="testAudio(${audioMap[effect.key] || 0})" class="btn btn-info" style="padding: 5px 10px;">
+                               class="audio-file-input form-input">
+                        <button type="button" onclick="testAudio(${audioMap[effect.key] || 0})" class="btn btn-info" style="padding: var(--space-2) var(--space-3);">
                             ▶ Test
                         </button>
                     </div>

@@ -1,84 +1,108 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BattleAura - Configuration</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-    <div class="header">
-        <h1>⚙️ Modular Device Configuration</h1>
-        <p><a href="/" class="link-orange">← Back to Control Panel</a></p>
-        <p class="text-secondary" style="font-size: 14px;">Configure pins by type and group for modular effect control</p>
-    </div>
+    <div class="container">
+        <!-- Header -->
+        <header class="text-center" style="margin-bottom: var(--space-6);">
+            <h1 style="font-size: 2rem; margin-bottom: var(--space-3);">⚙️ Device Configuration</h1>
+            <p><a href="/" class="link-primary">← Back to Control Panel</a></p>
+            <p class="text-secondary">Configure pins by type and group for modular effect control</p>
+        </header>
 
-    <form id="configForm" method="POST">
-        <!-- System Settings -->
-        <div class="status">
-            <h3>🔧 System Settings</h3>
-            <div class="form-row">
-                <label>Device Name:</label>
-                <input type="text" name="deviceName" id="deviceName" maxlength="32" placeholder="Tank, Beast, Dreadnought...">
+        <form id="configForm" method="POST">
+            <!-- System Settings -->
+            <div class="form-container">
+                <div class="card-header">
+                    <div class="card-icon">🔧</div>
+                    <div>
+                        <h2 class="card-title">System Settings</h2>
+                        <p class="card-description">Basic device configuration</p>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Device Name:</label>
+                    <input type="text" name="deviceName" id="deviceName" class="form-input" maxlength="32" placeholder="Tank, Beast, Dreadnought...">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Audio Volume:</label>
+                    <div style="display: flex; align-items: center; gap: var(--space-3);">
+                        <input type="range" name="volume" id="volume" min="0" max="30" style="flex: 1;" oninput="document.getElementById('volDisplay').innerText = this.value">
+                        <span class="brightness-value" id="volDisplay">15</span>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Audio Enabled:</label>
+                    <input type="checkbox" name="audioEnabled" id="audioEnabled">
+                </div>
             </div>
-            <div class="form-row">
-                <label>Audio Volume:</label>
-                <input type="range" name="volume" id="volume" min="0" max="30" oninput="document.getElementById('volDisplay').innerText = this.value">
-                <span class="brightness-display" id="volDisplay">15</span>
+
+            <!-- WiFi Settings -->
+            <div class="form-container">
+                <div class="card-header">
+                    <div class="card-icon">📡</div>
+                    <div>
+                        <h2 class="card-title">WiFi Settings</h2>
+                        <p class="card-description">Network connectivity configuration</p>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label class="form-label">WiFi SSID:</label>
+                    <input type="text" name="wifiSSID" id="wifiSSID" class="form-input" maxlength="32">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">WiFi Password:</label>
+                    <input type="password" name="wifiPassword" id="wifiPassword" class="form-input" maxlength="64">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">WiFi Enabled:</label>
+                    <input type="checkbox" name="wifiEnabled" id="wifiEnabled">
+                </div>
             </div>
-            <div class="form-row">
-                <label>Audio Enabled:</label>
-                <input type="checkbox" name="audioEnabled" id="audioEnabled">
+
+            <!-- Pin Configuration -->
+            <div class="form-container">
+                <div class="card-header">
+                    <div class="card-icon">🎯</div>
+                    <div>
+                        <h2 class="card-title">Modular Pin Configuration</h2>
+                        <p class="card-description">Configure each pin with type and group for automatic effect targeting</p>
+                    </div>
+                </div>
+                <p class="text-secondary" style="font-size: 0.9rem; margin-bottom: var(--space-5);">
+                    Same firmware works across different miniatures through configuration.
+                </p>
+                <div id="pinConfigs">
+                    <!-- Pin configs will be loaded here by JavaScript -->
+                </div>
             </div>
+
+            <div class="text-center">
+                <input type="submit" value="💾 Save Configuration" class="btn btn-primary">
+            </div>
+        </form>
+        
+        <div class="text-center" style="margin-top: var(--space-5);">
+            <button onclick="restartDevice()" class="btn btn-warning">
+                🔄 Restart Device
+            </button>
+            <p class="text-secondary" style="font-size: 0.85rem; margin-top: var(--space-2);">Required to apply WiFi changes</p>
         </div>
 
-        <!-- WiFi Settings -->
-        <div class="status">
-            <h3>📡 WiFi Settings</h3>
-            <div class="form-row">
-                <label>WiFi SSID:</label>
-                <input type="text" name="wifiSSID" id="wifiSSID" maxlength="32">
-            </div>
-            <div class="form-row">
-                <label>WiFi Password:</label>
-                <input type="password" name="wifiPassword" id="wifiPassword" maxlength="64">
-            </div>
-            <div class="form-row">
-                <label>WiFi Enabled:</label>
-                <input type="checkbox" name="wifiEnabled" id="wifiEnabled">
-            </div>
+        <div class="card" style="margin-top: var(--space-6);">
+            <h3 style="margin-bottom: var(--space-4);">💡 Configuration Tips</h3>
+            <ul style="color: var(--text-secondary); line-height: 1.6;">
+                <li><strong>Types</strong> define what the pin controls (Engine, Weapon, etc.)</li>
+                <li><strong>Groups</strong> allow multiple pins of same type (Engine1, Engine2)</li>
+                <li><strong>Effects</strong> will target types, not individual pins</li>
+                <li><strong>Same firmware</strong> works for Tank, Beast, Dreadnought through config</li>
+            </ul>
         </div>
-
-        <!-- Pin Configuration -->
-        <div class="status">
-            <h3>🎯 Modular Pin Configuration</h3>
-            <p class="text-secondary" style="font-size: 13px; margin-bottom: 20px;">
-                Configure each pin with type and group for automatic effect targeting.
-                Same firmware works across different miniatures through configuration.
-            </p>
-            <div id="pinConfigs">
-                <!-- Pin configs will be loaded here by JavaScript -->
-            </div>
-        </div>
-
-        <input type="submit" value="💾 Save Config">
-    </form>
-    
-    <div class="text-center">
-        <button onclick="restartDevice()" class="btn btn-orange">
-            🔄 Restart Device
-        </button>
-        <p class="text-secondary" style="font-size: 12px; margin: 5px 0 0 0;">Required to apply WiFi changes</p>
-    </div>
-
-    <div class="status">
-        <h4>💡 Configuration Tips:</h4>
-        <ul style="margin: 10px 0;">
-            <li><strong>Types</strong> define what the pin controls (Engine, Weapon, etc.)</li>
-            <li><strong>Groups</strong> allow multiple pins of same type (Engine1, Engine2)</li>
-            <li><strong>Effects</strong> will target types, not individual pins</li>
-            <li><strong>Same firmware</strong> works for Tank, Beast, Dreadnought through config</li>
-        </ul>
     </div>
 
     <script src="/app.js"></script>
@@ -115,7 +139,7 @@
 
             pins.forEach((pin, index) => {
                 const pinDiv = document.createElement('div');
-                pinDiv.className = 'pin-config';
+                pinDiv.className = 'pin-slot';
                 
                 let typeDisplay = '';
                 if (pin.enabled && pin.type) {
@@ -123,65 +147,69 @@
                 }
 
                 pinDiv.innerHTML = `
-                    <div class="pin-header">
-                        <h4>🔌 Pin Slot ${index + 1}${typeDisplay}</h4>
+                    <div class="pin-slot-header">
+                        <h4 class="pin-slot-title">🔌 Pin Slot ${index + 1}${typeDisplay}</h4>
                     </div>
-                    <div class="form-row">
-                        <label>GPIO Pin:</label>
-                        <input type="number" name="gpio${index}" value="${pin.gpio || 0}" min="0" max="21">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-4);">
+                        <div class="form-row">
+                            <label class="form-label">GPIO Pin:</label>
+                            <input type="number" name="gpio${index}" value="${pin.gpio || 0}" min="0" max="21" class="form-input">
+                        </div>
+                        <div class="form-row">
+                            <label class="form-label">Pin Mode:</label>
+                            <select name="mode${index}" class="form-input" onchange="toggleLedCountField(${index}, this.value)">
+                                <option value="0" ${pin.mode === 0 ? 'selected' : ''}>Disabled</option>
+                                <option value="1" ${pin.mode === 1 ? 'selected' : ''}>Digital Output</option>
+                                <option value="2" ${pin.mode === 2 ? 'selected' : ''}>PWM Output</option>
+                                <option value="3" ${pin.mode === 3 ? 'selected' : ''}>WS2812B RGB</option>
+                                <option value="4" ${pin.mode === 4 ? 'selected' : ''}>Digital Input</option>
+                                <option value="5" ${pin.mode === 5 ? 'selected' : ''}>Analog Input</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <label class="form-label">Pin Name:</label>
+                            <input type="text" name="name${index}" value="${pin.name || ''}" maxlength="16" placeholder="Descriptive name..." class="form-input">
+                        </div>
+                        <div class="form-row">
+                            <label class="form-label">Enabled:</label>
+                            <input type="checkbox" name="enabled${index}" ${pin.enabled ? 'checked' : ''}>
+                        </div>
+                        <div class="form-row">
+                            <label class="form-label">Pin Type:</label>
+                            <select name="type${index}" class="form-input" onchange="updateTypeDescription(${index}, this.value)">
+                                <option value="">Select Type...</option>
+                                <option value="Engine" ${pin.type === 'Engine' ? 'selected' : ''}>Engine (idle, rev effects)</option>
+                                <option value="MachineGun" ${pin.type === 'MachineGun' ? 'selected' : ''}>Machine Gun (burst fire effect)</option>
+                                <option value="Flamethrower" ${pin.type === 'Flamethrower' ? 'selected' : ''}>Flamethrower (flame whoosh effect)</option>
+                                <option value="RocketLauncher" ${pin.type === 'RocketLauncher' ? 'selected' : ''}>Rocket Launcher (rocket launch effect)</option>
+                                <option value="MainCannon" ${pin.type === 'MainCannon' ? 'selected' : ''}>Main Cannon (cannon blast effect)</option>
+                                <option value="Candle" ${pin.type === 'Candle' ? 'selected' : ''}>Candle (flicker, bright effects)</option>
+                                <option value="Console" ${pin.type === 'Console' ? 'selected' : ''}>Console (data scroll, alert pulse)</option>
+                                <option value="Damage" ${pin.type === 'Damage' ? 'selected' : ''}>Damage (hit sparks, system failure)</option>
+                                <option value="Ambient" ${pin.type === 'Ambient' ? 'selected' : ''}>Ambient (general lighting effects)</option>
+                                <option value="Custom" ${pin.type && !['Engine','MachineGun','Flamethrower','RocketLauncher','MainCannon','Candle','Console','Damage','Ambient'].includes(pin.type) ? 'selected' : ''}>Custom Type</option>
+                            </select>
+                            <input type="text" name="customType${index}" id="customType${index}" value="${!['Engine','MachineGun','Flamethrower','RocketLauncher','MainCannon','Candle','Console','Damage','Ambient',''].includes(pin.type || '') ? pin.type : ''}" maxlength="20" placeholder="Enter custom type..." class="form-input" style="display: ${!['Engine','MachineGun','Flamethrower','RocketLauncher','MainCannon','Candle','Console','Damage','Ambient',''].includes(pin.type || '') ? 'block' : 'none'}; margin-top: var(--space-2);">
+                        </div>
+                        <div class="form-row">
+                            <label class="form-label">Pin Group:</label>
+                            <input type="text" name="group${index}" value="${pin.group || ''}" maxlength="20" placeholder="Engine1, Weapon1, Candles..." class="form-input">
+                        </div>
+                        <div class="form-row">
+                            <label class="form-label">Brightness:</label>
+                            <div style="display: flex; align-items: center; gap: var(--space-3);">
+                                <input type="range" name="brightness${index}" value="${pin.brightness || 255}" min="0" max="255" style="flex: 1;" oninput="document.getElementById('brightness${index}').innerText = this.value">
+                                <span class="brightness-value" id="brightness${index}">${pin.brightness || 255}</span>
+                            </div>
+                        </div>
+                        <div class="form-row" id="ledCountRow${index}" style="display: ${pin.mode == 3 ? 'flex' : 'none'}; flex-direction: column;">
+                            <label class="form-label">LED Count:</label>
+                            <input type="number" name="ledCount${index}" value="${pin.ledCount || 10}" min="1" max="100" placeholder="For WS2812B strips" class="form-input">
+                        </div>
                     </div>
-                    <div class="form-row">
-                        <label>Pin Mode:</label>
-                        <select name="mode${index}" onchange="toggleLedCountField(${index}, this.value)">
-                            <option value="0" ${pin.mode === 0 ? 'selected' : ''}>Disabled</option>
-                            <option value="1" ${pin.mode === 1 ? 'selected' : ''}>Digital Output</option>
-                            <option value="2" ${pin.mode === 2 ? 'selected' : ''}>PWM Output</option>
-                            <option value="3" ${pin.mode === 3 ? 'selected' : ''}>WS2812B RGB</option>
-                            <option value="4" ${pin.mode === 4 ? 'selected' : ''}>Digital Input</option>
-                            <option value="5" ${pin.mode === 5 ? 'selected' : ''}>Analog Input</option>
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <label>Pin Name:</label>
-                        <input type="text" name="name${index}" value="${pin.name || ''}" maxlength="16" placeholder="Descriptive name...">
-                    </div>
-                    <div class="form-row">
-                        <label>Enabled:</label>
-                        <input type="checkbox" name="enabled${index}" ${pin.enabled ? 'checked' : ''}>
-                    </div>
-                    <div class="form-row">
-                        <label>Pin Type:</label>
-                        <select name="type${index}" onchange="updateTypeDescription(${index}, this.value)">
-                            <option value="">Select Type...</option>
-                            <option value="Engine" ${pin.type === 'Engine' ? 'selected' : ''}>Engine (idle, rev effects)</option>
-                            <option value="MachineGun" ${pin.type === 'MachineGun' ? 'selected' : ''}>Machine Gun (burst fire effect)</option>
-                            <option value="Flamethrower" ${pin.type === 'Flamethrower' ? 'selected' : ''}>Flamethrower (flame whoosh effect)</option>
-                            <option value="RocketLauncher" ${pin.type === 'RocketLauncher' ? 'selected' : ''}>Rocket Launcher (rocket launch effect)</option>
-                            <option value="MainCannon" ${pin.type === 'MainCannon' ? 'selected' : ''}>Main Cannon (cannon blast effect)</option>
-                            <option value="Candle" ${pin.type === 'Candle' ? 'selected' : ''}>Candle (flicker, bright effects)</option>
-                            <option value="Console" ${pin.type === 'Console' ? 'selected' : ''}>Console (data scroll, alert pulse)</option>
-                            <option value="Damage" ${pin.type === 'Damage' ? 'selected' : ''}>Damage (hit sparks, system failure)</option>
-                            <option value="Ambient" ${pin.type === 'Ambient' ? 'selected' : ''}>Ambient (general lighting effects)</option>
-                            <option value="Custom" ${pin.type && !['Engine','MachineGun','Flamethrower','RocketLauncher','MainCannon','Candle','Console','Damage','Ambient'].includes(pin.type) ? 'selected' : ''}>Custom Type</option>
-                        </select>
-                        <input type="text" name="customType${index}" id="customType${index}" value="${!['Engine','MachineGun','Flamethrower','RocketLauncher','MainCannon','Candle','Console','Damage','Ambient',''].includes(pin.type || '') ? pin.type : ''}" maxlength="20" placeholder="Enter custom type..." style="display: ${!['Engine','MachineGun','Flamethrower','RocketLauncher','MainCannon','Candle','Console','Damage','Ambient',''].includes(pin.type || '') ? 'inline-block' : 'none'}; margin-left: 10px; width: 150px;">
-                    </div>
-                    <div class="type-examples" id="typeDescription${index}">Effect buttons that will appear on main page based on configured pin types</div>
-                    <div class="form-row">
-                        <label>Pin Group:</label>
-                        <input type="text" name="group${index}" value="${pin.group || ''}" maxlength="20" placeholder="Engine1, Weapon1, Candles...">
-                    </div>
-                    <div class="type-examples">Examples: Engine1, Engine2, Weapon1, Weapon2, MainCandles, SpotLights</div>
-                    <div class="form-row">
-                        <label>Brightness:</label>
-                        <input type="range" name="brightness${index}" value="${pin.brightness || 255}" min="0" max="255" oninput="document.getElementById('brightness${index}').innerText = this.value">
-                        <span class="brightness-display" id="brightness${index}">${pin.brightness || 255}</span>
-                    </div>
-                    <div class="form-row" id="ledCountRow${index}" style="display: ${pin.mode == 3 ? 'flex' : 'none'};">
-                        <label>LED Count:</label>
-                        <input type="number" name="ledCount${index}" value="${pin.ledCount || 10}" min="1" max="100" placeholder="For WS2812B strips">
-                    </div>
-                    <div class="type-examples" id="ledCountHelp${index}" style="display: ${pin.mode == 3 ? 'block' : 'none'};">Number of LEDs in strip (WS2812B only)</div>
+                    <div class="text-secondary" style="font-size: 0.8rem; margin-top: var(--space-3);" id="typeDescription${index}">Effect buttons that will appear on main page based on configured pin types</div>
+                    <div class="text-secondary" style="font-size: 0.8rem; margin-top: var(--space-1);">Examples: Engine1, Engine2, Weapon1, Weapon2, MainCandles, SpotLights</div>
+                    <div class="text-secondary" style="font-size: 0.8rem; margin-top: var(--space-1);" id="ledCountHelp${index}" style="display: ${pin.mode == 3 ? 'block' : 'none'};">Number of LEDs in strip (WS2812B only)</div>
                 `;
                 
                 container.appendChild(pinDiv);
@@ -207,7 +235,7 @@
             
             // Show/hide custom type input
             if (customField) {
-                customField.style.display = (typeValue === 'Custom') ? 'inline-block' : 'none';
+                customField.style.display = (typeValue === 'Custom') ? 'block' : 'none';
                 if (typeValue !== 'Custom') {
                     customField.value = ''; // Clear custom field when not using it
                 }
@@ -239,7 +267,7 @@
                 }).then(response => {
                     if (response.ok) {
                         // Show success message and redirect
-                        document.body.innerHTML = '<div style="font-family:Arial; background:#1a1a2e; color:white; text-align:center; padding:50px;"><h1>🔄 Device Restarting...</h1><p>Please wait while the device restarts and reconnects to your network.</p></div>';
+                        document.body.innerHTML = '<div style="font-family: var(--font-body); background: var(--bg-primary); color: var(--text-primary); text-align:center; padding:50px; min-height: 100vh;"><h1>🔄 Device Restarting...</h1><p>Please wait while the device restarts and reconnects to your network.</p></div>';
                     } else {
                         alert('Failed to restart device. Please try power cycling manually.');
                     }

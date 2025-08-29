@@ -53,7 +53,7 @@ function generateDynamicButtons(types) {
     
     let html = '';
     
-    // Generate effect cards for each pin type
+    // Generate grouped pin-type cards
     types.forEach(type => {
         const effects = getEffectsForType(type.type, type.hasRGB, type.hasPWM);
         
@@ -65,18 +65,26 @@ function generateDynamicButtons(types) {
         const typeEmoji = getTypeEmoji(type.type);
         const pinCount = `${type.count} ${type.count === 1 ? 'pin' : 'pins'}`;
         
-        // Ambient Effects Card
+        // Start pin type group card
+        html += `
+            <div class="pin-type-group">
+                <div class="pin-type-header">
+                    <span style="font-size: 1.5rem;">${typeEmoji}</span>
+                    <h3 class="pin-type-title">${type.type}</h3>
+                    <span class="pin-type-count">${pinCount}</span>
+                </div>
+                <div class="pin-type-sub-cards">
+        `;
+        
+        // Add ambient sub-card
         if (ambientEffects.length > 0) {
             html += `
-                <div class="effect-card ambient">
-                    <div class="effect-header">
-                        <div class="effect-label ambient">🔄 Ambient • ${type.type}</div>
-                        <div class="effect-type-badge ambient">Continuous</div>
+                <div class="pin-type-sub-card ambient">
+                    <div class="sub-card-header">
+                        <div class="sub-card-title ambient">🔄 Ambient</div>
+                        <div class="sub-card-description">Continuous effects</div>
                     </div>
-                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: var(--space-3);">
-                        ${typeEmoji} Always-on effects for ${pinCount} • Runs continuously
-                    </p>
-                    <div class="effect-buttons">
+                    <div class="sub-card-buttons">
             `;
             ambientEffects.forEach(effect => {
                 html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}')" class="btn btn-success" title="${effect.description}">${effect.label}</button>`;
@@ -87,18 +95,15 @@ function generateDynamicButtons(types) {
             `;
         }
         
-        // Active Effects Card
+        // Add active sub-card
         if (activeEffects.length > 0) {
             html += `
-                <div class="effect-card active">
-                    <div class="effect-header">
-                        <div class="effect-label active">⚡ Active • ${type.type}</div>
-                        <div class="effect-type-badge active">Temporary</div>
+                <div class="pin-type-sub-card active">
+                    <div class="sub-card-header">
+                        <div class="sub-card-title active">⚡ Active</div>
+                        <div class="sub-card-description">Temporary triggers</div>
                     </div>
-                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: var(--space-3);">
-                        ${typeEmoji} Triggered effects for ${pinCount} • Plays once then stops
-                    </p>
-                    <div class="effect-buttons">
+                    <div class="sub-card-buttons">
             `;
             activeEffects.forEach(effect => {
                 html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}')" class="btn btn-warning" title="${effect.description}">${effect.label}</button>`;
@@ -109,18 +114,15 @@ function generateDynamicButtons(types) {
             `;
         }
         
-        // Control Effects Card
+        // Add control sub-card
         if (controlEffects.length > 0) {
             html += `
-                <div class="effect-card control">
-                    <div class="effect-header">
-                        <div class="effect-label control">🎛️ Control • ${type.type}</div>
-                        <div class="effect-type-badge control">Manual</div>
+                <div class="pin-type-sub-card control">
+                    <div class="sub-card-header">
+                        <div class="sub-card-title control">🎛️ Manual</div>
+                        <div class="sub-card-description">Direct control</div>
                     </div>
-                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: var(--space-3);">
-                        ${typeEmoji} Manual controls for ${pinCount} • Direct on/off control
-                    </p>
-                    <div class="effect-buttons">
+                    <div class="sub-card-buttons">
             `;
             controlEffects.forEach(effect => {
                 html += `<button onclick="triggerTypeEffect('${type.type}', '${effect.action}')" class="btn btn-info" title="${effect.description}">${effect.label}</button>`;
@@ -130,22 +132,42 @@ function generateDynamicButtons(types) {
                 </div>
             `;
         }
+        
+        // Close pin type group card
+        html += `
+                </div>
+            </div>
+        `;
     });
     
-    // Universal Effects Card
+    // Universal Effects as separate group
     html += `
-        <div class="effect-card control">
-            <div class="effect-header">
-                <div class="effect-label control">🎯 Global Effects</div>
-                <div class="effect-type-badge control">All Pins</div>
+        <div class="pin-type-group">
+            <div class="pin-type-header">
+                <span style="font-size: 1.5rem;">🎯</span>
+                <h3 class="pin-type-title">Global Effects</h3>
+                <span class="pin-type-count">All Pins</span>
             </div>
-            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: var(--space-3);">
-                💥 Effects that target all configured pins simultaneously
-            </p>
-            <div class="effect-buttons">
-                <button onclick="triggerGlobalEffect('damage')" class="btn btn-primary">💥 Taking Damage</button>
-                <button onclick="triggerGlobalEffect('explosion')" class="btn btn-primary">🔥 Explosion</button>
-                <button onclick="stopAllEffects()" class="btn btn-secondary">⏹️ Stop All Effects</button>
+            <div class="pin-type-sub-cards">
+                <div class="pin-type-sub-card control">
+                    <div class="sub-card-header">
+                        <div class="sub-card-title control">💥 Combat</div>
+                        <div class="sub-card-description">Damage & explosions</div>
+                    </div>
+                    <div class="sub-card-buttons">
+                        <button onclick="triggerGlobalEffect('damage')" class="btn btn-primary">💥 Taking Damage</button>
+                        <button onclick="triggerGlobalEffect('explosion')" class="btn btn-primary">🔥 Explosion</button>
+                    </div>
+                </div>
+                <div class="pin-type-sub-card control">
+                    <div class="sub-card-header">
+                        <div class="sub-card-title control">⏹️ System</div>
+                        <div class="sub-card-description">System controls</div>
+                    </div>
+                    <div class="sub-card-buttons">
+                        <button onclick="stopAllEffects()" class="btn btn-secondary">⏹️ Stop All Effects</button>
+                    </div>
+                </div>
             </div>
         </div>
     `;
