@@ -12,7 +12,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.9.2-alpha";
+const char* VERSION = "0.9.3-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -799,9 +799,28 @@ void setupWebServer() {
         String status = "{";
         status += "\"ready\": " + String(isAudioReady() ? "true" : "false") + ",";
         status += "\"enabled\": " + String(config.audioEnabled ? "true" : "false") + ",";
-        status += "\"volume\": " + String(config.volume);
+        status += "\"initialized\": " + String(audioInitialized ? "true" : "false") + ",";
+        status += "\"volume\": " + String(config.volume) + ",";
+        status += "\"rxPin\": " + String(DFPLAYER_RX_PIN) + ",";
+        status += "\"txPin\": " + String(DFPLAYER_TX_PIN);
+        
+        // Try to get current state if initialized
+        if (audioInitialized) {
+            delay(50); // Brief delay for DFPlayer response
+            int currentVol = dfPlayer.readVolume();
+            int fileCount = dfPlayer.readFileCounts();
+            status += ",\"currentVolume\": " + String(currentVol);
+            status += ",\"fileCount\": " + String(fileCount);
+        }
+        
         status += "}";
         server.send(200, "application/json", status);
+    });
+    
+    server.on("/audio/reinit", HTTP_POST, []() {
+        Serial.println("🔄 Manual DFPlayer reinitialization requested");
+        setupAudio();
+        server.send(200, "text/plain", isAudioReady() ? "Audio reinitialized successfully" : "Audio reinitialization failed");
     });
     
     server.on("/audio/scenario", HTTP_GET, []() {
@@ -2727,26 +2746,74 @@ void setupAudio() {
         return;
     }
     
+    Serial.printf("🎵 Initializing DFPlayer Mini on GPIO %d (RX) / %d (TX)...\n", DFPLAYER_RX_PIN, DFPLAYER_TX_PIN);
+    
     // Initialize UART for DFPlayer
     dfPlayerSerial.begin(9600, SERIAL_8N1, DFPLAYER_RX_PIN, DFPLAYER_TX_PIN);
-    delay(1000); // Wait for DFPlayer to initialize
+    Serial.println("  ✓ UART initialized at 9600 baud");
     
-    // Initialize DFPlayer Mini
-    if (dfPlayer.begin(dfPlayerSerial)) {
+    // Extended initialization delay and retry logic
+    Serial.println("  ⏳ Waiting for DFPlayer Mini to initialize...");
+    delay(2000); // Increased delay for more reliable initialization
+    
+    // Try initializing DFPlayer with retries
+    bool initSuccess = false;
+    for (int attempt = 1; attempt <= 3; attempt++) {
+        Serial.printf("  🔄 Initialization attempt %d/3...\n", attempt);
+        
+        if (dfPlayer.begin(dfPlayerSerial, true, true)) { // Use detailed feedback
+            Serial.println("  ✓ DFPlayer Mini communication established");
+            initSuccess = true;
+            break;
+        } else {
+            Serial.printf("  ✗ Attempt %d failed\n", attempt);
+            if (attempt < 3) {
+                delay(1000); // Wait before retry
+            }
+        }
+    }
+    
+    if (initSuccess) {
         Serial.println("✓ DFPlayer Mini initialized successfully");
+        
+        // Small delay before sending commands
+        delay(500);
         
         // Set initial volume
         dfPlayer.volume(config.volume);
+        delay(200); // Allow command to process
         Serial.printf("✓ Audio volume set to %d/30\n", config.volume);
         
-        // Query available files
+        // Query available files (with error handling)
+        delay(200);
         int fileCount = dfPlayer.readFileCounts();
-        Serial.printf("✓ Found %d audio files on SD card\n", fileCount);
+        if (fileCount > 0) {
+            Serial.printf("✓ Found %d audio files on SD card\n", fileCount);
+        } else {
+            Serial.println("⚠ No audio files found or SD card issue");
+            Serial.println("  Expected files: 0001.mp3, 0002.mp3, etc. in root directory");
+        }
+        
+        // Test basic functionality
+        delay(200);
+        int currentVolume = dfPlayer.readVolume();
+        Serial.printf("✓ Current volume readback: %d/30\n", currentVolume);
         
         audioInitialized = true;
+        Serial.println("🎵 Audio system ready!");
+        
     } else {
-        Serial.println("✗ Failed to initialize DFPlayer Mini");
-        Serial.println("  Check connections and SD card");
+        Serial.println("✗ Failed to initialize DFPlayer Mini after 3 attempts");
+        Serial.println("🔧 Troubleshooting checklist:");
+        Serial.println("   1. Check wiring connections:");
+        Serial.printf("      - DFPlayer RX → ESP32 GPIO%d\n", DFPLAYER_TX_PIN);
+        Serial.printf("      - DFPlayer TX → ESP32 GPIO%d\n", DFPLAYER_RX_PIN);
+        Serial.println("      - DFPlayer VCC → 3.3V or 5V");
+        Serial.println("      - DFPlayer GND → GND");
+        Serial.println("   2. Verify SD card is inserted and formatted (FAT32)");
+        Serial.println("   3. Check audio files are named 0001.mp3, 0002.mp3, etc.");
+        Serial.println("   4. Ensure stable power supply");
+        Serial.println("   5. Try different DFPlayer module if available");
         audioInitialized = false;
     }
 }
