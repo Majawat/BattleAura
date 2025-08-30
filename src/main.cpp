@@ -12,7 +12,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.9.4-alpha";
+const char* VERSION = "0.9.5-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -20,17 +20,18 @@ const int AP_CHANNEL = 1;
 // Configuration constants
 #define CONFIG_FILE "/config.json"
 
-// Audio file durations in milliseconds (estimated)
-// These match the audio files described in CLAUDE.md
-#define AUDIO_DURATION_TANK_IDLE       5000   // File 0001: Tank Idle (5s loop)
-#define AUDIO_DURATION_TANK_IDLE_2     5000   // File 0002: Tank Idle 2 (5s loop)  
-#define AUDIO_DURATION_MACHINE_GUN     2000   // File 0003: Machine Gun (2s burst)
-#define AUDIO_DURATION_FLAMETHROWER    3000   // File 0004: Flamethrower (3s)
-#define AUDIO_DURATION_TAKING_HITS     1500   // File 0005: Taking Hits (1.5s)
-#define AUDIO_DURATION_ENGINE_REVVING  4000   // File 0006: Engine Revving (4s)
-#define AUDIO_DURATION_EXPLOSION       2000   // File 0007: Explosion (2s)
-#define AUDIO_DURATION_ROCKET_LAUNCHER 1800   // File 0008: Rocket Launcher (1.8s)
-#define AUDIO_DURATION_KILL_CONFIRMED  1200   // File 0009: Kill Confirmed (1.2s)
+// Audio file durations in milliseconds - THESE MUST MATCH YOUR ACTUAL MP3 FILE LENGTHS!
+// If effects cut off early, update these values to match your audio file durations
+// TODO: Implement dynamic audio length detection to eliminate hardcoded values
+#define AUDIO_DURATION_TANK_IDLE       5000   // File 0001: Tank Idle - UPDATE TO ACTUAL LENGTH
+#define AUDIO_DURATION_TANK_IDLE_2     5000   // File 0002: Tank Idle 2 - UPDATE TO ACTUAL LENGTH  
+#define AUDIO_DURATION_MACHINE_GUN     2000   // File 0003: Machine Gun - UPDATE TO ACTUAL LENGTH
+#define AUDIO_DURATION_FLAMETHROWER    3000   // File 0004: Flamethrower - UPDATE TO ACTUAL LENGTH
+#define AUDIO_DURATION_TAKING_HITS     1500   // File 0005: Taking Hits - UPDATE TO ACTUAL LENGTH
+#define AUDIO_DURATION_ENGINE_REVVING  4000   // File 0006: Engine Revving - UPDATE TO ACTUAL LENGTH
+#define AUDIO_DURATION_EXPLOSION       2000   // File 0007: Explosion - UPDATE TO ACTUAL LENGTH
+#define AUDIO_DURATION_ROCKET_LAUNCHER 1800   // File 0008: Rocket Launcher - UPDATE TO ACTUAL LENGTH
+#define AUDIO_DURATION_KILL_CONFIRMED  1200   // File 0009: Kill Confirmed - UPDATE TO ACTUAL LENGTH
 
 // Default effect durations when no audio is mapped
 #define DEFAULT_EFFECT_DURATION_SHORT  1000   // Quick effects (strobe, pulse)
@@ -807,10 +808,14 @@ void setupWebServer() {
         // Try to get current state if initialized
         if (audioInitialized) {
             delay(50); // Brief delay for DFPlayer response
+            
+            // Get basic status (these are more reliable)
             int currentVol = dfPlayer.readVolume();
-            int fileCount = dfPlayer.readFileCounts();
             status += ",\"currentVolume\": " + String(currentVol);
-            status += ",\"fileCount\": " + String(fileCount);
+            
+            // File count can freeze if SD card removed - skip for now to prevent freeze
+            // TODO: Implement non-blocking SD card detection
+            status += ",\"fileCount\": \"N/A - prevents freeze\"";
         }
         
         status += "}";
@@ -1134,6 +1139,19 @@ void setupWebServer() {
             }
             server.send(200, "text/plain", F("Global alert effect"));
             
+        } else if (effectName == "explosion") {
+            // Explosion: all pins flash bright white/yellow briefly
+            for (uint8_t i = 0; i < MAX_PINS; i++) {
+                if (config.pins[i].enabled) {
+                    if (config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                        setNeoPixelColor(i, 0xFFFFFF, 255); // Bright white
+                    } else if (config.pins[i].mode == PinMode::OUTPUT_PWM) {
+                        analogWrite(config.pins[i].gpio, 255); // Full brightness
+                    }
+                }
+            }
+            server.send(200, "text/plain", F("Global explosion effect"));
+            
         } else if (effectName == "off") {
             // Turn off all effects
             for (uint8_t i = 0; i < MAX_PINS; i++) {
@@ -1143,6 +1161,8 @@ void setupWebServer() {
                         setNeoPixelColor(i, 0x000000, 0); // Off
                     } else if (config.pins[i].mode == PinMode::OUTPUT_PWM) {
                         analogWrite(config.pins[i].gpio, 0); // Off
+                    } else if (config.pins[i].mode == PinMode::OUTPUT_DIGITAL) {
+                        digitalWrite(config.pins[i].gpio, LOW); // Off
                     }
                 }
             }
@@ -2794,13 +2814,14 @@ void setupAudio() {
         delay(200); // Allow command to process
         Serial.printf("✓ Audio volume set to %d/30\n", config.volume);
         
-        // Query available files (with error handling)
+        // Query available files (note: counts ALL files, not just MP3s)
         delay(200);
         int fileCount = dfPlayer.readFileCounts();
         if (fileCount > 0) {
-            Serial.printf("✓ Found %d audio files on SD card\n", fileCount);
+            Serial.printf("✓ Found %d total files on SD card (includes non-MP3s)\n", fileCount);
+            Serial.println("  DFPlayer counts ALL files - MP3s should be named 0001.mp3, 0002.mp3, etc.");
         } else {
-            Serial.println("⚠ No audio files found or SD card issue");
+            Serial.println("⚠ No files found - SD card issue");
             Serial.println("  Expected files: 0001.mp3, 0002.mp3, etc. in root directory");
         }
         

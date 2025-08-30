@@ -373,7 +373,7 @@ function triggerGlobalEffect(effect) {
 function stopAllEffects() {
     fetch('/global', {
         method: 'POST',
-        body: new URLSearchParams({ effect: 'stop' })
+        body: new URLSearchParams({ effect: 'off' })
     })
         .then(response => response.text())
         .then(data => {
