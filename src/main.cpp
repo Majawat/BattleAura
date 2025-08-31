@@ -12,7 +12,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.11.1-alpha";
+const char* VERSION = "0.11.3-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -223,6 +223,7 @@ void handleEmbeddedFile(const String& path);
 void handleStaticFile(const String& path, const String& contentType);
 void handleUpdateUpload();
 void handleConfigSave();
+void handlePinConfigSave();
 void handleAudioMapSave();
 String getEffectName(EffectType effect);
 EffectType mapEffectNameToType(const String& effectName, PinMode mode);
@@ -584,6 +585,7 @@ void setupWebServer() {
     server.on("/config", HTTP_POST, handleConfigSave);
     server.on("/config/device", HTTP_GET, []() { handleEmbeddedFile("/device.html"); });
     server.on("/config/pins", HTTP_GET, []() { handleEmbeddedFile("/pins.html"); });
+    server.on("/config/pins", HTTP_POST, handlePinConfigSave);
     server.on("/config/effects", HTTP_GET, []() { handleEmbeddedFile("/effects.html"); });
     server.on("/config/system", HTTP_GET, []() { handleEmbeddedFile("/system.html"); });
     
@@ -928,6 +930,40 @@ void setupWebServer() {
         
         uint8_t actualBrightness = calculateActualBrightness(pin);
         server.send(200, "text/plain", "Pin " + String(pin) + " brightness: " + String(brightness) + " (actual: " + String(actualBrightness) + ")");
+    });
+    
+    // Individual pin effect control endpoint
+    server.on("/pin/effect", HTTP_POST, []() {
+        if (!server.hasArg("pin") || !server.hasArg("effect")) {
+            server.send(400, "text/plain", F("Missing pin or effect parameter"));
+            return;
+        }
+        
+        uint8_t pin = server.arg("pin").toInt();
+        String effect = server.arg("effect");
+        
+        if (pin >= MAX_PINS || !config.pins[pin].enabled) {
+            server.send(400, "text/plain", F("Invalid or disabled pin"));
+            return;
+        }
+        
+        // Find the effect type based on name
+        EffectType effectType = EffectType::EFFECT_STATIC_OFF;
+        if (effect == "on") effectType = EffectType::EFFECT_STATIC_ON;
+        else if (effect == "off") effectType = EffectType::EFFECT_STATIC_OFF;
+        else if (effect == "flicker") effectType = EffectType::EFFECT_CANDLE_FLICKER;
+        else if (effect == "pulse") effectType = EffectType::EFFECT_PULSE;
+        else if (effect == "fade") effectType = EffectType::EFFECT_FADE;
+        else if (effect == "strobe") effectType = EffectType::EFFECT_STROBE;
+        else if (effect == "idle") effectType = EffectType::EFFECT_ENGINE_IDLE;
+        else if (effect == "rev") effectType = EffectType::EFFECT_ENGINE_REV;
+        else if (effect == "fire") effectType = EffectType::EFFECT_MACHINE_GUN;
+        else if (effect == "scroll") effectType = EffectType::EFFECT_CONSOLE_RGB;
+        
+        // Start effect on specific pin
+        startEffect(pin, effectType);
+        
+        server.send(200, "text/plain", "Pin " + String(pin) + " effect: " + effect);
     });
     
     // LED count endpoint for WS2812B strips
@@ -1945,6 +1981,84 @@ void handleConfigSave() {
         "</body></html>"));
     
     Serial.println("Configuration updated via web interface");
+}
+
+void handlePinConfigSave() {
+    // Handle JSON pin configuration data
+    String body = server.arg("plain");
+    
+    if (body.length() == 0) {
+        server.send(400, "application/json", F("{\"error\":\"No data received\"}"));
+        return;
+    }
+    
+    // Parse JSON data
+    DynamicJsonDocument doc(4096);
+    DeserializationError error = deserializeJson(doc, body);
+    
+    if (error) {
+        server.send(400, "application/json", F("{\"error\":\"Invalid JSON\"}"));
+        return;
+    }
+    
+    // Update pin configurations from JSON
+    if (doc.containsKey("pins")) {
+        JsonArray pinsArray = doc["pins"];
+        
+        for (uint8_t i = 0; i < MAX_PINS && i < pinsArray.size(); i++) {
+            JsonObject pinObj = pinsArray[i];
+            
+            if (pinObj.containsKey("enabled")) {
+                config.pins[i].enabled = pinObj["enabled"];
+            }
+            
+            if (pinObj.containsKey("gpio")) {
+                uint8_t requestedGPIO = pinObj["gpio"];
+                // Prevent assignment of DFPlayer pins when audio is enabled
+                if (config.audioEnabled && (requestedGPIO == DFPLAYER_RX_PIN || requestedGPIO == DFPLAYER_TX_PIN)) {
+                    Serial.printf("⚠ GPIO %d blocked - reserved for DFPlayer (Audio enabled)\n", requestedGPIO);
+                    // Keep existing GPIO or assign a safe default
+                    if (config.pins[i].gpio == DFPLAYER_RX_PIN || config.pins[i].gpio == DFPLAYER_TX_PIN) {
+                        config.pins[i].gpio = 2; // Safe default
+                    }
+                } else {
+                    config.pins[i].gpio = constrain(requestedGPIO, 0, 21);
+                }
+            }
+            
+            if (pinObj.containsKey("name")) {
+                config.pins[i].name = pinObj["name"].as<String>();
+            }
+            
+            if (pinObj.containsKey("type")) {
+                config.pins[i].type = pinObj["type"].as<String>();
+            }
+            
+            if (pinObj.containsKey("group")) {
+                config.pins[i].group = pinObj["group"].as<String>();
+            }
+            
+            if (pinObj.containsKey("mode")) {
+                config.pins[i].mode = static_cast<PinMode>(pinObj["mode"].as<int>());
+            }
+            
+            if (pinObj.containsKey("brightness")) {
+                config.pins[i].brightness = constrain(pinObj["brightness"].as<int>(), 0, 255);
+            }
+            
+            if (pinObj.containsKey("ledCount")) {
+                config.pins[i].ledCount = constrain(pinObj["ledCount"].as<int>(), 1, 100);
+            }
+        }
+    }
+    
+    // Save configuration to file
+    saveConfiguration();
+    
+    // Send success response
+    server.send(200, "application/json", F("{\"success\":true,\"message\":\"Pin configuration saved\"}"));
+    
+    Serial.println("Pin configuration updated via web interface");
 }
 
 void handleAudioMapSave() {
