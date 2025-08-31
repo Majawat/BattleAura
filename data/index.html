@@ -3,58 +3,177 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{DEVICE_NAME}} Control</title>
+    <title>BattleAura Control</title>
     <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <main>
-        <header>
-            <h1>{{DEVICE_NAME}}</h1>
-            <div class="status">{{STATUS}}</div>
+    <div class="container">
+        <!-- Compact Hero Section -->
+        <header class="hero-compact">
+            <h1>🎯 BattleAura</h1>
+            <p class="hero-subtitle">Tactical Lighting Control</p>
         </header>
 
-        <section class="effects">
-            <h2>Battle Effects</h2>
-            {{EFFECT_BUTTONS}}
-        </section>
+        <!-- Global Controls -->
+        <div class="brightness-section">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); margin-bottom: var(--space-4);">
+                <div>
+                    <div class="brightness-header">
+                        <div class="brightness-title">
+                            <span>💡</span>
+                            <span>Global Brightness</span>
+                        </div>
+                        <div class="brightness-value" id="brightnessValue">255</div>
+                    </div>
+                    <div class="brightness-slider-container">
+                        <input type="range" id="globalBrightness" class="brightness-slider" min="0" max="255" value="255" oninput="setBrightness(this.value)">
+                    </div>
+                    <div class="brightness-presets">
+                        <button onclick="setBrightness(0)" class="brightness-preset brightness-0">0%</button>
+                        <button onclick="setBrightness(64)" class="brightness-preset brightness-25">25%</button>
+                        <button onclick="setBrightness(128)" class="brightness-preset brightness-50">50%</button>
+                        <button onclick="setBrightness(192)" class="brightness-preset brightness-75">75%</button>
+                        <button onclick="setBrightness(255)" class="brightness-preset brightness-100">100%</button>
+                    </div>
+                </div>
+                <div>
+                    <div class="brightness-header">
+                        <div class="brightness-title">
+                            <span>🔊</span>
+                            <span>Audio Volume</span>
+                        </div>
+                        <div class="brightness-value" id="volumeValue">15</div>
+                    </div>
+                    <div class="brightness-slider-container">
+                        <input type="range" id="audioVolume" class="brightness-slider" min="0" max="30" value="15" oninput="updateAudioVolume(this.value)">
+                    </div>
+                    <div class="brightness-presets">
+                        <button onclick="setAudioVolume(0)" class="brightness-preset">🔇</button>
+                        <button onclick="setAudioVolume(8)" class="brightness-preset">🔉</button>
+                        <button onclick="setAudioVolume(15)" class="brightness-preset">🔊</button>
+                        <button onclick="setAudioVolume(30)" class="brightness-preset">📢</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        <section class="controls">
-            <div class="control">
-                <label for="brightness">🔆 Brightness</label>
-                <input type="range" id="brightness" min="0" max="255" value="{{BRIGHTNESS}}" oninput="setBrightness(this.value)">
-                <span id="brightness-value">{{BRIGHTNESS}}</span>
+        <!-- Dynamic Effects Control -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">⚡</div>
+                <div>
+                    <h2 class="card-title">Tactical Effects</h2>
+                    <p class="card-description">Control your configured lighting and audio effects</p>
+                </div>
+            </div>
+            <div id="dynamic-effects">
+                <div class="loading">Loading configured effects...</div>
+            </div>
+        </div>
+
+        <!-- Configuration Section -->
+        <div class="config-section">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">⚙️</div>
+                    <div>
+                        <h2 class="card-title">Configuration</h2>
+                        <p class="card-description">Setup and customize your BattleAura device</p>
+                    </div>
+                </div>
+                <div class="config-grid">
+                    <a href="/config" class="config-card device">
+                        <div class="config-card-icon">⚙️</div>
+                        <div class="config-card-content">
+                            <h3>Device Setup</h3>
+                            <p>Configure pins, WiFi, and system settings for your miniature type</p>
+                        </div>
+                    </a>
+                    
+                    <a href="/audio/map" class="config-card audio">
+                        <div class="config-card-icon">🎵</div>
+                        <div class="config-card-content">
+                            <h3>Audio Config</h3>
+                            <p>Map sound effects to different actions and weapons</p>
+                        </div>
+                    </a>
+                    
+                    <a href="/update" class="config-card update">
+                        <div class="config-card-icon">📡</div>
+                        <div class="config-card-content">
+                            <h3>Firmware Update</h3>
+                            <p>Upload new firmware over-the-air for latest features</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Update Notification (hidden by default) -->
+        <div id="update-notification" class="card" style="display: none; border-left: 4px solid var(--warning); background: linear-gradient(90deg, rgba(245, 158, 11, 0.1), var(--bg-card));">
+            <div class="card-header">
+                <div class="card-icon">🚀</div>
+                <div>
+                    <h2 class="card-title">Firmware Update Available</h2>
+                    <p class="card-description">A newer version of BattleAura firmware is available</p>
+                </div>
+            </div>
+            <div id="update-details" style="margin-bottom: var(--space-4);">
+                <!-- Update details will be populated here -->
+            </div>
+            <div style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
+                <button onclick="downloadUpdate()" class="btn btn-warning" id="download-btn">
+                    📥 Download & Install Update
+                </button>
+                <button onclick="dismissUpdate()" class="btn btn-secondary">
+                    ✖️ Not Now
+                </button>
+            </div>
+        </div>
+
+        <!-- System Status moved to bottom -->
+        <div class="card system-status">
+            <div class="card-header">
+                <div class="card-icon">📊</div>
+                <div>
+                    <h2 class="card-title">System Status</h2>
+                    <p class="card-description">Device information and connectivity</p>
+                </div>
+            </div>
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-label">Version</div>
+                    <div class="status-value" id="version">Loading...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Status</div>
+                    <div class="status-value ready" id="status">READY</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Memory</div>
+                    <div class="status-value" id="memory">Loading...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Uptime</div>
+                    <div class="status-value" id="uptime">Loading...</div>
+                </div>
             </div>
             
-            <div class="control">
-                <label for="volume">🔊 Volume</label>
-                <input type="range" id="volume" min="0" max="30" value="{{VOLUME}}" oninput="setVolume(this.value)">
-                <span id="volume-value">{{VOLUME}}</span>
+            <!-- Manual update check button -->
+            <div style="margin-top: var(--space-4); text-align: center;">
+                <button onclick="checkForUpdates()" class="btn btn-secondary" id="check-updates-btn">
+                    🔍 Check for Updates
+                </button>
             </div>
-        </section>
+        </div>
+    </div>
 
-        <nav>
-            <a href="/config">⚙️ Configuration</a>
-            <a href="/status">📊 Status</a>
-        </nav>
-    </main>
-
+    <script src="/app.js"></script>
     <script>
-        function triggerEffect(type, effect) {
-            fetch('/effect/' + type + '/' + effect)
-                .catch(e => console.log('Effect trigger failed:', e));
-        }
-        
-        function setBrightness(value) {
-            document.getElementById('brightness-value').textContent = value;
-            fetch('/brightness/' + value)
-                .catch(e => console.log('Brightness failed:', e));
-        }
-        
-        function setVolume(value) {
-            document.getElementById('volume-value').textContent = value;
-            fetch('/volume/' + value)
-                .catch(e => console.log('Volume failed:', e));
-        }
+        // Initialize global controls when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadGlobalSettings();
+        });
     </script>
 </body>
 </html>

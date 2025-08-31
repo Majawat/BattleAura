@@ -800,6 +800,20 @@ void setupWebServer() {
         saveConfiguration();
         server.send(200, "text/plain", "Volume set to " + String(volume));
     });
+
+    // Global volume control endpoint (for frontend compatibility)
+    server.on("/volume", HTTP_GET, []() {
+        if (!server.hasArg("value")) {
+            server.send(400, "text/plain", F("Missing volume value (0-30)"));
+            return;
+        }
+        
+        uint8_t volume = constrain(server.arg("value").toInt(), 0, 30);
+        setAudioVolume(volume);
+        config.volume = volume;
+        saveConfiguration();
+        server.send(200, "text/plain", "Volume set to " + String(volume));
+    });
     
     server.on("/audio/status", HTTP_GET, []() {
         String status = "{";
