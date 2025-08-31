@@ -429,7 +429,7 @@ void setupWebServer() {
     server.on("/", HTTP_GET, handleRoot);
     
     // Embedded static file handlers
-    server.on("/styles.css", HTTP_GET, []() { handleEmbeddedFile("/styles.css"); });
+    server.on("/style.css", HTTP_GET, []() { handleEmbeddedFile("/style.css"); });
     server.on("/app.js", HTTP_GET, []() { handleEmbeddedFile("/app.js"); });
     server.on("/config.html", HTTP_GET, []() { handleEmbeddedFile("/config.html"); });
     server.on("/update.html", HTTP_GET, []() { handleEmbeddedFile("/update.html"); });
@@ -575,8 +575,9 @@ void setupWebServer() {
     server.on("/config", HTTP_GET, []() { handleEmbeddedFile("/config.html"); });
     server.on("/config", HTTP_POST, handleConfigSave);
     
-    // OTA update page
+    // OTA update page  
     server.on("/update", HTTP_GET, []() { handleEmbeddedFile("/update.html"); });
+    server.on("/status", HTTP_GET, []() { handleEmbeddedFile("/system.html"); });
     server.on("/update", HTTP_POST, []() {
         server.send(200, F("text/html; charset=utf-8"), F(
             "<html><body style='font-family:Arial; background:#1a1a2e; color:white; text-align:center; padding:50px;'>"
