@@ -12,7 +12,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.11.0-alpha";
+const char* VERSION = "0.11.1-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -363,6 +363,13 @@ void setupWiFi() {
 
 bool setupWiFiStation() {
     Serial.printf("Attempting to connect to WiFi: %s\n", config.wifiSSID.c_str());
+    
+    // Set hostname for DHCP before connecting
+    String hostname = config.deviceName.length() > 0 ? config.deviceName : "battleaura";
+    hostname.toLowerCase();
+    hostname.replace(" ", "-");
+    WiFi.setHostname(hostname.c_str());
+    Serial.printf("Setting WiFi hostname: %s\n", hostname.c_str());
     
     WiFi.mode(WIFI_STA);
     WiFi.begin(config.wifiSSID.c_str(), config.wifiPassword.c_str());
