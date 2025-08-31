@@ -173,6 +173,45 @@
     </main>
 
     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAudioFiles();
+            refreshAudioStatus();
+        });
+        
+        async function loadAudioFiles() {
+            try {
+                const response = await fetch('/api/audio/files');
+                const data = await response.json();
+                const files = data.files || [];
+                
+                // Update all audio select elements
+                const audioSelects = document.querySelectorAll('select[name$="_audio"]');
+                audioSelects.forEach(select => {
+                    const currentValue = select.value;
+                    
+                    // Clear existing options except "None"
+                    select.innerHTML = '<option value="0">None</option>';
+                    
+                    // Add options for each file
+                    files.forEach(file => {
+                        const option = document.createElement('option');
+                        option.value = file.number;
+                        option.textContent = `${file.filename} - ${file.description}`;
+                        
+                        // Restore previous selection if it matches
+                        if (file.number.toString() === currentValue) {
+                            option.selected = true;
+                        }
+                        
+                        select.appendChild(option);
+                    });
+                });
+                
+            } catch (error) {
+                console.error('Failed to load audio files:', error);
+            }
+        }
+        
         function testEffect(effect) {
             fetch('/test/effect/' + effect)
                 .catch(e => console.log('Test failed:', e));

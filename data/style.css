@@ -552,6 +552,205 @@ body {
     to { transform: rotate(360deg); }
 }
 
+/* Individual Pin Controls */
+.pin-controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--space-4);
+}
+
+.pin-control-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    transition: all 0.2s ease;
+}
+
+.pin-control-card:hover {
+    border-color: var(--border-accent);
+    transform: translateY(-1px);
+}
+
+.pin-control-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--space-3);
+    gap: var(--space-3);
+}
+
+.pin-emoji {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.pin-info {
+    flex: 1;
+}
+
+.pin-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.pin-details {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.pin-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+}
+
+.pin-status.on {
+    background: rgba(34, 197, 94, 0.2);
+    color: var(--success);
+}
+
+.pin-status.off {
+    background: rgba(107, 114, 128, 0.2);
+    color: var(--text-secondary);
+}
+
+/* Pin Configuration Page */
+.pin-config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: var(--space-4);
+}
+
+.pin-config-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    transition: all 0.2s ease;
+}
+
+.pin-config-card:hover {
+    border-color: var(--border-accent);
+}
+
+.pin-config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-3);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+.pin-config-header h3 {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+}
+
+.checkbox-label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.pin-config-fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.form-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.form-row label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.form-row input, .form-row select {
+    padding: var(--space-2);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.form-row input:focus, .form-row select:focus {
+    outline: none;
+    border-color: var(--border-accent);
+    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.1);
+}
+
+.brightness-control {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.brightness-control input[type="range"] {
+    flex: 1;
+    height: 6px;
+    background: var(--bg-primary);
+    border-radius: var(--radius-sm);
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.brightness-control input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+}
+
+.brightness-control span {
+    min-width: 40px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-align: right;
+}
+
+.pin-test-button {
+    margin-top: var(--space-2);
+}
+
+.form-actions {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+    flex-wrap: wrap;
+}
+
+.pin-effects {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.btn-sm {
+    padding: var(--space-1) var(--space-2);
+    font-size: 0.8rem;
+    min-height: 28px;
+}
+
 /* Utility Classes */
 .text-center { text-align: center; }
 .text-primary { color: var(--text-primary); }

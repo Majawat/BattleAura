@@ -3,32 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pin Configuration - {{DEVICE_NAME}}</title>
+    <title>Pin Configuration - BattleAura</title>
     <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <main>
-        <header>
-            <h1>Pin Configuration</h1>
+    <div class="container">
+        <header class="hero-compact">
+            <h1>🔌 Pin Configuration</h1>
+            <p class="hero-subtitle">Configure GPIO pins for your miniature</p>
             <nav><a href="/config">← Back to Config</a></nav>
         </header>
 
-        <form method="POST" action="/config/pins">
-            <section class="pins-config">
-                <h2>LED Pin Assignments</h2>
-                <p>Configure each pin slot for your specific miniature setup</p>
-                
-                <div class="pins-grid">
-                    {{PIN_SLOTS}}
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">🔌</div>
+                <div>
+                    <h2 class="card-title">Pin Assignments</h2>
+                    <p class="card-description">Configure GPIO pins, types, and settings</p>
                 </div>
-                
-                <div class="form-actions">
-                    <button type="submit">💾 Save Pin Configuration</button>
-                    <button type="button" onclick="location.reload()">🔄 Reset Changes</button>
-                    <button type="button" onclick="testAllPins()">⚡ Test All Pins</button>
-                </div>
-            </section>
-        </form>
+            </div>
+            
+            <div id="pin-config-slots">
+                <div class="loading">Loading pin configuration...</div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" onclick="savePinConfiguration()" class="btn btn-primary">💾 Save Configuration</button>
+                <button type="button" onclick="loadPinConfiguration()" class="btn btn-secondary">🔄 Reset Changes</button>
+                <button type="button" onclick="testAllPins()" class="btn btn-warning">⚡ Test All Pins</button>
+            </div>
+        </div>
 
         <section class="pin-info">
             <h2>Pin Configuration Guide</h2>
@@ -57,6 +61,104 @@
     </main>
 
     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPinConfiguration();
+        });
+        
+        async function loadPinConfiguration() {
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                generatePinConfigUI(config.pins || []);
+            } catch (error) {
+                console.error('Failed to load pin configuration:', error);
+                document.getElementById('pin-config-slots').innerHTML = 
+                    '<p class="text-secondary">Failed to load pin configuration</p>';
+            }
+        }
+        
+        function generatePinConfigUI(pins) {
+            const container = document.getElementById('pin-config-slots');
+            let html = '<div class="pin-config-grid">';
+            
+            for (let i = 0; i < 10; i++) { // Show 10 pin slots
+                const pin = pins[i] || { gpio: i, enabled: false, name: '', type: '', group: '', mode: 0, brightness: 255, ledCount: 10 };
+                
+                html += `
+                    <div class="pin-config-card" data-pin="${i}">
+                        <div class="pin-config-header">
+                            <h3>Pin ${i}</h3>
+                            <label class="checkbox-container">
+                                <input type="checkbox" id="enabled-${i}" ${pin.enabled ? 'checked' : ''} 
+                                       onchange="togglePinConfig(${i}, this.checked)">
+                                <span class="checkbox-label">Enabled</span>
+                            </label>
+                        </div>
+                        
+                        <div class="pin-config-fields" id="fields-${i}" style="display: ${pin.enabled ? 'block' : 'none'}">
+                            <div class="form-row">
+                                <label for="gpio-${i}">GPIO Pin:</label>
+                                <input type="number" id="gpio-${i}" value="${pin.gpio}" min="0" max="21">
+                            </div>
+                            
+                            <div class="form-row">
+                                <label for="name-${i}">Pin Name:</label>
+                                <input type="text" id="name-${i}" value="${pin.name}" placeholder="e.g. Candles, Engine1">
+                            </div>
+                            
+                            <div class="form-row">
+                                <label for="type-${i}">Pin Type:</label>
+                                <input type="text" id="type-${i}" value="${pin.type}" placeholder="e.g. Candle, Engine, Weapon, Console">
+                            </div>
+                            
+                            <div class="form-row">
+                                <label for="group-${i}">Group:</label>
+                                <input type="text" id="group-${i}" value="${pin.group}" placeholder="e.g. Candles, Engine1, Weapons">
+                            </div>
+                            
+                            <div class="form-row">
+                                <label for="mode-${i}">Pin Mode:</label>
+                                <select id="mode-${i}" onchange="toggleLedCountField(${i}, this.value)">
+                                    <option value="0" ${pin.mode === 0 ? 'selected' : ''}>Disabled</option>
+                                    <option value="1" ${pin.mode === 1 ? 'selected' : ''}>Digital (On/Off)</option>
+                                    <option value="2" ${pin.mode === 2 ? 'selected' : ''}>PWM (Brightness)</option>
+                                    <option value="3" ${pin.mode === 3 ? 'selected' : ''}>WS2812B (RGB Strip)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-row">
+                                <label for="brightness-${i}">Max Brightness:</label>
+                                <div class="brightness-control">
+                                    <input type="range" id="brightness-${i}" min="0" max="255" value="${pin.brightness}" 
+                                           oninput="updateBrightnessDisplay(${i}, this.value)">
+                                    <span id="brightness-display-${i}">${Math.round(pin.brightness/255*100)}%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row" id="ledCount-${i}" style="display: ${pin.mode === 3 ? 'block' : 'none'}">
+                                <label for="ledcount-${i}">LED Count (WS2812B):</label>
+                                <input type="number" id="ledcount-${i}" value="${pin.ledCount}" min="1" max="100">
+                            </div>
+                            
+                            <div class="pin-test-button">
+                                <button type="button" onclick="testPin(${i})" class="btn btn-sm btn-secondary">⚡ Test Pin</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        function togglePinConfig(pinIndex, enabled) {
+            const fields = document.getElementById('fields-' + pinIndex);
+            if (fields) {
+                fields.style.display = enabled ? 'block' : 'none';
+            }
+        }
+        
         function toggleLedCountField(pinIndex, mode) {
             const ledCountRow = document.getElementById('ledCount' + pinIndex);
             if (ledCountRow) {
@@ -64,16 +166,64 @@
             }
         }
         
+        function updateBrightnessDisplay(pinIndex, value) {
+            const display = document.getElementById('brightness-display-' + pinIndex);
+            if (display) {
+                display.textContent = Math.round(value/255*100) + '%';
+            }
+        }
+        
+        async function savePinConfiguration() {
+            const pins = [];
+            
+            for (let i = 0; i < 10; i++) {
+                const enabled = document.getElementById('enabled-' + i).checked;
+                
+                pins.push({
+                    gpio: parseInt(document.getElementById('gpio-' + i).value) || i,
+                    enabled: enabled,
+                    name: document.getElementById('name-' + i).value,
+                    type: document.getElementById('type-' + i).value,
+                    group: document.getElementById('group-' + i).value,
+                    mode: parseInt(document.getElementById('mode-' + i).value),
+                    brightness: parseInt(document.getElementById('brightness-' + i).value),
+                    ledCount: parseInt(document.getElementById('ledcount-' + i).value) || 10
+                });
+            }
+            
+            try {
+                const response = await fetch('/config/pins', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pins: pins })
+                });
+                
+                if (response.ok) {
+                    showFeedback('Pin configuration saved!', 'success');
+                } else {
+                    showFeedback('Failed to save configuration', 'error');
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                showFeedback('Save failed', 'error');
+            }
+        }
+        
         function testAllPins() {
             fetch('/api/test-pins', { method: 'POST' })
-                .then(() => console.log('Testing all pins'))
-                .catch(e => console.log('Pin test failed:', e));
+                .then(() => showFeedback('Testing all pins...', 'success'))
+                .catch(e => showFeedback('Pin test failed', 'error'));
         }
         
         function testPin(pinIndex) {
             fetch('/api/test-pin/' + pinIndex, { method: 'POST' })
-                .then(() => console.log('Testing pin ' + pinIndex))
-                .catch(e => console.log('Pin test failed:', e));
+                .then(() => showFeedback('Testing pin ' + pinIndex, 'success'))
+                .catch(e => showFeedback('Pin test failed', 'error'));
+        }
+        
+        function showFeedback(message, type) {
+            // Simple feedback display - could be improved
+            alert(message);
         }
     </script>
 </body>

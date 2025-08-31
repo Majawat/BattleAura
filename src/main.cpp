@@ -1376,8 +1376,54 @@ void setupWebServer() {
         String response = "{";
         response += "\"enabled\":" + String(config.audioEnabled ? "true" : "false") + ",";
         response += "\"ready\":" + String(isAudioReady() ? "true" : "false") + ",";
-        response += "\"fileCount\":9";
+        
+        // Get actual file count from DFPlayer
+        int actualFileCount = 0;
+        if (config.audioEnabled && audioInitialized) {
+            actualFileCount = dfPlayer.readFileCounts();
+            if (actualFileCount < 0) {
+                actualFileCount = 0; // Handle error case
+            }
+        }
+        response += "\"fileCount\":" + String(actualFileCount);
         response += "}";
+        server.send(200, "application/json", response);
+    });
+    
+    // Audio files list endpoint
+    server.on("/api/audio/files", HTTP_GET, []() {
+        JsonDocument doc;
+        JsonArray files = doc["files"].to<JsonArray>();
+        
+        if (config.audioEnabled && audioInitialized) {
+            int fileCount = dfPlayer.readFileCounts();
+            if (fileCount > 0) {
+                // Generate file list based on actual count
+                for (int i = 1; i <= fileCount && i <= 255; i++) {
+                    JsonObject file = files.add<JsonObject>();
+                    file["number"] = i;
+                    file["filename"] = String("") + (i < 10 ? "000" : i < 100 ? "00" : i < 1000 ? "0" : "") + String(i) + ".mp3";
+                    
+                    // Add known descriptions for common files
+                    String description = "Audio File " + String(i);
+                    switch (i) {
+                        case 1: description = "Tank Idle"; break;
+                        case 2: description = "Tank Idle 2"; break;
+                        case 3: description = "Machine Gun"; break;
+                        case 4: description = "Flamethrower"; break;
+                        case 5: description = "Taking Hits"; break;
+                        case 6: description = "Engine Revving"; break;
+                        case 7: description = "Explosion"; break;
+                        case 8: description = "Rocket Launcher"; break;
+                        case 9: description = "Kill Confirmed"; break;
+                    }
+                    file["description"] = description;
+                }
+            }
+        }
+        
+        String response;
+        serializeJson(doc, response);
         server.send(200, "application/json", response);
     });
     
