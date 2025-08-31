@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System - {{DEVICE_NAME}}</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <main>
+        <header>
+            <h1>System Information</h1>
+            <nav><a href="/config">← Back to Config</a></nav>
+        </header>
+
+        <section class="system-info">
+            <h2>System Status</h2>
+            
+            <div class="status-grid">
+                <div class="status-item">
+                    <label>Firmware Version:</label>
+                    <span>{{FIRMWARE_VERSION}}</span>
+                </div>
+                
+                <div class="status-item">
+                    <label>Flash Usage:</label>
+                    <span>{{FLASH_USAGE}}%</span>
+                </div>
+                
+                <div class="status-item">
+                    <label>RAM Usage:</label>
+                    <span>{{RAM_USAGE}}%</span>
+                </div>
+                
+                <div class="status-item">
+                    <label>WiFi Status:</label>
+                    <span>{{WIFI_STATUS}}</span>
+                </div>
+                
+                <div class="status-item">
+                    <label>Audio System:</label>
+                    <span>{{AUDIO_STATUS}}</span>
+                </div>
+                
+                <div class="status-item">
+                    <label>Uptime:</label>
+                    <span id="uptime">{{UPTIME}}</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="firmware-update">
+            <h2>Firmware Update</h2>
+            
+            <div class="update-status">
+                <div class="status-item">
+                    <label>Current Version:</label>
+                    <span>{{FIRMWARE_VERSION}}</span>
+                </div>
+                
+                <div class="status-item">
+                    <label>Latest Available:</label>
+                    <span id="latest-version">Checking...</span>
+                </div>
+            </div>
+            
+            <div class="update-actions">
+                <button type="button" onclick="checkUpdate()">🔄 Check for Updates</button>
+                <button type="button" onclick="location.href='/update'">📁 Manual Update</button>
+            </div>
+        </section>
+
+        <section class="diagnostics">
+            <h2>Diagnostics</h2>
+            
+            <div class="diagnostic-actions">
+                <button type="button" onclick="runDiagnostics()">🔍 Run Diagnostics</button>
+                <button type="button" onclick="exportLogs()">📄 Export Logs</button>
+                <button type="button" onclick="clearLogs()">🗑️ Clear Logs</button>
+            </div>
+            
+            <div id="diagnostic-results"></div>
+        </section>
+    </main>
+
+    <script>
+        function checkUpdate() {
+            document.getElementById('latest-version').textContent = 'Checking...';
+            
+            fetch('/api/check-update')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('latest-version').textContent = data.latestVersion;
+                    if (data.updateAvailable) {
+                        if (confirm('Update available! Download and install?')) {
+                            installUpdate();
+                        }
+                    }
+                })
+                .catch(e => {
+                    document.getElementById('latest-version').textContent = 'Check failed';
+                    console.log('Update check failed:', e);
+                });
+        }
+        
+        function installUpdate() {
+            fetch('/api/install-update', { method: 'POST' })
+                .then(() => {
+                    alert('Update started. Device will restart when complete.');
+                })
+                .catch(e => console.log('Update failed:', e));
+        }
+        
+        function runDiagnostics() {
+            document.getElementById('diagnostic-results').innerHTML = 'Running diagnostics...';
+            
+            fetch('/api/diagnostics')
+                .then(r => r.json())
+                .then(data => {
+                    let html = '<h3>Diagnostic Results</h3><ul>';
+                    data.results.forEach(result => {
+                        html += `<li><strong>${result.test}:</strong> ${result.status}</li>`;
+                    });
+                    html += '</ul>';
+                    document.getElementById('diagnostic-results').innerHTML = html;
+                })
+                .catch(e => {
+                    document.getElementById('diagnostic-results').innerHTML = 'Diagnostics failed';
+                    console.log('Diagnostics failed:', e);
+                });
+        }
+        
+        function exportLogs() {
+            fetch('/api/logs')
+                .then(r => r.blob())
+                .then(blob => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'battlearua-logs.txt';
+                    a.click();
+                })
+                .catch(e => console.log('Log export failed:', e));
+        }
+        
+        function clearLogs() {
+            if (confirm('Clear all diagnostic logs?')) {
+                fetch('/api/logs', { method: 'DELETE' })
+                    .then(() => alert('Logs cleared'))
+                    .catch(e => console.log('Log clear failed:', e));
+            }
+        }
+        
+        // Auto-refresh uptime every minute
+        setInterval(() => {
+            fetch('/api/uptime')
+                .then(r => r.text())
+                .then(uptime => document.getElementById('uptime').textContent = uptime)
+                .catch(e => console.log('Uptime refresh failed:', e));
+        }, 60000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Effects & Audio - {{DEVICE_NAME}}</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <main>
+        <header>
+            <h1>Effects & Audio Configuration</h1>
+            <nav><a href="/config">← Back to Config</a></nav>
+        </header>
+
+        <form method="POST" action="/config/effects">
+            <section class="effects-config">
+                <h2>Effect Mappings</h2>
+                <p>Configure which effects trigger on which pin types, with optional audio</p>
+                
+                <table class="effects-table">
+                    <thead>
+                        <tr>
+                            <th>Effect</th>
+                            <th>Type</th>
+                            <th>Pin Types</th>
+                            <th>Audio File</th>
+                            <th>Duration</th>
+                            <th>Enabled</th>
+                            <th>Test</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Engine Idle</td>
+                            <td>Ambient</td>
+                            <td>
+                                <select name="engine_idle_pins" multiple>
+                                    <option value="Engine">Engine</option>
+                                    <option value="[All]">[All Types]</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="engine_idle_audio">
+                                    <option value="0">None</option>
+                                    <option value="1">0001</option>
+                                    <option value="2" selected>0002</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="engine_idle_duration">
+                                    <option value="audio">Audio Length</option>
+                                    <option value="loop" selected>Loop</option>
+                                    <option value="custom">Custom Time</option>
+                                </select>
+                            </td>
+                            <td><input type="checkbox" name="engine_idle_enabled" checked></td>
+                            <td><button type="button" onclick="testEffect('engine_idle')">Test</button></td>
+                        </tr>
+                        
+                        <tr>
+                            <td>Engine Rev</td>
+                            <td>Active</td>
+                            <td>
+                                <select name="engine_rev_pins" multiple>
+                                    <option value="Engine" selected>Engine</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="engine_rev_audio">
+                                    <option value="0">None</option>
+                                    <option value="6" selected>0006</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="engine_rev_duration">
+                                    <option value="audio" selected>Audio Length</option>
+                                    <option value="custom">Custom Time</option>
+                                </select>
+                            </td>
+                            <td><input type="checkbox" name="engine_rev_enabled" checked></td>
+                            <td><button type="button" onclick="testEffect('engine_rev')">Test</button></td>
+                        </tr>
+                        
+                        <tr>
+                            <td>Taking Damage</td>
+                            <td>Active</td>
+                            <td>
+                                <select name="damage_pins" multiple>
+                                    <option value="[All]" selected>[All Types]</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="damage_audio">
+                                    <option value="0">None</option>
+                                    <option value="5" selected>0005</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="damage_duration">
+                                    <option value="audio" selected>Audio Length</option>
+                                    <option value="custom">Custom Time</option>
+                                </select>
+                            </td>
+                            <td><input type="checkbox" name="damage_enabled" checked></td>
+                            <td><button type="button" onclick="testEffect('damage')">Test</button></td>
+                        </tr>
+                        
+                        <tr>
+                            <td>Machine Gun</td>
+                            <td>Active</td>
+                            <td>
+                                <select name="machinegun_pins" multiple>
+                                    <option value="MachineGun" selected>MachineGun</option>
+                                    <option value="Weapon">Weapon</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="machinegun_audio">
+                                    <option value="0">None</option>
+                                    <option value="3" selected>0003</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="machinegun_duration">
+                                    <option value="audio" selected>Audio Length</option>
+                                    <option value="custom">Custom Time</option>
+                                </select>
+                            </td>
+                            <td><input type="checkbox" name="machinegun_enabled" checked></td>
+                            <td><button type="button" onclick="testEffect('machinegun')">Test</button></td>
+                        </tr>
+                        
+                        <tr>
+                            <td>Destroyed</td>
+                            <td>Active</td>
+                            <td>
+                                <select name="destroyed_pins" multiple>
+                                    <option value="[All]" selected>[All Types]</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="destroyed_audio">
+                                    <option value="0">None</option>
+                                    <option value="7" selected>0007</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="destroyed_duration">
+                                    <option value="sleep" selected>Audio + Deep Sleep</option>
+                                </select>
+                            </td>
+                            <td><input type="checkbox" name="destroyed_enabled" checked></td>
+                            <td><button type="button" onclick="testEffect('destroyed')">Test</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="form-actions">
+                    <button type="submit">💾 Save Effects Configuration</button>
+                    <button type="button" onclick="location.reload()">🔄 Reset Changes</button>
+                </div>
+            </section>
+        </form>
+
+        <section class="audio-status">
+            <h2>Audio System Status</h2>
+            <div id="audio-status">
+                {{AUDIO_STATUS}}
+            </div>
+            <button type="button" onclick="refreshAudioStatus()">🔄 Refresh Status</button>
+        </section>
+    </main>
+
+    <script>
+        function testEffect(effect) {
+            fetch('/test/effect/' + effect)
+                .catch(e => console.log('Test failed:', e));
+        }
+        
+        function refreshAudioStatus() {
+            fetch('/api/audio/status')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('audio-status').innerHTML = 
+                        `<div>System: ${data.enabled ? 'Enabled' : 'Disabled'}</div>
+                         <div>Ready: ${data.ready ? 'Yes' : 'No'}</div>
+                         <div>Files: ${data.fileCount || 0}</div>`;
+                })
+                .catch(e => console.log('Status refresh failed:', e));
+        }
+    </script>
+</body>
+</html>

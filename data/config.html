@@ -3,297 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BattleAura - Configuration</title>
-    <link rel="stylesheet" href="/styles.css">
+    <title>Configuration - {{DEVICE_NAME}}</title>
+    <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header class="text-center" style="margin-bottom: var(--space-6);">
-            <h1 style="font-size: 2rem; margin-bottom: var(--space-3);">⚙️ Device Configuration</h1>
-            <p><a href="/" class="link-primary">← Back to Control Panel</a></p>
-            <p class="text-secondary">Configure pins by type and group for modular effect control</p>
+    <main>
+        <header>
+            <h1>Configuration</h1>
+            <nav><a href="/">← Back to Control</a></nav>
         </header>
 
-        <form id="configForm" method="POST">
-            <!-- System Settings -->
-            <div class="form-container">
-                <div class="card-header">
-                    <div class="card-icon">🔧</div>
-                    <div>
-                        <h2 class="card-title">System Settings</h2>
-                        <p class="card-description">Basic device configuration</p>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <label class="form-label">Device Name:</label>
-                    <input type="text" name="deviceName" id="deviceName" class="form-input" maxlength="32" placeholder="Tank, Beast, Dreadnought...">
-                </div>
-                <div class="form-row">
-                    <label class="form-label">Audio Volume:</label>
-                    <div style="display: flex; align-items: center; gap: var(--space-3);">
-                        <input type="range" name="volume" id="volume" min="0" max="30" style="flex: 1;" oninput="document.getElementById('volDisplay').innerText = this.value">
-                        <span class="brightness-value" id="volDisplay">15</span>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <label class="form-label">Audio Enabled:</label>
-                    <input type="checkbox" name="audioEnabled" id="audioEnabled">
-                </div>
-            </div>
-
-            <!-- WiFi Settings -->
-            <div class="form-container">
-                <div class="card-header">
-                    <div class="card-icon">📡</div>
-                    <div>
-                        <h2 class="card-title">WiFi Settings</h2>
-                        <p class="card-description">Network connectivity configuration</p>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <label class="form-label">WiFi SSID:</label>
-                    <input type="text" name="wifiSSID" id="wifiSSID" class="form-input" maxlength="32">
-                </div>
-                <div class="form-row">
-                    <label class="form-label">WiFi Password:</label>
-                    <input type="password" name="wifiPassword" id="wifiPassword" class="form-input" maxlength="64">
-                </div>
-                <div class="form-row">
-                    <label class="form-label">WiFi Enabled:</label>
-                    <input type="checkbox" name="wifiEnabled" id="wifiEnabled">
-                </div>
-            </div>
-
-            <!-- Audio System Settings -->
-            <div class="form-container">
-                <div class="card-header">
-                    <div class="card-icon">🎵</div>
-                    <div>
-                        <h2 class="card-title">Audio System</h2>
-                        <p class="card-description">DFPlayer Mini audio configuration</p>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <label class="form-label">Audio System Enabled:</label>
-                    <input type="checkbox" name="audioEnabled" id="audioEnabled">
-                    <div class="form-help">
-                        Enable DFPlayer Mini for sound effects. Uses GPIO20/21 (disable to free these pins for LEDs)
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pin Configuration -->
-            <div class="form-container">
-                <div class="card-header">
-                    <div class="card-icon">🎯</div>
-                    <div>
-                        <h2 class="card-title">Modular Pin Configuration</h2>
-                        <p class="card-description">Configure each pin with type and group for automatic effect targeting</p>
-                    </div>
-                </div>
-                <p class="text-secondary" style="font-size: 0.9rem; margin-bottom: var(--space-5);">
-                    Same firmware works across different miniatures through configuration.
-                </p>
-                <div id="pinConfigs">
-                    <!-- Pin configs will be loaded here by JavaScript -->
-                </div>
-            </div>
-
-            <div class="text-center">
-                <input type="submit" value="💾 Save Configuration" class="btn btn-primary">
-            </div>
-        </form>
-        
-        <div class="text-center" style="margin-top: var(--space-5);">
-            <button onclick="restartDevice()" class="btn btn-warning">
-                🔄 Restart Device
-            </button>
-            <p class="text-secondary" style="font-size: 0.85rem; margin-top: var(--space-2);">Required to apply WiFi changes</p>
-        </div>
-
-        <div class="card" style="margin-top: var(--space-6);">
-            <h3 style="margin-bottom: var(--space-4);">💡 Configuration Tips</h3>
-            <ul style="color: var(--text-secondary); line-height: 1.6;">
-                <li><strong>Types</strong> define what the pin controls (Engine, Weapon, etc.)</li>
-                <li><strong>Groups</strong> allow multiple pins of same type (Engine1, Engine2)</li>
-                <li><strong>Effects</strong> will target types, not individual pins</li>
-                <li><strong>Same firmware</strong> works for Tank, Beast, Dreadnought through config</li>
-            </ul>
-        </div>
-    </div>
-
-    <script src="/app.js"></script>
-    <script>
-        // Configuration page specific JavaScript
-        document.addEventListener('DOMContentLoaded', function() {
-            loadConfiguration();
-        });
-
-        function loadConfiguration() {
-            fetch('/api/config')
-                .then(response => response.json())
-                .then(config => {
-                    // Populate system settings
-                    document.getElementById('deviceName').value = config.deviceName || '';
-                    document.getElementById('volume').value = config.volume || 15;
-                    document.getElementById('volDisplay').textContent = config.volume || 15;
-                    document.getElementById('audioEnabled').checked = config.audioEnabled || false;
-                    document.getElementById('wifiSSID').value = config.wifiSSID || '';
-                    document.getElementById('wifiPassword').value = config.wifiPassword || '';
-                    document.getElementById('wifiEnabled').checked = config.wifiEnabled || false;
-
-                    // Generate pin configuration forms
-                    generatePinConfigs(config.pins || []);
-                })
-                .catch(error => {
-                    console.error('Error loading configuration:', error);
-                });
-        }
-
-        function generatePinConfigs(pins) {
-            const container = document.getElementById('pinConfigs');
-            container.innerHTML = '';
-
-            pins.forEach((pin, index) => {
-                const pinDiv = document.createElement('div');
-                pinDiv.className = 'pin-slot';
+        <section class="config-sections">
+            <h2>Configuration Areas</h2>
+            
+            <div class="config-grid">
+                <a href="/config/device" class="config-card">
+                    <h3>📡 Device Settings</h3>
+                    <p>WiFi, hostname, and system settings</p>
+                </a>
                 
-                let typeDisplay = '';
-                if (pin.enabled && pin.type) {
-                    typeDisplay = ` - <span class="text-accent">${pin.type}${pin.group ? ` (${pin.group})` : ''}</span>`;
-                }
-
-                pinDiv.innerHTML = `
-                    <div class="pin-slot-header">
-                        <h4 class="pin-slot-title">🔌 Pin Slot ${index + 1}${typeDisplay}</h4>
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-4);">
-                        <div class="form-row">
-                            <label class="form-label">GPIO Pin:</label>
-                            <input type="number" name="gpio${index}" value="${pin.gpio || 0}" min="0" max="21" class="form-input">
-                        </div>
-                        <div class="form-row">
-                            <label class="form-label">Pin Mode:</label>
-                            <select name="mode${index}" class="form-input" onchange="toggleLedCountField(${index}, this.value)">
-                                <option value="0" ${pin.mode === 0 ? 'selected' : ''}>Disabled</option>
-                                <option value="1" ${pin.mode === 1 ? 'selected' : ''}>Digital Output</option>
-                                <option value="2" ${pin.mode === 2 ? 'selected' : ''}>PWM Output</option>
-                                <option value="3" ${pin.mode === 3 ? 'selected' : ''}>WS2812B RGB</option>
-                                <option value="4" ${pin.mode === 4 ? 'selected' : ''}>Digital Input</option>
-                                <option value="5" ${pin.mode === 5 ? 'selected' : ''}>Analog Input</option>
-                            </select>
-                        </div>
-                        <div class="form-row">
-                            <label class="form-label">Pin Name:</label>
-                            <input type="text" name="name${index}" value="${pin.name || ''}" maxlength="16" placeholder="Descriptive name..." class="form-input">
-                        </div>
-                        <div class="form-row">
-                            <label class="form-label">Enabled:</label>
-                            <input type="checkbox" name="enabled${index}" ${pin.enabled ? 'checked' : ''}>
-                        </div>
-                        <div class="form-row">
-                            <label class="form-label">Pin Type:</label>
-                            <select name="type${index}" class="form-input" onchange="updateTypeDescription(${index}, this.value)">
-                                <option value="">Select Type...</option>
-                                <option value="Engine" ${pin.type === 'Engine' ? 'selected' : ''}>Engine (idle, rev effects)</option>
-                                <option value="MachineGun" ${pin.type === 'MachineGun' ? 'selected' : ''}>Machine Gun (burst fire effect)</option>
-                                <option value="Flamethrower" ${pin.type === 'Flamethrower' ? 'selected' : ''}>Flamethrower (flame whoosh effect)</option>
-                                <option value="RocketLauncher" ${pin.type === 'RocketLauncher' ? 'selected' : ''}>Rocket Launcher (rocket launch effect)</option>
-                                <option value="MainCannon" ${pin.type === 'MainCannon' ? 'selected' : ''}>Main Cannon (cannon blast effect)</option>
-                                <option value="Candle" ${pin.type === 'Candle' ? 'selected' : ''}>Candle (flicker, bright effects)</option>
-                                <option value="Console" ${pin.type === 'Console' ? 'selected' : ''}>Console (data scroll, alert pulse)</option>
-                                <option value="Damage" ${pin.type === 'Damage' ? 'selected' : ''}>Damage (hit sparks, system failure)</option>
-                                <option value="Ambient" ${pin.type === 'Ambient' ? 'selected' : ''}>Ambient (general lighting effects)</option>
-                                <option value="Custom" ${pin.type && !['Engine','MachineGun','Flamethrower','RocketLauncher','MainCannon','Candle','Console','Damage','Ambient'].includes(pin.type) ? 'selected' : ''}>Custom Type</option>
-                            </select>
-                            <input type="text" name="customType${index}" id="customType${index}" value="${!['Engine','MachineGun','Flamethrower','RocketLauncher','MainCannon','Candle','Console','Damage','Ambient',''].includes(pin.type || '') ? pin.type : ''}" maxlength="20" placeholder="Enter custom type..." class="form-input" style="display: ${!['Engine','MachineGun','Flamethrower','RocketLauncher','MainCannon','Candle','Console','Damage','Ambient',''].includes(pin.type || '') ? 'block' : 'none'}; margin-top: var(--space-2);">
-                        </div>
-                        <div class="form-row">
-                            <label class="form-label">Pin Group:</label>
-                            <input type="text" name="group${index}" value="${pin.group || ''}" maxlength="20" placeholder="Engine1, Weapon1, Candles..." class="form-input">
-                        </div>
-                        <div class="form-row">
-                            <label class="form-label">Brightness:</label>
-                            <div style="display: flex; align-items: center; gap: var(--space-3);">
-                                <input type="range" name="brightness${index}" value="${pin.brightness || 255}" min="0" max="255" style="flex: 1;" oninput="document.getElementById('brightness${index}').innerText = this.value">
-                                <span class="brightness-value" id="brightness${index}">${pin.brightness || 255}</span>
-                            </div>
-                        </div>
-                        <div class="form-row" id="ledCountRow${index}" style="display: ${pin.mode == 3 ? 'flex' : 'none'}; flex-direction: column;">
-                            <label class="form-label">LED Count:</label>
-                            <input type="number" name="ledCount${index}" value="${pin.ledCount || 10}" min="1" max="100" placeholder="For WS2812B strips" class="form-input">
-                        </div>
-                    </div>
-                    <div class="text-secondary" style="font-size: 0.8rem; margin-top: var(--space-3);" id="typeDescription${index}">Effect buttons that will appear on main page based on configured pin types</div>
-                    <div class="text-secondary" style="font-size: 0.8rem; margin-top: var(--space-1);">Examples: Engine1, Engine2, Weapon1, Weapon2, MainCandles, SpotLights</div>
-                    <div class="text-secondary" style="font-size: 0.8rem; margin-top: var(--space-1);" id="ledCountHelp${index}" style="display: ${pin.mode == 3 ? 'block' : 'none'};">Number of LEDs in strip (WS2812B only)</div>
-                `;
+                <a href="/config/pins" class="config-card">
+                    <h3>🔌 Pin Configuration</h3>
+                    <p>LED pin assignments and settings</p>
+                </a>
                 
-                container.appendChild(pinDiv);
-            });
-        }
-        
-        function toggleLedCountField(pinIndex, modeValue) {
-            const ledCountRow = document.getElementById(`ledCountRow${pinIndex}`);
-            const ledCountHelp = document.getElementById(`ledCountHelp${pinIndex}`);
-            const isWS2812B = (modeValue == 3); // WS2812B mode
-            
-            if (ledCountRow) {
-                ledCountRow.style.display = isWS2812B ? 'flex' : 'none';
-            }
-            if (ledCountHelp) {
-                ledCountHelp.style.display = isWS2812B ? 'block' : 'none';
-            }
-        }
-
-        function updateTypeDescription(pinIndex, typeValue) {
-            const customField = document.getElementById(`customType${pinIndex}`);
-            const description = document.getElementById(`typeDescription${pinIndex}`);
-            
-            // Show/hide custom type input
-            if (customField) {
-                customField.style.display = (typeValue === 'Custom') ? 'block' : 'none';
-                if (typeValue !== 'Custom') {
-                    customField.value = ''; // Clear custom field when not using it
-                }
-            }
-            
-            // Update description based on selected type
-            if (description) {
-                const descriptions = {
-                    'Engine': 'Creates Engine Idle and Engine Rev effect buttons',
-                    'MachineGun': 'Creates Machine Gun Burst effect button',  
-                    'Flamethrower': 'Creates Flamethrower effect button',
-                    'RocketLauncher': 'Creates Rocket Launch effect button',
-                    'MainCannon': 'Creates Main Cannon Blast effect button',
-                    'Candle': 'Creates Candle Flicker and Bright effect buttons',
-                    'Console': 'Creates Console Data Scroll and Alert Pulse buttons',
-                    'Damage': 'Creates Damage/Hit Sparks effect button',
-                    'Ambient': 'Creates general lighting effect buttons',
-                    'Custom': 'Enter custom type name for specialized effects',
-                    '': 'Select a pin type to see available effects'
-                };
-                description.textContent = descriptions[typeValue] || 'Effect buttons based on configured pin types';
-            }
-        }
-
-        function restartDevice() {
-            if (confirm('Restart the device to apply WiFi configuration changes?\n\nThe device will be unavailable for about 10 seconds.')) {
-                fetch('/restart', {
-                    method: 'POST'
-                }).then(response => {
-                    if (response.ok) {
-                        // Show success message and redirect
-                        document.body.innerHTML = '<div style="font-family: var(--font-body); background: var(--bg-primary); color: var(--text-primary); text-align:center; padding:50px; min-height: 100vh;"><h1>🔄 Device Restarting...</h1><p>Please wait while the device restarts and reconnects to your network.</p></div>';
-                    } else {
-                        alert('Failed to restart device. Please try power cycling manually.');
-                    }
-                }).catch(error => {
-                    alert('Error restarting device: ' + error.message);
-                });
-            }
-        }
-    </script>
+                <a href="/config/effects" class="config-card">
+                    <h3>⚡ Effects & Audio</h3>
+                    <p>Effect mappings and audio files</p>
+                </a>
+                
+                <a href="/config/system" class="config-card">
+                    <h3>🛠️ System</h3>
+                    <p>Updates, diagnostics, and maintenance</p>
+                </a>
+            </div>
+        </section>
+    </main>
 </body>
 </html>

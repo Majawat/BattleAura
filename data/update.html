@@ -3,75 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BattleAura - Firmware Update</title>
-    <link rel="stylesheet" href="/styles.css">
+    <title>Firmware Update - {{DEVICE_NAME}}</title>
+    <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header class="text-center" style="margin-bottom: var(--space-6);">
-            <h1 style="font-size: 2rem; margin-bottom: var(--space-3);">🎯 Firmware Update</h1>
-            <p><a href="/" class="link-primary">← Back to Control Panel</a></p>
+    <main>
+        <header>
+            <h1>Firmware Update</h1>
+            <nav><a href="/config/system">← Back to System</a></nav>
         </header>
 
-        <div class="form-container">
-            <div style="background: rgba(124, 45, 18, 0.2); border: 1px solid #dc2626; padding: var(--space-4); border-radius: var(--radius-md); margin-bottom: var(--space-5);">
-                <strong style="color: #fca5a5;">⚠️ Warning:</strong> Only upload firmware.bin files built for ESP32-C3!
-            </div>
-
-            <div class="card-header">
-                <div class="card-icon">📡</div>
-                <div>
-                    <h2 class="card-title">Upload New Firmware</h2>
-                    <p class="card-description">Over-the-air firmware update</p>
+        <section class="update-form">
+            <h2>Upload New Firmware</h2>
+            
+            <form id="updateForm" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="firmware">Select Firmware File (.bin):</label>
+                    <input type="file" id="firmware" name="firmware" accept=".bin" required>
+                    <small>Only upload official BattleAura firmware files</small>
                 </div>
-            </div>
-
-            <form method='POST' enctype='multipart/form-data'>
-                <div style="background: var(--bg-tertiary); padding: var(--space-5); border-radius: var(--radius-md); margin-bottom: var(--space-5);">
-                    <div style="display: flex; align-items: center; margin-bottom: var(--space-3);">
-                        <span style="background: var(--primary); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: var(--space-3);">1</span>
-                        <span style="font-weight: 600;">Build firmware:</span>
-                    </div>
-                    <code style="background: var(--bg-primary); padding: var(--space-2); border-radius: var(--radius-sm); display: block; font-family: var(--font-mono);">platformio run</code>
-                </div>
-
-                <div style="background: var(--bg-tertiary); padding: var(--space-5); border-radius: var(--radius-md); margin-bottom: var(--space-5);">
-                    <div style="display: flex; align-items: center; margin-bottom: var(--space-3);">
-                        <span style="background: var(--primary); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: var(--space-3);">2</span>
-                        <span style="font-weight: 600;">Locate file:</span>
-                    </div>
-                    <code style="background: var(--bg-primary); padding: var(--space-2); border-radius: var(--radius-sm); display: block; font-family: var(--font-mono);">.pio/build/seeed_xiao_esp32c3/firmware.bin</code>
-                </div>
-
-                <div style="background: var(--bg-tertiary); padding: var(--space-5); border-radius: var(--radius-md); margin-bottom: var(--space-6);">
-                    <div style="display: flex; align-items: center; margin-bottom: var(--space-4);">
-                        <span style="background: var(--primary); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: var(--space-3);">3</span>
-                        <span style="font-weight: 600;">Select and upload:</span>
-                    </div>
-                    
-                    <div class="form-row">
-                        <input type='file' name='update' accept='.bin' required 
-                               style="padding: var(--space-3); background: var(--bg-primary); border: 2px dashed var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary); width: 100%; cursor: pointer;"
-                               onchange="this.style.borderColor = 'var(--border-accent)'">
-                    </div>
-                </div>
-
-                <div class="text-center">
-                    <input type='submit' value='📡 Upload Firmware' class='btn btn-warning' style="font-size: 1.1rem; padding: var(--space-4) var(--space-6);">
+                
+                <div class="form-actions">
+                    <button type="submit">🚀 Upload & Install</button>
+                    <button type="button" onclick="location.href='/config/system'">Cancel</button>
                 </div>
             </form>
-        </div>
+            
+            <div id="upload-progress" style="display: none;">
+                <h3>Upload Progress</h3>
+                <div class="progress-bar">
+                    <div id="progress-fill"></div>
+                </div>
+                <div id="progress-text">0%</div>
+                <p>Do not power off or close this page during update!</p>
+            </div>
+        </section>
 
-        <div class="card">
-            <h3 style="margin-bottom: var(--space-4);">💡 Update Tips</h3>
-            <ul style="color: var(--text-secondary); line-height: 1.6;">
-                <li><strong>Build first:</strong> Always build with PlatformIO before uploading</li>
-                <li><strong>File location:</strong> Firmware is in .pio/build/seeed_xiao_esp32c3/</li>
-                <li><strong>Stay connected:</strong> Keep device powered during update</li>
-                <li><strong>Be patient:</strong> Update process takes 30-60 seconds</li>
-            </ul>
-        </div>
-    </div>
+        <section class="update-info">
+            <h2>Important Notes</h2>
+            
+            <div class="warning">
+                <h3>⚠️ Before Updating</h3>
+                <ul>
+                    <li>Ensure device has stable power connection</li>
+                    <li>Do not disconnect power during update</li>
+                    <li>Update process takes 2-5 minutes</li>
+                    <li>Device will restart automatically when complete</li>
+                </ul>
+            </div>
+            
+            <div class="current-version">
+                <h3>Current Version</h3>
+                <p>{{FIRMWARE_VERSION}}</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        document.getElementById('updateForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('firmware');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a firmware file');
+                return;
+            }
+            
+            if (!file.name.endsWith('.bin')) {
+                alert('Please select a .bin firmware file');
+                return;
+            }
+            
+            if (!confirm('Start firmware update? This will restart the device.')) {
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('firmware', file);
+            
+            const xhr = new XMLHttpRequest();
+            
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    updateProgress(percentComplete);
+                }
+            });
+            
+            xhr.addEventListener('load', function() {
+                if (xhr.status === 200) {
+                    document.getElementById('progress-text').textContent = 'Update complete! Device restarting...';
+                    setTimeout(() => {
+                        location.href = '/';
+                    }, 10000);
+                } else {
+                    alert('Update failed: ' + xhr.statusText);
+                    hideProgress();
+                }
+            });
+            
+            xhr.addEventListener('error', function() {
+                alert('Update failed: Network error');
+                hideProgress();
+            });
+            
+            showProgress();
+            xhr.open('POST', '/update');
+            xhr.send(formData);
+        });
+        
+        function updateProgress(percent) {
+            document.getElementById('progress-fill').style.width = percent + '%';
+            document.getElementById('progress-text').textContent = Math.round(percent) + '%';
+        }
+        
+        function showProgress() {
+            document.getElementById('updateForm').style.display = 'none';
+            document.getElementById('upload-progress').style.display = 'block';
+        }
+        
+        function hideProgress() {
+            document.getElementById('updateForm').style.display = 'block';
+            document.getElementById('upload-progress').style.display = 'none';
+        }
+    </script>
 </body>
 </html>

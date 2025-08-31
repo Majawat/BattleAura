@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pin Configuration - {{DEVICE_NAME}}</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <main>
+        <header>
+            <h1>Pin Configuration</h1>
+            <nav><a href="/config">← Back to Config</a></nav>
+        </header>
+
+        <form method="POST" action="/config/pins">
+            <section class="pins-config">
+                <h2>LED Pin Assignments</h2>
+                <p>Configure each pin slot for your specific miniature setup</p>
+                
+                <div class="pins-grid">
+                    {{PIN_SLOTS}}
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit">💾 Save Pin Configuration</button>
+                    <button type="button" onclick="location.reload()">🔄 Reset Changes</button>
+                    <button type="button" onclick="testAllPins()">⚡ Test All Pins</button>
+                </div>
+            </section>
+        </form>
+
+        <section class="pin-info">
+            <h2>Pin Configuration Guide</h2>
+            
+            <div class="pin-types">
+                <h3>Pin Modes</h3>
+                <ul>
+                    <li><strong>PWM:</strong> Single-color LEDs with brightness control</li>
+                    <li><strong>WS2812B:</strong> RGB addressable LED strips</li>
+                    <li><strong>Digital:</strong> Simple on/off control</li>
+                    <li><strong>Disabled:</strong> Pin not used</li>
+                </ul>
+            </div>
+            
+            <div class="effect-types">
+                <h3>Common Effect Types</h3>
+                <ul>
+                    <li><strong>Engine:</strong> Vehicle engines, reactors</li>
+                    <li><strong>Weapon:</strong> Guns, cannons, missiles</li>
+                    <li><strong>Candle:</strong> Fires, torches, flames</li>
+                    <li><strong>Console:</strong> Computer screens, dashboards</li>
+                    <li><strong>Damage:</strong> Sparks, damage indicators</li>
+                </ul>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        function toggleLedCountField(pinIndex, mode) {
+            const ledCountRow = document.getElementById('ledCount' + pinIndex);
+            if (ledCountRow) {
+                ledCountRow.style.display = (mode == '3') ? 'block' : 'none';
+            }
+        }
+        
+        function testAllPins() {
+            fetch('/api/test-pins', { method: 'POST' })
+                .then(() => console.log('Testing all pins'))
+                .catch(e => console.log('Pin test failed:', e));
+        }
+        
+        function testPin(pinIndex) {
+            fetch('/api/test-pin/' + pinIndex, { method: 'POST' })
+                .then(() => console.log('Testing pin ' + pinIndex))
+                .catch(e => console.log('Pin test failed:', e));
+        }
+    </script>
+</body>
+</html>
