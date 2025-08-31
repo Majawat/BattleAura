@@ -12,7 +12,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.11.3-alpha";
+const char* VERSION = "0.11.4-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -1425,11 +1425,151 @@ void setupWebServer() {
     });
     
     server.on("/api/test-pins", HTTP_POST, []() {
-        server.send(200, "text/plain", "All pins tested");
+        server.send(200, "text/plain", "Pin testing removed - use individual pin controls instead");
     });
     
     server.on("/api/uptime", HTTP_GET, []() {
         server.send(200, "text/plain", String(millis()/1000) + "s");
+    });
+    
+    // Available effects endpoint
+    server.on("/api/effects", HTTP_GET, []() {
+        DynamicJsonDocument doc(4096);
+        JsonArray effects = doc.createNestedArray("effects");
+        
+        // Add all available effects with their details
+        JsonObject effect;
+        
+        effect = effects.createNestedObject();
+        effect["id"] = "off";
+        effect["name"] = "Off";
+        effect["description"] = "Turn off";
+        effect["icon"] = "⚫";
+        effect["categories"] = JsonArray();
+        effect["categories"].add("basic");
+        
+        effect = effects.createNestedObject();
+        effect["id"] = "on";
+        effect["name"] = "On";
+        effect["description"] = "Turn on steady";
+        effect["icon"] = "💡";
+        effect["categories"] = JsonArray();
+        effect["categories"].add("basic");
+        
+        effect = effects.createNestedObject();
+        effect["id"] = "flicker";
+        effect["name"] = "Candle Flicker";
+        effect["description"] = "Flickering candle effect";
+        effect["icon"] = "🕯️";
+        effect["categories"] = JsonArray();
+        effect["categories"].add("candle");
+        effect["categories"].add("ambient");
+        
+        effect = effects.createNestedObject();
+        effect["id"] = "pulse";
+        effect["name"] = "Pulse";
+        effect["description"] = "Rhythmic pulsing";
+        effect["icon"] = "💓";
+        effect["categories"] = JsonArray();
+        effect["categories"].add("generic");
+        effect["categories"].add("console");
+        
+        effect = effects.createNestedObject();
+        effect["id"] = "fade";
+        effect["name"] = "Fade";
+        effect["description"] = "Smooth fading";
+        effect["icon"] = "🌙";
+        effect["categories"] = JsonArray();
+        effect["categories"].add("generic");
+        
+        effect = effects.createNestedObject();
+        effect["id"] = "strobe";
+        effect["name"] = "Strobe";
+        effect["description"] = "Fast flashing strobe";
+        effect["icon"] = "⚡";
+        effect["categories"] = JsonArray();
+        effect["categories"].add("generic");
+        effect["categories"].add("damage");
+        
+        effect = effects.createNestedObject();
+        effect["id"] = "idle";
+        effect["name"] = "Engine Idle";
+        effect["description"] = "Continuous engine running";
+        effect["icon"] = "🔄";
+        effect["categories"] = JsonArray();
+        effect["categories"].add("engine");
+        effect["categories"].add("ambient");
+        
+        effect = effects.createNestedObject();
+        effect["id"] = "rev";
+        effect["name"] = "Engine Rev";
+        effect["description"] = "Engine acceleration burst";
+        effect["icon"] = "⚡";
+        effect["categories"] = JsonArray();
+        effect["categories"].add("engine");
+        effect["categories"].add("active");
+        
+        effect = effects.createNestedObject();
+        effect["id"] = "fire";
+        effect["name"] = "Machine Gun";
+        effect["description"] = "Machine gun firing";
+        effect["icon"] = "🔫";
+        effect["categories"] = JsonArray();
+        effect["categories"].add("weapon");
+        effect["categories"].add("gun");
+        effect["categories"].add("active");
+        
+        effect = effects.createNestedObject();
+        effect["id"] = "flamethrower";
+        effect["name"] = "Flamethrower";
+        effect["description"] = "Flamethrower effect";
+        effect["icon"] = "🔥";
+        effect["categories"] = JsonArray();
+        effect["categories"].add("weapon");
+        effect["categories"].add("active");
+        
+        effect = effects.createNestedObject();
+        effect["id"] = "rocket";
+        effect["name"] = "Rocket Launcher";
+        effect["description"] = "Rocket launcher effect";
+        effect["icon"] = "🚀";
+        effect["categories"] = JsonArray();
+        effect["categories"].add("weapon");
+        effect["categories"].add("active");
+        
+        effect = effects.createNestedObject();
+        effect["id"] = "damage";
+        effect["name"] = "Taking Hits";
+        effect["description"] = "Taking damage effect";
+        effect["icon"] = "⚡";
+        effect["categories"] = JsonArray();
+        effect["categories"].add("damage");
+        effect["categories"].add("active");
+        
+        effect = effects.createNestedObject();
+        effect["id"] = "explosion";
+        effect["name"] = "Explosion";
+        effect["description"] = "Explosion effect";
+        effect["icon"] = "💥";
+        effect["categories"] = JsonArray();
+        effect["categories"].add("damage");
+        effect["categories"].add("weapon");
+        effect["categories"].add("cannon");
+        effect["categories"].add("active");
+        
+        effect = effects.createNestedObject();
+        effect["id"] = "scroll";
+        effect["name"] = "Data Scroll";
+        effect["description"] = "Data scrolling effect (RGB only)";
+        effect["icon"] = "📊";
+        effect["categories"] = JsonArray();
+        effect["categories"].add("console");
+        effect["categories"].add("rgb");
+        effect["categories"].add("ambient");
+        
+        String response;
+        serializeJson(doc, response);
+        server.send(200, "application/json", response);
     });
     
     server.on("/volume/", HTTP_GET, []() {
@@ -1451,7 +1591,7 @@ void setupWebServer() {
         String uri = server.uri();
         if (uri.startsWith("/api/test-pin/") && server.method() == HTTP_POST) {
             String pinStr = uri.substring(14); // Remove "/api/test-pin/"
-            server.send(200, "text/plain", "Testing pin " + pinStr);
+            server.send(200, "text/plain", "Pin testing removed - use pin effect controls instead");
             return;
         }
         server.send(404, "text/plain", F("Not found"));

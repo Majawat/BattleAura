@@ -1,6 +1,7 @@
 // BattleAura Web Interface - Simple API-based implementation
 document.addEventListener('DOMContentLoaded', function() {
     loadSystemStatus();
+    loadPinControls();
     loadPinTypes();
     loadGlobalSettings();
     
@@ -25,16 +26,37 @@ async function loadSystemStatus() {
     }
 }
 
-// Load pin types and generate dynamic effects UI
-async function loadPinTypes() {
+// Load individual pin controls
+async function loadPinControls() {
     try {
-        const response = await fetch('/api/types');
+        const response = await fetch('/api/status');
         const data = await response.json();
         
-        generateEffectsUI(data.types || []);
+        generatePinControls(data.pins || []);
         
     } catch (error) {
-        console.error('Failed to load pin types:', error);
+        console.error('Failed to load pin controls:', error);
+        document.getElementById('pin-controls').innerHTML = 
+            '<p class="text-secondary">Unable to load pin controls</p>';
+    }
+}
+
+// Load pin types and effects then generate dynamic UI
+async function loadPinTypes() {
+    try {
+        // Load both pin types and available effects
+        const [typesResponse, effectsResponse] = await Promise.all([
+            fetch('/api/types'),
+            fetch('/api/effects')
+        ]);
+        
+        const typesData = await typesResponse.json();
+        const effectsData = await effectsResponse.json();
+        
+        generateEffectsUI(typesData.types || [], effectsData.effects || []);
+        
+    } catch (error) {
+        console.error('Failed to load pin types or effects:', error);
         document.getElementById('dynamic-effects').innerHTML = 
             '<p class="text-secondary">Configure pins to see available effects</p>';
     }
@@ -63,8 +85,76 @@ async function loadGlobalSettings() {
     }
 }
 
-// Generate dynamic effects UI based on configured pin types
-function generateEffectsUI(types) {
+// Generate individual pin controls UI
+function generatePinControls(pins) {
+    const container = document.getElementById('pin-controls');
+    
+    const enabledPins = pins.filter(pin => pin.enabled);
+    
+    if (!enabledPins || enabledPins.length === 0) {
+        container.innerHTML = `
+            <div class="text-center">
+                <p class="text-secondary" style="margin: var(--space-6) 0;">No pins configured yet.</p>
+                <a href="/config" class="btn btn-primary">Configure Your Pins →</a>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '<div class="pin-controls-grid">';
+    
+    enabledPins.forEach(pin => {
+        const typeEmoji = getTypeEmoji(pin.type || 'generic');
+        
+        html += `
+            <div class="pin-control-card" data-pin="${pin.gpio}">
+                <div class="pin-control-header">
+                    <span class="pin-emoji">${typeEmoji}</span>
+                    <div class="pin-info">
+                        <div class="pin-name">${pin.name || 'Pin ' + pin.gpio}</div>
+                        <div class="pin-details">GPIO ${pin.gpio} • ${pin.type || 'Generic'}</div>
+                    </div>
+                    <div class="pin-status ${pin.state ? 'on' : 'off'}">${pin.state ? 'ON' : 'OFF'}</div>
+                </div>
+                
+                <div class="pin-effects">
+                    ${generatePinEffectButtons(pin)}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// Generate effect buttons for a specific pin
+function generatePinEffectButtons(pin) {
+    const type = (pin.type || 'generic').toLowerCase();
+    let buttons = '';
+    
+    // Type-specific effects
+    if (type.includes('candle')) {
+        buttons += '<button onclick="triggerPinEffect(' + pin.gpio + ', \'flicker\')" class="btn btn-success btn-sm">🕯️ Flicker</button>';
+    } else if (type.includes('engine')) {
+        buttons += '<button onclick="triggerPinEffect(' + pin.gpio + ', \'idle\')" class="btn btn-success btn-sm">🔄 Idle</button>';
+        buttons += '<button onclick="triggerPinEffect(' + pin.gpio + ', \'rev\')" class="btn btn-warning btn-sm">⚡ Rev</button>';
+    } else if (type.includes('weapon')) {
+        buttons += '<button onclick="triggerPinEffect(' + pin.gpio + ', \'fire\')" class="btn btn-warning btn-sm">🔫 Fire</button>';
+    } else if (type.includes('console')) {
+        buttons += '<button onclick="triggerPinEffect(' + pin.gpio + ', \'scroll\')" class="btn btn-info btn-sm">📊 Scroll</button>';
+        buttons += '<button onclick="triggerPinEffect(' + pin.gpio + ', \'pulse\')" class="btn btn-info btn-sm">💓 Pulse</button>';
+    }
+    
+    // Universal controls
+    buttons += '<button onclick="triggerPinEffect(' + pin.gpio + ', \'on\')" class="btn btn-secondary btn-sm">💡 On</button>';
+    buttons += '<button onclick="triggerPinEffect(' + pin.gpio + ', \'off\')" class="btn btn-secondary btn-sm">⚫ Off</button>';
+    
+    return buttons;
+}
+
+// Generate dynamic effects UI based on configured pin types and available effects
+function generateEffectsUI(types, availableEffects) {
     const container = document.getElementById('dynamic-effects');
     
     if (!types || types.length === 0) {
@@ -81,7 +171,7 @@ function generateEffectsUI(types) {
     
     // Generate cards for each pin type
     types.forEach(type => {
-        const effects = getEffectsForType(type.type, type.hasRGB, type.hasPWM);
+        const effects = getEffectsForType(type.type, type.hasRGB, type.hasPWM, availableEffects);
         const typeEmoji = getTypeEmoji(type.type);
         
         html += `
@@ -99,7 +189,7 @@ function generateEffectsUI(types) {
                         </div>
                         <div class="sub-card-buttons">
                             ${effects.map(effect => 
-                                `<button onclick="triggerEffect('${type.type}', '${effect.id}')" class="btn btn-info" title="${effect.description}">${effect.label}</button>`
+                                `<button onclick="triggerEffect('${type.type}', '${effect.id}')" class="btn btn-info" title="${effect.description}">${effect.icon} ${effect.name}</button>`
                             ).join('')}
                         </div>
                     </div>
@@ -135,34 +225,63 @@ function generateEffectsUI(types) {
     container.innerHTML = html;
 }
 
-// Get available effects for a pin type
-function getEffectsForType(typeName, hasRGB, hasPWM) {
+// Get available effects for a pin type using programmatic data
+function getEffectsForType(typeName, hasRGB, hasPWM, availableEffects) {
+    if (!availableEffects || availableEffects.length === 0) {
+        // Fallback to basic controls if no effects data
+        return [
+            { id: 'on', name: 'On', description: 'Turn on steady', icon: '💡' },
+            { id: 'off', name: 'Off', description: 'Turn off', icon: '⚫' }
+        ];
+    }
+    
     const name = typeName.toLowerCase();
     const effects = [];
     
-    // Add type-specific effects
-    if (name.includes('engine')) {
-        effects.push({ id: 'idle', label: '🔄 Engine Idle', description: 'Continuous engine running' });
-        effects.push({ id: 'rev', label: '⚡ Engine Rev', description: 'Engine acceleration burst' });
-    } else if (name.includes('weapon') || name.includes('gun') || name.includes('cannon')) {
-        effects.push({ id: 'fire', label: '🔫 Weapon Fire', description: 'Weapon firing effect' });
-    } else if (name.includes('candle')) {
-        effects.push({ id: 'flicker', label: '🕯️ Candle Flicker', description: 'Flickering candle effect' });
-        effects.push({ id: 'on', label: '💡 Steady Light', description: 'Steady bright light' });
-    } else if (name.includes('console')) {
-        if (hasRGB) {
-            effects.push({ id: 'scroll', label: '📊 Data Scroll', description: 'Data scrolling effect' });
+    // Filter effects based on pin type and capabilities
+    availableEffects.forEach(effect => {
+        const categories = effect.categories || [];
+        let shouldInclude = false;
+        
+        // Check if effect matches pin type
+        if (categories.includes('basic')) {
+            shouldInclude = true; // Basic controls for all pins
+        } else if (name.includes('engine') && categories.includes('engine')) {
+            shouldInclude = true;
+        } else if ((name.includes('weapon') || name.includes('gun')) && categories.includes('weapon')) {
+            shouldInclude = true;
+        } else if (name.includes('cannon') && (categories.includes('cannon') || categories.includes('weapon'))) {
+            shouldInclude = true;
+        } else if (name.includes('candle') && categories.includes('candle')) {
+            shouldInclude = true;
+        } else if (name.includes('console') && categories.includes('console')) {
+            // For console types, check RGB requirement for RGB-only effects
+            if (categories.includes('rgb') && !hasRGB) {
+                shouldInclude = false;
+            } else {
+                shouldInclude = true;
+            }
+        } else if ((name.includes('damage') || name.includes('wound')) && categories.includes('damage')) {
+            shouldInclude = true;
+        } else if (categories.includes('generic')) {
+            shouldInclude = true; // Generic effects for unknown types
         }
-        effects.push({ id: 'pulse', label: '💓 Status Pulse', description: 'Status indicator pulse' });
-    } else {
-        // Generic effects for unknown types
-        effects.push({ id: 'pulse', label: '💓 Pulse', description: 'Rhythmic pulsing' });
-        effects.push({ id: 'fade', label: '🌙 Fade', description: 'Smooth fading' });
-    }
+        
+        if (shouldInclude) {
+            effects.push(effect);
+        }
+    });
     
-    // Always add basic controls
-    effects.push({ id: 'on', label: '💡 On', description: 'Turn on steady' });
-    effects.push({ id: 'off', label: '⚫ Off', description: 'Turn off' });
+    // Ensure we always have basic controls
+    const hasOn = effects.some(e => e.id === 'on');
+    const hasOff = effects.some(e => e.id === 'off');
+    
+    if (!hasOff) {
+        effects.push({ id: 'off', name: 'Off', description: 'Turn off', icon: '⚫' });
+    }
+    if (!hasOn) {
+        effects.push({ id: 'on', name: 'On', description: 'Turn on steady', icon: '💡' });
+    }
     
     return effects;
 }
@@ -221,6 +340,28 @@ async function triggerGlobalEffect(effect) {
 // Stop all effects
 async function stopAllEffects() {
     await triggerGlobalEffect('off');
+}
+
+// Pin brightness controls moved to config page
+
+// Trigger effect on specific pin
+async function triggerPinEffect(pin, effect) {
+    try {
+        const response = await fetch('/pin/effect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `pin=${pin}&effect=${encodeURIComponent(effect)}`
+        });
+        
+        if (response.ok) {
+            showFeedback(`Pin ${pin}: ${effect}`, 'success');
+        } else {
+            showFeedback('Pin effect failed', 'error');
+        }
+    } catch (error) {
+        console.error('Pin effect error:', error);
+        showFeedback('Pin effect error', 'error');
+    }
 }
 
 // Set global brightness
