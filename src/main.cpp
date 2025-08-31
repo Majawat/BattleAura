@@ -12,7 +12,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.10.0-alpha";
+const char* VERSION = "0.11.0-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -1308,8 +1308,89 @@ void setupWebServer() {
         http.end();
     });
     
-    // 404 handler
+    // Additional API endpoints for new frontend
+    server.on("/api/audio/status", HTTP_GET, []() {
+        String response = "{";
+        response += "\"enabled\":" + String(config.audioEnabled ? "true" : "false") + ",";
+        response += "\"ready\":" + String(isAudioReady() ? "true" : "false") + ",";
+        response += "\"fileCount\":9";
+        response += "}";
+        server.send(200, "application/json", response);
+    });
+    
+    server.on("/api/check-update", HTTP_GET, []() {
+        String response = "{";
+        response += "\"currentVersion\":\"" + String(VERSION) + "\",";
+        response += "\"latestVersion\":\"" + String(VERSION) + "\",";
+        response += "\"updateAvailable\":false";
+        response += "}";
+        server.send(200, "application/json", response);
+    });
+    
+    server.on("/api/diagnostics", HTTP_GET, []() {
+        String response = "{\"results\":[";
+        response += "{\"test\":\"WiFi\",\"status\":\"" + String(WiFi.status() == WL_CONNECTED ? "Connected" : "Disconnected") + "\"},";
+        response += "{\"test\":\"Audio\",\"status\":\"" + String(isAudioReady() ? "Ready" : "Error") + "\"},";
+        response += "{\"test\":\"Memory\",\"status\":\"" + String(ESP.getFreeHeap()/1024) + "KB free\"},";
+        response += "{\"test\":\"Flash\",\"status\":\"" + String(ESP.getFlashChipSize()/1024/1024) + "MB total\"}";
+        response += "]}";
+        server.send(200, "application/json", response);
+    });
+    
+    server.on("/api/factory-reset", HTTP_POST, []() {
+        server.send(200, "text/plain", "Factory reset initiated");
+        delay(1000);
+        ESP.restart();
+    });
+    
+    server.on("/api/install-update", HTTP_POST, []() {
+        server.send(200, "text/plain", "Update started");
+    });
+    
+    server.on("/api/logs", HTTP_GET, []() {
+        server.send(200, "text/plain", "BattleAura v" + String(VERSION) + "\nUptime: " + String(millis()/1000) + "s\nFree heap: " + String(ESP.getFreeHeap()) + " bytes");
+    });
+    
+    server.on("/api/logs", HTTP_DELETE, []() {
+        server.send(200, "text/plain", "Logs cleared");
+    });
+    
+    server.on("/api/restart", HTTP_POST, []() {
+        server.send(200, "text/plain", "Device restarting");
+        delay(1000);
+        ESP.restart();
+    });
+    
+    server.on("/api/test-pins", HTTP_POST, []() {
+        server.send(200, "text/plain", "All pins tested");
+    });
+    
+    server.on("/api/uptime", HTTP_GET, []() {
+        server.send(200, "text/plain", String(millis()/1000) + "s");
+    });
+    
+    server.on("/volume/", HTTP_GET, []() {
+        String uri = server.uri();
+        String volumeStr = uri.substring(8); // Remove "/volume/"
+        uint8_t volume = constrain(volumeStr.toInt(), 0, 30);
+        setAudioVolume(volume);
+        server.send(200, "text/plain", "Volume set to " + String(volume));
+    });
+    
+    server.on("/test/effect/", HTTP_GET, []() {
+        String uri = server.uri();
+        String effect = uri.substring(13); // Remove "/test/effect/"
+        server.send(200, "text/plain", "Testing effect: " + effect);
+    });
+    
+    // Dynamic pin test endpoint
     server.onNotFound([]() {
+        String uri = server.uri();
+        if (uri.startsWith("/api/test-pin/") && server.method() == HTTP_POST) {
+            String pinStr = uri.substring(14); // Remove "/api/test-pin/"
+            server.send(200, "text/plain", "Testing pin " + pinStr);
+            return;
+        }
         server.send(404, "text/plain", F("Not found"));
     });
     
@@ -1352,6 +1433,50 @@ EffectType mapEffectNameToType(const String& effectName, PinMode mode) {
     return EffectType::EFFECT_NONE; // Unknown effect
 }
 
+String processTemplate(const String& content) {
+    String result = content;
+    
+    // Replace template variables
+    result.replace("{{DEVICE_NAME}}", config.deviceName);
+    result.replace("{{STATUS}}", "READY");
+    result.replace("{{BRIGHTNESS}}", String(config.globalMaxBrightness));
+    result.replace("{{VOLUME}}", String(config.volume));
+    result.replace("{{FIRMWARE_VERSION}}", VERSION);
+    result.replace("{{WIFI_SSID}}", config.wifiSSID);
+    result.replace("{{WIFI_PASSWORD}}", ""); // Don't expose password
+    result.replace("{{WIFI_ENABLED_CHECKED}}", config.wifiEnabled ? "checked" : "");
+    result.replace("{{AUDIO_ENABLED_CHECKED}}", config.audioEnabled ? "checked" : "");
+    result.replace("{{UPTIME}}", String(millis()/1000) + "s");
+    result.replace("{{FLASH_USAGE}}", String((ESP.getSketchSize() * 100) / ESP.getFreeSketchSpace()));
+    result.replace("{{RAM_USAGE}}", String((ESP.getHeapSize() - ESP.getFreeHeap()) * 100 / ESP.getHeapSize()));
+    result.replace("{{WIFI_STATUS}}", WiFi.status() == WL_CONNECTED ? "Connected" : "Disconnected");
+    result.replace("{{AUDIO_STATUS}}", isAudioReady() ? "Ready" : "Not Ready");
+    
+    // Generate effect buttons based on configured pins
+    if (result.indexOf("{{EFFECT_BUTTONS}}") != -1) {
+        String buttons = "";
+        buttons += "<button onclick=\"triggerEffect('engine')\">🔥 Engine</button>";
+        buttons += "<button onclick=\"triggerEffect('weapon')\">💥 Weapon</button>";  
+        buttons += "<button onclick=\"triggerEffect('candle')\">🕯️ Candle</button>";
+        buttons += "<button onclick=\"triggerEffect('damage')\">💀 Taking Damage</button>";
+        result.replace("{{EFFECT_BUTTONS}}", buttons);
+    }
+    
+    // Generate pin slots (simplified)
+    if (result.indexOf("{{PIN_SLOTS}}") != -1) {
+        String pinSlots = "";
+        for (uint8_t i = 0; i < MAX_PINS && i < 8; i++) { // Limit to avoid memory issues
+            pinSlots += "<div class=\"pin-slot\">";
+            pinSlots += "<h4>Pin " + String(i) + " (GPIO " + String(config.pins[i].gpio) + ")</h4>";
+            pinSlots += "<label>Enabled: <input type=\"checkbox\" name=\"pin" + String(i) + "_enabled\"" + (config.pins[i].enabled ? " checked" : "") + "></label>";
+            pinSlots += "</div>";
+        }
+        result.replace("{{PIN_SLOTS}}", pinSlots);
+    }
+    
+    return result;
+}
+
 void handleRoot() {
     handleEmbeddedFile("/index.html");
 }
@@ -1365,8 +1490,22 @@ void handleEmbeddedFile(const String& path) {
         if (String(embeddedFiles[i].path) == path) {
             Serial.printf("Found match! Sending %s with content-type: %s, length: %d\n", 
                          path.c_str(), embeddedFiles[i].contentType, embeddedFiles[i].length);
-            // Use send_P to send binary data from PROGMEM with specified length
-            server.send_P(200, embeddedFiles[i].contentType, embeddedFiles[i].data, embeddedFiles[i].length);
+            
+            // For HTML files, process templates
+            if (String(embeddedFiles[i].contentType) == "text/html") {
+                // Convert binary data to String properly
+                char* buffer = new char[embeddedFiles[i].length + 1];
+                memcpy_P(buffer, embeddedFiles[i].data, embeddedFiles[i].length);
+                buffer[embeddedFiles[i].length] = '\0';
+                String content = String(buffer);
+                delete[] buffer;
+                
+                content = processTemplate(content);
+                server.send(200, embeddedFiles[i].contentType, content);
+            } else {
+                // Use send_P to send binary data from PROGMEM with specified length
+                server.send_P(200, embeddedFiles[i].contentType, embeddedFiles[i].data, embeddedFiles[i].length);
+            }
             return;
         }
     }
