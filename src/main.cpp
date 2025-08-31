@@ -476,6 +476,7 @@ void setupWebServer() {
         configDoc["deviceName"] = config.deviceName;
         configDoc["volume"] = config.volume;
         configDoc["audioEnabled"] = config.audioEnabled;
+        configDoc["globalMaxBrightness"] = config.globalMaxBrightness;
         configDoc["wifiSSID"] = config.wifiSSID;
         configDoc["wifiPassword"] = config.wifiPassword;
         configDoc["wifiEnabled"] = config.wifiEnabled;
