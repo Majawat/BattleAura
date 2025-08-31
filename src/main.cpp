@@ -571,9 +571,13 @@ void setupWebServer() {
         server.send(204); // No Content
     });
     
-    // Configuration page
+    // Configuration pages
     server.on("/config", HTTP_GET, []() { handleEmbeddedFile("/config.html"); });
     server.on("/config", HTTP_POST, handleConfigSave);
+    server.on("/config/device", HTTP_GET, []() { handleEmbeddedFile("/device.html"); });
+    server.on("/config/pins", HTTP_GET, []() { handleEmbeddedFile("/pins.html"); });
+    server.on("/config/effects", HTTP_GET, []() { handleEmbeddedFile("/effects.html"); });
+    server.on("/config/system", HTTP_GET, []() { handleEmbeddedFile("/system.html"); });
     
     // OTA update page  
     server.on("/update", HTTP_GET, []() { handleEmbeddedFile("/update.html"); });
