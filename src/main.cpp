@@ -12,7 +12,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.11.4-alpha";
+const char* VERSION = "0.11.5-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -1434,138 +1434,138 @@ void setupWebServer() {
     
     // Available effects endpoint
     server.on("/api/effects", HTTP_GET, []() {
-        DynamicJsonDocument doc(4096);
-        JsonArray effects = doc.createNestedArray("effects");
+        JsonDocument doc;
+        JsonArray effects = doc["effects"].to<JsonArray>();
         
         // Add all available effects with their details
         JsonObject effect;
         
-        effect = effects.createNestedObject();
+        effect = effects.add<JsonObject>();
         effect["id"] = "off";
         effect["name"] = "Off";
         effect["description"] = "Turn off";
         effect["icon"] = "⚫";
-        effect["categories"] = JsonArray();
-        effect["categories"].add("basic");
+        JsonArray categories = effect["categories"].to<JsonArray>();
+        categories.add("basic");
         
-        effect = effects.createNestedObject();
+        effect = effects.add<JsonObject>();
         effect["id"] = "on";
         effect["name"] = "On";
         effect["description"] = "Turn on steady";
         effect["icon"] = "💡";
-        effect["categories"] = JsonArray();
-        effect["categories"].add("basic");
+        categories = effect["categories"].to<JsonArray>();
+        categories.add("basic");
         
-        effect = effects.createNestedObject();
+        effect = effects.add<JsonObject>();
         effect["id"] = "flicker";
         effect["name"] = "Candle Flicker";
         effect["description"] = "Flickering candle effect";
         effect["icon"] = "🕯️";
-        effect["categories"] = JsonArray();
-        effect["categories"].add("candle");
-        effect["categories"].add("ambient");
+        categories = effect["categories"].to<JsonArray>();
+        categories.add("candle");
+        categories.add("ambient");
         
-        effect = effects.createNestedObject();
+        effect = effects.add<JsonObject>();
         effect["id"] = "pulse";
         effect["name"] = "Pulse";
         effect["description"] = "Rhythmic pulsing";
         effect["icon"] = "💓";
-        effect["categories"] = JsonArray();
-        effect["categories"].add("generic");
-        effect["categories"].add("console");
+        categories = effect["categories"].to<JsonArray>();
+        categories.add("generic");
+        categories.add("console");
         
-        effect = effects.createNestedObject();
+        effect = effects.add<JsonObject>();
         effect["id"] = "fade";
         effect["name"] = "Fade";
         effect["description"] = "Smooth fading";
         effect["icon"] = "🌙";
-        effect["categories"] = JsonArray();
-        effect["categories"].add("generic");
+        categories = effect["categories"].to<JsonArray>();
+        categories.add("generic");
         
-        effect = effects.createNestedObject();
+        effect = effects.add<JsonObject>();
         effect["id"] = "strobe";
         effect["name"] = "Strobe";
         effect["description"] = "Fast flashing strobe";
         effect["icon"] = "⚡";
-        effect["categories"] = JsonArray();
-        effect["categories"].add("generic");
-        effect["categories"].add("damage");
+        categories = effect["categories"].to<JsonArray>();
+        categories.add("generic");
+        categories.add("damage");
         
-        effect = effects.createNestedObject();
+        effect = effects.add<JsonObject>();
         effect["id"] = "idle";
         effect["name"] = "Engine Idle";
         effect["description"] = "Continuous engine running";
         effect["icon"] = "🔄";
-        effect["categories"] = JsonArray();
-        effect["categories"].add("engine");
-        effect["categories"].add("ambient");
+        categories = effect["categories"].to<JsonArray>();
+        categories.add("engine");
+        categories.add("ambient");
         
-        effect = effects.createNestedObject();
+        effect = effects.add<JsonObject>();
         effect["id"] = "rev";
         effect["name"] = "Engine Rev";
         effect["description"] = "Engine acceleration burst";
         effect["icon"] = "⚡";
-        effect["categories"] = JsonArray();
-        effect["categories"].add("engine");
-        effect["categories"].add("active");
+        categories = effect["categories"].to<JsonArray>();
+        categories.add("engine");
+        categories.add("active");
         
-        effect = effects.createNestedObject();
+        effect = effects.add<JsonObject>();
         effect["id"] = "fire";
         effect["name"] = "Machine Gun";
         effect["description"] = "Machine gun firing";
         effect["icon"] = "🔫";
-        effect["categories"] = JsonArray();
-        effect["categories"].add("weapon");
-        effect["categories"].add("gun");
-        effect["categories"].add("active");
+        categories = effect["categories"].to<JsonArray>();
+        categories.add("weapon");
+        categories.add("gun");
+        categories.add("active");
         
-        effect = effects.createNestedObject();
+        effect = effects.add<JsonObject>();
         effect["id"] = "flamethrower";
         effect["name"] = "Flamethrower";
         effect["description"] = "Flamethrower effect";
         effect["icon"] = "🔥";
-        effect["categories"] = JsonArray();
-        effect["categories"].add("weapon");
-        effect["categories"].add("active");
+        categories = effect["categories"].to<JsonArray>();
+        categories.add("weapon");
+        categories.add("active");
         
-        effect = effects.createNestedObject();
+        effect = effects.add<JsonObject>();
         effect["id"] = "rocket";
         effect["name"] = "Rocket Launcher";
         effect["description"] = "Rocket launcher effect";
         effect["icon"] = "🚀";
-        effect["categories"] = JsonArray();
-        effect["categories"].add("weapon");
-        effect["categories"].add("active");
+        categories = effect["categories"].to<JsonArray>();
+        categories.add("weapon");
+        categories.add("active");
         
-        effect = effects.createNestedObject();
+        effect = effects.add<JsonObject>();
         effect["id"] = "damage";
         effect["name"] = "Taking Hits";
         effect["description"] = "Taking damage effect";
         effect["icon"] = "⚡";
-        effect["categories"] = JsonArray();
-        effect["categories"].add("damage");
-        effect["categories"].add("active");
+        categories = effect["categories"].to<JsonArray>();
+        categories.add("damage");
+        categories.add("active");
         
-        effect = effects.createNestedObject();
+        effect = effects.add<JsonObject>();
         effect["id"] = "explosion";
         effect["name"] = "Explosion";
         effect["description"] = "Explosion effect";
         effect["icon"] = "💥";
-        effect["categories"] = JsonArray();
-        effect["categories"].add("damage");
-        effect["categories"].add("weapon");
-        effect["categories"].add("cannon");
-        effect["categories"].add("active");
+        categories = effect["categories"].to<JsonArray>();
+        categories.add("damage");
+        categories.add("weapon");
+        categories.add("cannon");
+        categories.add("active");
         
-        effect = effects.createNestedObject();
+        effect = effects.add<JsonObject>();
         effect["id"] = "scroll";
         effect["name"] = "Data Scroll";
         effect["description"] = "Data scrolling effect (RGB only)";
         effect["icon"] = "📊";
-        effect["categories"] = JsonArray();
-        effect["categories"].add("console");
-        effect["categories"].add("rgb");
-        effect["categories"].add("ambient");
+        categories = effect["categories"].to<JsonArray>();
+        categories.add("console");
+        categories.add("rgb");
+        categories.add("ambient");
         
         String response;
         serializeJson(doc, response);
@@ -2133,7 +2133,7 @@ void handlePinConfigSave() {
     }
     
     // Parse JSON data
-    DynamicJsonDocument doc(4096);
+    JsonDocument doc;
     DeserializationError error = deserializeJson(doc, body);
     
     if (error) {
@@ -2142,17 +2142,17 @@ void handlePinConfigSave() {
     }
     
     // Update pin configurations from JSON
-    if (doc.containsKey("pins")) {
+    if (doc["pins"].is<JsonArray>()) {
         JsonArray pinsArray = doc["pins"];
         
         for (uint8_t i = 0; i < MAX_PINS && i < pinsArray.size(); i++) {
             JsonObject pinObj = pinsArray[i];
             
-            if (pinObj.containsKey("enabled")) {
+            if (pinObj["enabled"].is<bool>()) {
                 config.pins[i].enabled = pinObj["enabled"];
             }
             
-            if (pinObj.containsKey("gpio")) {
+            if (pinObj["gpio"].is<int>()) {
                 uint8_t requestedGPIO = pinObj["gpio"];
                 // Prevent assignment of DFPlayer pins when audio is enabled
                 if (config.audioEnabled && (requestedGPIO == DFPLAYER_RX_PIN || requestedGPIO == DFPLAYER_TX_PIN)) {
@@ -2166,27 +2166,27 @@ void handlePinConfigSave() {
                 }
             }
             
-            if (pinObj.containsKey("name")) {
+            if (pinObj["name"].is<const char*>()) {
                 config.pins[i].name = pinObj["name"].as<String>();
             }
             
-            if (pinObj.containsKey("type")) {
+            if (pinObj["type"].is<const char*>()) {
                 config.pins[i].type = pinObj["type"].as<String>();
             }
             
-            if (pinObj.containsKey("group")) {
+            if (pinObj["group"].is<const char*>()) {
                 config.pins[i].group = pinObj["group"].as<String>();
             }
             
-            if (pinObj.containsKey("mode")) {
+            if (pinObj["mode"].is<int>()) {
                 config.pins[i].mode = static_cast<PinMode>(pinObj["mode"].as<int>());
             }
             
-            if (pinObj.containsKey("brightness")) {
+            if (pinObj["brightness"].is<int>()) {
                 config.pins[i].brightness = constrain(pinObj["brightness"].as<int>(), 0, 255);
             }
             
-            if (pinObj.containsKey("ledCount")) {
+            if (pinObj["ledCount"].is<int>()) {
                 config.pins[i].ledCount = constrain(pinObj["ledCount"].as<int>(), 1, 100);
             }
         }
