@@ -1503,144 +1503,27 @@ void setupWebServer() {
         server.send(200, "text/plain", String(millis()/1000) + "s");
     });
     
-    // Available effects endpoint
+    // Available effects endpoint - optimized for flash usage
     server.on("/api/effects", HTTP_GET, []() {
-        JsonDocument doc;
-        JsonArray effects = doc["effects"].to<JsonArray>();
-        
-        // Add all available effects with their details
-        JsonObject effect;
-        
-        effect = effects.add<JsonObject>();
-        effect["id"] = "off";
-        effect["name"] = "Off";
-        effect["description"] = "Turn off";
-        effect["icon"] = "⚫";
-        JsonArray categories = effect["categories"].to<JsonArray>();
-        categories.add("basic");
-        
-        effect = effects.add<JsonObject>();
-        effect["id"] = "on";
-        effect["name"] = "On";
-        effect["description"] = "Turn on steady";
-        effect["icon"] = "💡";
-        categories = effect["categories"].to<JsonArray>();
-        categories.add("basic");
-        
-        effect = effects.add<JsonObject>();
-        effect["id"] = "flicker";
-        effect["name"] = "Candle Flicker";
-        effect["description"] = "Flickering candle effect";
-        effect["icon"] = "🕯️";
-        categories = effect["categories"].to<JsonArray>();
-        categories.add("candle");
-        categories.add("ambient");
-        
-        effect = effects.add<JsonObject>();
-        effect["id"] = "pulse";
-        effect["name"] = "Pulse";
-        effect["description"] = "Rhythmic pulsing";
-        effect["icon"] = "💓";
-        categories = effect["categories"].to<JsonArray>();
-        categories.add("generic");
-        categories.add("console");
-        
-        effect = effects.add<JsonObject>();
-        effect["id"] = "fade";
-        effect["name"] = "Fade";
-        effect["description"] = "Smooth fading";
-        effect["icon"] = "🌙";
-        categories = effect["categories"].to<JsonArray>();
-        categories.add("generic");
-        
-        effect = effects.add<JsonObject>();
-        effect["id"] = "strobe";
-        effect["name"] = "Strobe";
-        effect["description"] = "Fast flashing strobe";
-        effect["icon"] = "⚡";
-        categories = effect["categories"].to<JsonArray>();
-        categories.add("generic");
-        categories.add("damage");
-        
-        effect = effects.add<JsonObject>();
-        effect["id"] = "idle";
-        effect["name"] = "Engine Idle";
-        effect["description"] = "Continuous engine running";
-        effect["icon"] = "🔄";
-        categories = effect["categories"].to<JsonArray>();
-        categories.add("engine");
-        categories.add("ambient");
-        
-        effect = effects.add<JsonObject>();
-        effect["id"] = "rev";
-        effect["name"] = "Engine Rev";
-        effect["description"] = "Engine acceleration burst";
-        effect["icon"] = "⚡";
-        categories = effect["categories"].to<JsonArray>();
-        categories.add("engine");
-        categories.add("active");
-        
-        effect = effects.add<JsonObject>();
-        effect["id"] = "fire";
-        effect["name"] = "Machine Gun";
-        effect["description"] = "Machine gun firing";
-        effect["icon"] = "🔫";
-        categories = effect["categories"].to<JsonArray>();
-        categories.add("weapon");
-        categories.add("gun");
-        categories.add("active");
-        
-        effect = effects.add<JsonObject>();
-        effect["id"] = "flamethrower";
-        effect["name"] = "Flamethrower";
-        effect["description"] = "Flamethrower effect";
-        effect["icon"] = "🔥";
-        categories = effect["categories"].to<JsonArray>();
-        categories.add("weapon");
-        categories.add("active");
-        
-        effect = effects.add<JsonObject>();
-        effect["id"] = "rocket";
-        effect["name"] = "Rocket Launcher";
-        effect["description"] = "Rocket launcher effect";
-        effect["icon"] = "🚀";
-        categories = effect["categories"].to<JsonArray>();
-        categories.add("weapon");
-        categories.add("active");
-        
-        effect = effects.add<JsonObject>();
-        effect["id"] = "damage";
-        effect["name"] = "Taking Hits";
-        effect["description"] = "Taking damage effect";
-        effect["icon"] = "⚡";
-        categories = effect["categories"].to<JsonArray>();
-        categories.add("damage");
-        categories.add("active");
-        
-        effect = effects.add<JsonObject>();
-        effect["id"] = "explosion";
-        effect["name"] = "Explosion";
-        effect["description"] = "Explosion effect";
-        effect["icon"] = "💥";
-        categories = effect["categories"].to<JsonArray>();
-        categories.add("damage");
-        categories.add("weapon");
-        categories.add("cannon");
-        categories.add("active");
-        
-        effect = effects.add<JsonObject>();
-        effect["id"] = "scroll";
-        effect["name"] = "Data Scroll";
-        effect["description"] = "Data scrolling effect (RGB only)";
-        effect["icon"] = "📊";
-        categories = effect["categories"].to<JsonArray>();
-        categories.add("console");
-        categories.add("rgb");
-        categories.add("ambient");
-        
-        String response;
-        serializeJson(doc, response);
-        server.send(200, "application/json", response);
+        // Use more compact JSON structure to save flash space
+        server.send(200, "application/json", F(
+        "{\"effects\":["
+        "{\"id\":\"off\",\"name\":\"Off\",\"icon\":\"⚫\",\"categories\":[\"basic\"]},"
+        "{\"id\":\"on\",\"name\":\"On\",\"icon\":\"💡\",\"categories\":[\"basic\"]},"
+        "{\"id\":\"flicker\",\"name\":\"Candle Flicker\",\"icon\":\"🕯️\",\"categories\":[\"candle\",\"ambient\"]},"
+        "{\"id\":\"pulse\",\"name\":\"Pulse\",\"icon\":\"💓\",\"categories\":[\"generic\",\"console\"]},"
+        "{\"id\":\"fade\",\"name\":\"Fade\",\"icon\":\"🌙\",\"categories\":[\"generic\"]},"
+        "{\"id\":\"strobe\",\"name\":\"Strobe\",\"icon\":\"⚡\",\"categories\":[\"generic\",\"damage\"]},"
+        "{\"id\":\"idle\",\"name\":\"Engine Idle\",\"icon\":\"🔄\",\"categories\":[\"engine\",\"ambient\"]},"
+        "{\"id\":\"rev\",\"name\":\"Engine Rev\",\"icon\":\"⚡\",\"categories\":[\"engine\",\"active\"]},"
+        "{\"id\":\"fire\",\"name\":\"Machine Gun\",\"icon\":\"🔫\",\"categories\":[\"weapon\",\"gun\",\"active\"]},"
+        "{\"id\":\"flamethrower\",\"name\":\"Flamethrower\",\"icon\":\"🔥\",\"categories\":[\"weapon\",\"active\"]},"
+        "{\"id\":\"rocket\",\"name\":\"Rocket Launcher\",\"icon\":\"🚀\",\"categories\":[\"weapon\",\"active\"]},"
+        "{\"id\":\"damage\",\"name\":\"Taking Hits\",\"icon\":\"⚡\",\"categories\":[\"damage\",\"active\"]},"
+        "{\"id\":\"explosion\",\"name\":\"Explosion\",\"icon\":\"💥\",\"categories\":[\"damage\",\"weapon\",\"cannon\",\"active\"]},"
+        "{\"id\":\"scroll\",\"name\":\"Data Scroll\",\"icon\":\"📊\",\"categories\":[\"console\",\"rgb\",\"ambient\"]}"
+        "]}")
+        );
     });
     
     server.on("/volume/", HTTP_GET, []() {
