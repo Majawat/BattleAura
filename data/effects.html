@@ -48,11 +48,12 @@
                                 </select>
                             </td>
                             <td>
-                                <select name="engine_idle_duration">
+                                <select name="engine_idle_duration" onchange="toggleCustomDuration(this, 'engine_idle')">
                                     <option value="audio">Audio Length</option>
                                     <option value="loop" selected>Loop</option>
                                     <option value="custom">Custom Time</option>
                                 </select>
+                                <input type="number" name="engine_idle_custom_ms" placeholder="ms" min="100" max="30000" step="100" style="display:none; width:60px; margin-left:5px;">
                             </td>
                             <td><input type="checkbox" name="engine_idle_enabled" checked></td>
                             <td><button type="button" onclick="testEffect('engine_idle')">Test</button></td>
@@ -73,10 +74,11 @@
                                 </select>
                             </td>
                             <td>
-                                <select name="engine_rev_duration">
+                                <select name="engine_rev_duration" onchange="toggleCustomDuration(this, 'engine_rev')">
                                     <option value="audio" selected>Audio Length</option>
                                     <option value="custom">Custom Time</option>
                                 </select>
+                                <input type="number" name="engine_rev_custom_ms" placeholder="ms" min="100" max="30000" step="100" style="display:none; width:60px; margin-left:5px;">
                             </td>
                             <td><input type="checkbox" name="engine_rev_enabled" checked></td>
                             <td><button type="button" onclick="testEffect('engine_rev')">Test</button></td>
@@ -97,10 +99,11 @@
                                 </select>
                             </td>
                             <td>
-                                <select name="damage_duration">
+                                <select name="damage_duration" onchange="toggleCustomDuration(this, 'damage')">
                                     <option value="audio" selected>Audio Length</option>
                                     <option value="custom">Custom Time</option>
                                 </select>
+                                <input type="number" name="damage_custom_ms" placeholder="ms" min="100" max="30000" step="100" style="display:none; width:60px; margin-left:5px;">
                             </td>
                             <td><input type="checkbox" name="damage_enabled" checked></td>
                             <td><button type="button" onclick="testEffect('damage')">Test</button></td>
@@ -122,10 +125,11 @@
                                 </select>
                             </td>
                             <td>
-                                <select name="machinegun_duration">
+                                <select name="machinegun_duration" onchange="toggleCustomDuration(this, 'machinegun')">
                                     <option value="audio" selected>Audio Length</option>
                                     <option value="custom">Custom Time</option>
                                 </select>
+                                <input type="number" name="machinegun_custom_ms" placeholder="ms" min="100" max="30000" step="100" style="display:none; width:60px; margin-left:5px;">
                             </td>
                             <td><input type="checkbox" name="machinegun_enabled" checked></td>
                             <td><button type="button" onclick="testEffect('machinegun')">Test</button></td>
@@ -227,6 +231,18 @@
                          <div>Files: ${data.fileCount || 0}</div>`;
                 })
                 .catch(e => console.log('Status refresh failed:', e));
+        }
+        
+        function toggleCustomDuration(selectElement, effectName) {
+            const customInput = document.querySelector(`input[name="${effectName}_custom_ms"]`);
+            if (customInput) {
+                if (selectElement.value === 'custom') {
+                    customInput.style.display = 'inline';
+                    customInput.focus();
+                } else {
+                    customInput.style.display = 'none';
+                }
+            }
         }
     </script>
 </body>
