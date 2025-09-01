@@ -12,7 +12,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.11.9-alpha";
+const char* VERSION = "0.12.0-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -20,18 +20,8 @@ const int AP_CHANNEL = 1;
 // Configuration constants
 #define CONFIG_FILE "/config.json"
 
-// Audio file durations in milliseconds - THESE MUST MATCH YOUR ACTUAL MP3 FILE LENGTHS!
-// If effects cut off early, update these values to match your audio file durations
-// TODO: Implement dynamic audio length detection to eliminate hardcoded values
-#define AUDIO_DURATION_TANK_IDLE       5000   // File 0001: Tank Idle - UPDATE TO ACTUAL LENGTH
-#define AUDIO_DURATION_TANK_IDLE_2     5000   // File 0002: Tank Idle 2 - UPDATE TO ACTUAL LENGTH  
-#define AUDIO_DURATION_MACHINE_GUN     2000   // File 0003: Machine Gun - UPDATE TO ACTUAL LENGTH
-#define AUDIO_DURATION_FLAMETHROWER    3000   // File 0004: Flamethrower - UPDATE TO ACTUAL LENGTH
-#define AUDIO_DURATION_TAKING_HITS     1500   // File 0005: Taking Hits - UPDATE TO ACTUAL LENGTH
-#define AUDIO_DURATION_ENGINE_REVVING  4000   // File 0006: Engine Revving - UPDATE TO ACTUAL LENGTH
-#define AUDIO_DURATION_EXPLOSION       2000   // File 0007: Explosion - UPDATE TO ACTUAL LENGTH
-#define AUDIO_DURATION_ROCKET_LAUNCHER 1800   // File 0008: Rocket Launcher - UPDATE TO ACTUAL LENGTH
-#define AUDIO_DURATION_KILL_CONFIRMED  1200   // File 0009: Kill Confirmed - UPDATE TO ACTUAL LENGTH
+// Dynamic audio length detection implemented - effects now sync with actual audio playback duration
+// No more hardcoded durations needed! Effects will automatically end when audio finishes.
 
 // Default effect durations when no audio is mapped
 #define DEFAULT_EFFECT_DURATION_SHORT  1000   // Quick effects (strobe, pulse)
@@ -201,6 +191,13 @@ HardwareSerial dfPlayerSerial(DFPLAYER_UART_NUM);
 DFRobotDFPlayerMini dfPlayer;
 bool audioInitialized = false;
 
+// Audio playback tracking
+bool audioCurrentlyPlaying = false;
+unsigned long audioStartTime = 0;
+unsigned long lastAudioCheck = 0;
+const unsigned long AUDIO_CHECK_INTERVAL = 100; // Check audio status every 100ms
+const unsigned long MAX_AUDIO_TIMEOUT = 30000; // Maximum audio duration timeout (30 seconds)
+
 // Application state
 bool systemReady = false;
 unsigned long lastHeartbeat = 0;
@@ -267,6 +264,8 @@ void stopAudio();
 bool isAudioReady();
 uint16_t getEffectDuration(EffectType effect);
 void checkPinConflicts();
+bool isAudioStillPlaying();
+void updateAudioBasedEffects();
 void printSystemInfo();
 
 void setup() {
@@ -329,6 +328,9 @@ void loop() {
     
     // Update lighting effects (non-blocking)
     updateEffects();
+    
+    // Update audio-based effect timing
+    updateAudioBasedEffects();
     
     // Periodic heartbeat (non-blocking timing)
     unsigned long now = millis();
@@ -1116,6 +1118,12 @@ void setupWebServer() {
             // Auto mode - use effect's intrinsic duration to decide
             effectDuration = manualDuration > 0 ? manualDuration : getEffectDuration(effect);
             shouldBeAmbient = (effectDuration == 0);
+        }
+        
+        // Special handling for audio-synced effects (0xFFFF)
+        if (effectDuration == 0xFFFF) {
+            effectDuration = MAX_AUDIO_TIMEOUT; // Set timeout as fallback, will be overridden by audio completion
+            Serial.println("🎵 Effect will sync with audio playback duration");
         }
         
         // Play audio if available and enabled (but not for static control effects)
@@ -3231,6 +3239,11 @@ void playAudioFile(uint8_t fileNumber) {
     
     Serial.printf("🔊 Playing audio file %03d\n", fileNumber);
     dfPlayer.play(fileNumber);
+    
+    // Track audio playback start
+    audioCurrentlyPlaying = true;
+    audioStartTime = millis();
+    Serial.printf("🎵 Audio playback tracking started at %lums\n", audioStartTime);
 }
 
 void setAudioVolume(uint8_t volume) {
@@ -3245,7 +3258,8 @@ void stopAudio() {
     if (!audioInitialized) return;
     
     dfPlayer.stop();
-    Serial.println("🔇 Audio stopped");
+    audioCurrentlyPlaying = false;
+    Serial.println("🔇 Audio stopped, playback tracking reset");
 }
 
 bool isAudioReady() {
@@ -3379,25 +3393,25 @@ uint16_t getEffectDuration(EffectType effect) {
     switch (effect) {
         case EffectType::EFFECT_ENGINE_IDLE:
             audioFile = config.audioMap.engineIdle;
-            return (audioFile > 0) ? AUDIO_DURATION_TANK_IDLE : 0; // 0 = infinite/ambient
+            return (audioFile > 0) ? 0xFFFF : 0; // 0xFFFF = sync with audio, 0 = infinite/ambient
         case EffectType::EFFECT_ENGINE_REV:
             audioFile = config.audioMap.engineRev;
-            return (audioFile > 0) ? AUDIO_DURATION_ENGINE_REVVING : DEFAULT_EFFECT_DURATION_LONG;
+            return (audioFile > 0) ? 0xFFFF : DEFAULT_EFFECT_DURATION_LONG; // 0xFFFF = sync with audio
         case EffectType::EFFECT_MACHINE_GUN:
             audioFile = config.audioMap.machineGun;
-            return (audioFile > 0) ? AUDIO_DURATION_MACHINE_GUN : DEFAULT_EFFECT_DURATION_MEDIUM;
+            return (audioFile > 0) ? 0xFFFF : DEFAULT_EFFECT_DURATION_MEDIUM; // 0xFFFF = sync with audio
         case EffectType::EFFECT_FLAMETHROWER:
             audioFile = config.audioMap.flamethrower;
-            return (audioFile > 0) ? AUDIO_DURATION_FLAMETHROWER : DEFAULT_EFFECT_DURATION_LONG;
+            return (audioFile > 0) ? 0xFFFF : DEFAULT_EFFECT_DURATION_LONG; // 0xFFFF = sync with audio
         case EffectType::EFFECT_TAKING_HITS:
             audioFile = config.audioMap.takingHits;
-            return (audioFile > 0) ? AUDIO_DURATION_TAKING_HITS : DEFAULT_EFFECT_DURATION_SHORT;
+            return (audioFile > 0) ? 0xFFFF : DEFAULT_EFFECT_DURATION_SHORT; // 0xFFFF = sync with audio
         case EffectType::EFFECT_EXPLOSION:
             audioFile = config.audioMap.explosion;
-            return (audioFile > 0) ? AUDIO_DURATION_EXPLOSION : DEFAULT_EFFECT_DURATION_MEDIUM;
+            return (audioFile > 0) ? 0xFFFF : DEFAULT_EFFECT_DURATION_MEDIUM; // 0xFFFF = sync with audio
         case EffectType::EFFECT_ROCKET_LAUNCHER:
             audioFile = config.audioMap.rocketLauncher;
-            return (audioFile > 0) ? AUDIO_DURATION_ROCKET_LAUNCHER : DEFAULT_EFFECT_DURATION_MEDIUM;
+            return (audioFile > 0) ? 0xFFFF : DEFAULT_EFFECT_DURATION_MEDIUM; // 0xFFFF = sync with audio
         case EffectType::EFFECT_CANDLE_FLICKER:
             return 0; // Ambient effect - runs indefinitely
         case EffectType::EFFECT_PULSE:
@@ -3410,5 +3424,75 @@ uint16_t getEffectDuration(EffectType effect) {
             return 0; // Ambient effect - runs indefinitely
         default:
             return DEFAULT_EFFECT_DURATION_SHORT;
+    }
+}
+
+bool isAudioStillPlaying() {
+    if (!audioInitialized || !config.audioEnabled) {
+        return false;
+    }
+    
+    // Use DFPlayer readState() method to check playback status
+    // Note: readState() can be unreliable, so we also check timeout
+    int state = dfPlayer.readState();
+    bool isPlaying = (state == 1 || state == 513); // 1 = playing, 513 = common playing state
+    
+    // Apply timeout fallback if audio has been "playing" too long
+    unsigned long now = millis();
+    if (audioCurrentlyPlaying && (now - audioStartTime) > MAX_AUDIO_TIMEOUT) {
+        Serial.printf("⚠ Audio timeout reached after %lums, assuming playback finished\n", 
+                     now - audioStartTime);
+        audioCurrentlyPlaying = false;
+        return false;
+    }
+    
+    // If DFPlayer says not playing but we think it should be, double-check with small delay
+    if (audioCurrentlyPlaying && !isPlaying) {
+        // Give it one more chance in case of temporary UART communication issue
+        delay(5);
+        state = dfPlayer.readState();
+        isPlaying = (state == 1 || state == 513);
+        
+        if (!isPlaying) {
+            Serial.printf("🎵 Audio playback completed (state: %d, duration: %lums)\n", 
+                         state, now - audioStartTime);
+            audioCurrentlyPlaying = false;
+        }
+    }
+    
+    return audioCurrentlyPlaying && isPlaying;
+}
+
+void updateAudioBasedEffects() {
+    if (!audioCurrentlyPlaying) {
+        return; // No audio playing, nothing to check
+    }
+    
+    unsigned long now = millis();
+    
+    // Only check audio status periodically to avoid UART spam
+    if (now - lastAudioCheck < AUDIO_CHECK_INTERVAL) {
+        return;
+    }
+    lastAudioCheck = now;
+    
+    // Check if audio has finished
+    if (!isAudioStillPlaying()) {
+        Serial.println("🎵 Audio finished, checking for audio-synced effects to restore");
+        
+        // Find any effects that were waiting for audio to complete
+        for (uint8_t i = 0; i < MAX_PINS; i++) {
+            if (!config.pins[i].enabled || !config.pins[i].effectActive) continue;
+            
+            // If effect end time is set to our MAX timeout, it's likely an audio-synced effect
+            if (effectStates[i].effectEndTime > 0 && 
+                (effectStates[i].effectEndTime - now) > (MAX_AUDIO_TIMEOUT - 5000)) {
+                
+                Serial.printf("🎵 Restoring ambient effect on pin %d after audio completion\n", i);
+                restoreAmbientEffect(i);
+            }
+        }
+        
+        audioCurrentlyPlaying = false;
     }
 }
