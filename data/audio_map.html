@@ -24,69 +24,8 @@
                     </div>
                 </div>
                 
-                <div class="audio-mapping-grid">
-                    <div class="mapping-item">
-                        <label for="candleFlicker">Candle Flicker:</label>
-                        <select id="candleFlicker" name="candleFlicker">
-                            <option value="0">No Audio</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mapping-item">
-                        <label for="engineIdle">Engine Idle:</label>
-                        <select id="engineIdle" name="engineIdle">
-                            <option value="0">No Audio</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mapping-item">
-                        <label for="engineRev">Engine Rev:</label>
-                        <select id="engineRev" name="engineRev">
-                            <option value="0">No Audio</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mapping-item">
-                        <label for="machineGun">Machine Gun:</label>
-                        <select id="machineGun" name="machineGun">
-                            <option value="0">No Audio</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mapping-item">
-                        <label for="flamethrower">Flamethrower:</label>
-                        <select id="flamethrower" name="flamethrower">
-                            <option value="0">No Audio</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mapping-item">
-                        <label for="takingHits">Taking Hits:</label>
-                        <select id="takingHits" name="takingHits">
-                            <option value="0">No Audio</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mapping-item">
-                        <label for="explosion">Explosion:</label>
-                        <select id="explosion" name="explosion">
-                            <option value="0">No Audio</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mapping-item">
-                        <label for="rocketLauncher">Rocket Launcher:</label>
-                        <select id="rocketLauncher" name="rocketLauncher">
-                            <option value="0">No Audio</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mapping-item">
-                        <label for="killConfirmed">Kill Confirmed:</label>
-                        <select id="killConfirmed" name="killConfirmed">
-                            <option value="0">No Audio</option>
-                        </select>
-                    </div>
+                <div class="audio-mapping-grid" id="audio-mapping-grid">
+                    <div class="loading">Loading available effects...</div>
                 </div>
                 
                 <div class="form-actions">
@@ -164,20 +103,65 @@
 
         async function loadAudioMapping() {
             try {
-                const response = await fetch('/api/config');
-                const config = await response.json();
+                const [configResponse, audioFilesResponse] = await Promise.all([
+                    fetch('/api/config'),
+                    fetch('/api/audio/files')
+                ]);
+                
+                const config = await configResponse.json();
+                const audioFiles = await audioFilesResponse.json();
                 const audioMap = config.audioMap || {};
                 
-                // Populate form with current mappings
+                // Generate dynamic form fields based on available audioMap properties
+                const grid = document.getElementById('audio-mapping-grid');
+                grid.innerHTML = '';
+                
                 Object.keys(audioMap).forEach(key => {
-                    const element = document.getElementById(key);
-                    if (element && audioMap[key]) {
-                        element.value = audioMap[key];
+                    // Convert camelCase to human readable
+                    const label = key.replace(/([A-Z])/g, ' $1')
+                                    .replace(/^./, str => str.toUpperCase());
+                    
+                    const mappingDiv = document.createElement('div');
+                    mappingDiv.className = 'mapping-item';
+                    
+                    const labelEl = document.createElement('label');
+                    labelEl.setAttribute('for', key);
+                    labelEl.textContent = label + ':';
+                    
+                    const select = document.createElement('select');
+                    select.id = key;
+                    select.name = key;
+                    
+                    // Add "No Audio" option
+                    const noAudioOption = document.createElement('option');
+                    noAudioOption.value = '0';
+                    noAudioOption.textContent = 'No Audio';
+                    select.appendChild(noAudioOption);
+                    
+                    // Add available audio files
+                    if (audioFiles.files) {
+                        audioFiles.files.forEach(file => {
+                            const option = document.createElement('option');
+                            option.value = file.number;
+                            option.textContent = `${String(file.number).padStart(4, '0')}.mp3 - ${file.name}`;
+                            select.appendChild(option);
+                        });
                     }
+                    
+                    // Set current value
+                    if (audioMap[key]) {
+                        select.value = audioMap[key];
+                    }
+                    
+                    mappingDiv.appendChild(labelEl);
+                    mappingDiv.appendChild(select);
+                    grid.appendChild(mappingDiv);
                 });
                 
             } catch (error) {
                 console.error('Failed to load audio mapping:', error);
+                document.getElementById('audio-mapping-grid').innerHTML = 
+                    '<p class="text-error">Failed to load audio mapping configuration</p>';
             }
         }
 
