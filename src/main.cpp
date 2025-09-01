@@ -12,7 +12,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.12.7-alpha";
+const char* VERSION = "0.12.9-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -443,7 +443,6 @@ void setupWebServer() {
     server.on("/app.js", HTTP_GET, []() { handleEmbeddedFile("/app.js"); });
     server.on("/config.html", HTTP_GET, []() { handleEmbeddedFile("/config.html"); });
     server.on("/update.html", HTTP_GET, []() { handleEmbeddedFile("/update.html"); });
-    server.on("/audio_map.html", HTTP_GET, []() { handleEmbeddedFile("/audio_map.html"); });
     
     // API status endpoint
     server.on("/api/status", HTTP_GET, []() {
@@ -589,6 +588,7 @@ void setupWebServer() {
     server.on("/config/pins", HTTP_GET, []() { handleEmbeddedFile("/pins.html"); });
     server.on("/config/pins", HTTP_POST, handlePinConfigSave);
     server.on("/config/effects", HTTP_GET, []() { handleEmbeddedFile("/effects.html"); });
+    server.on("/config/effects", HTTP_POST, handleAudioMapSave);
     server.on("/config/system", HTTP_GET, []() { handleEmbeddedFile("/system.html"); });
     
     // OTA update page  
@@ -881,8 +881,6 @@ void setupWebServer() {
         server.send(200, "text/plain", "Playing effect audio: " + String(effectType));
     });
     
-    server.on("/audio/map", HTTP_GET, []() { handleEmbeddedFile("/audio_map.html"); });
-    server.on("/audio/map", HTTP_POST, handleAudioMapSave);
     
     // Global brightness control endpoint
     server.on("/brightness", HTTP_GET, []() {
@@ -2217,7 +2215,7 @@ void handleAudioMapSave() {
         "<h1>✅ Audio Configuration Saved!</h1>"
         "<p>Audio-to-effect mappings have been saved to flash memory.</p>"
         "<p>Your custom audio mappings are now active.</p>"
-        "<p><a href=\"/audio/map\" style=\"color: #4CAF50;\">← Back to Audio Configuration</a></p>"
+        "<p><a href=\"/config/effects\" style=\"color: #4CAF50;\">← Back to Effects Configuration</a></p>"
         "<p><a href=\"/\" style=\"color: #ff6b35;\">← Back to Control Panel</a></p>"
         "</body></html>"));
     
@@ -2392,11 +2390,10 @@ void updateEffects() {
         if (!config.pins[i].enabled) continue;
         
         // Check if temporary effect has expired
-        if (config.pins[i].effectActive && 
-            effectStates[i].effectEndTime > 0 && 
-            now >= effectStates[i].effectEndTime) {
+        if (config.pins[i].effectActive && effectStates[i].hasActiveOverride &&
+            effectStates[i].effectEndTime > 0 && now >= effectStates[i].effectEndTime) {
             
-            Serial.printf("Temporary effect expired on pin %d, restoring ambient\n", i);
+            Serial.printf("⏰ Timer-based effect expired on pin %d, restoring ambient\n", i);
             restoreAmbientEffect(i);
             continue;
         }
@@ -3033,22 +3030,38 @@ void startTemporaryEffect(uint8_t pinIndex, EffectType effect, unsigned long dur
 void restoreAmbientEffect(uint8_t pinIndex) {
     if (pinIndex >= MAX_PINS) return;
     
-    // Clear the active override flag
+    // Clear the active override flag first
     effectStates[pinIndex].hasActiveOverride = false;
     effectStates[pinIndex].effectEndTime = 0;
     
-    // Restore the saved ambient effect
+    // Determine which ambient effect to restore
     EffectType ambientEffect = effectStates[pinIndex].savedAmbientEffect;
     if (ambientEffect == EffectType::EFFECT_NONE) {
         ambientEffect = config.pins[pinIndex].defaultEffect;
     }
     
+    // Clear any temporary state
+    effectStates[pinIndex].savedAmbientEffect = EffectType::EFFECT_NONE;
+    
     if (ambientEffect != EffectType::EFFECT_NONE) {
-        startEffect(pinIndex, ambientEffect);
-        Serial.printf("Restored ambient effect %d on pin %d\n", (int)ambientEffect, pinIndex);
+        // Start the ambient effect (this sets effectActive=true with no end time)
+        startAmbientEffect(pinIndex, ambientEffect);
+        Serial.printf("✅ Restored ambient effect %d on pin %d\n", (int)ambientEffect, pinIndex);
     } else {
-        stopEffect(pinIndex);
-        Serial.printf("No ambient effect to restore on pin %d, stopping\n", pinIndex);
+        // No ambient effect - go to manual control mode
+        config.pins[pinIndex].effectActive = false;
+        effectStates[pinIndex].step = 0;
+        effectStates[pinIndex].lastUpdate = 0;
+        
+        // Set to configured manual brightness/color
+        if (config.pins[pinIndex].mode == PinMode::OUTPUT_WS2812B) {
+            uint8_t brightness = calculateActualBrightness(pinIndex);
+            setNeoPixelColor(pinIndex, config.pins[pinIndex].color, brightness);
+        } else {
+            setPinBrightness(pinIndex, config.pins[pinIndex].brightness);
+        }
+        
+        Serial.printf("✅ No ambient effect to restore on pin %d - manual control mode\n", pinIndex);
     }
 }
 
@@ -3487,15 +3500,19 @@ void updateAudioBasedEffects() {
         Serial.println("🎵 Audio finished, checking for audio-synced effects to restore");
         
         // Find any effects that were waiting for audio to complete
+        // Use exact match for MAX_AUDIO_TIMEOUT to avoid conflicts with normal timer-based effects
         for (uint8_t i = 0; i < MAX_PINS; i++) {
             if (!config.pins[i].enabled || !config.pins[i].effectActive) continue;
             
-            // If effect end time is set to our MAX timeout, it's likely an audio-synced effect
-            if (effectStates[i].effectEndTime > 0 && 
-                (effectStates[i].effectEndTime - now) > (MAX_AUDIO_TIMEOUT - 5000)) {
+            // Only restore effects that are specifically audio-synced (exact timeout match)
+            if (effectStates[i].effectEndTime > 0 && effectStates[i].hasActiveOverride) {
+                unsigned long remainingTime = effectStates[i].effectEndTime - now;
                 
-                Serial.printf("🎵 Restoring ambient effect on pin %d after audio completion\n", i);
-                restoreAmbientEffect(i);
+                // Check if this is an audio-synced effect (within 1 second of MAX timeout)
+                if (remainingTime > (MAX_AUDIO_TIMEOUT - 1000) && remainingTime <= MAX_AUDIO_TIMEOUT) {
+                    Serial.printf("🎵 Restoring ambient effect on pin %d after audio completion\n", i);
+                    restoreAmbientEffect(i);
+                }
             }
         }
         

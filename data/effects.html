@@ -47,10 +47,8 @@
                                 </select>
                             </td>
                             <td>
-                                <select name="engine_idle_audio">
-                                    <option value="0">None</option>
-                                    <option value="1">0001</option>
-                                    <option value="2" selected>0002</option>
+                                <select name="engine_idle_audio" class="audio-file-select">
+                                    <option value="0">Loading...</option>
                                 </select>
                             </td>
                             <td>
@@ -74,9 +72,8 @@
                                 </select>
                             </td>
                             <td>
-                                <select name="engine_rev_audio">
-                                    <option value="0">None</option>
-                                    <option value="6" selected>0006</option>
+                                <select name="engine_rev_audio" class="audio-file-select">
+                                    <option value="0">Loading...</option>
                                 </select>
                             </td>
                             <td>
@@ -99,9 +96,8 @@
                                 </select>
                             </td>
                             <td>
-                                <select name="damage_audio">
-                                    <option value="0">None</option>
-                                    <option value="5" selected>0005</option>
+                                <select name="damage_audio" class="audio-file-select">
+                                    <option value="0">Loading...</option>
                                 </select>
                             </td>
                             <td>
@@ -125,9 +121,8 @@
                                 </select>
                             </td>
                             <td>
-                                <select name="machinegun_audio">
-                                    <option value="0">None</option>
-                                    <option value="3" selected>0003</option>
+                                <select name="machinegun_audio" class="audio-file-select">
+                                    <option value="0">Loading...</option>
                                 </select>
                             </td>
                             <td>
@@ -150,9 +145,8 @@
                                 </select>
                             </td>
                             <td>
-                                <select name="destroyed_audio">
-                                    <option value="0">None</option>
-                                    <option value="7" selected>0007</option>
+                                <select name="destroyed_audio" class="audio-file-select">
+                                    <option value="0">Loading...</option>
                                 </select>
                             </td>
                             <td>
@@ -205,7 +199,7 @@
                 const files = data.files || [];
                 
                 // Update all audio select elements
-                const audioSelects = document.querySelectorAll('select[name$="_audio"]');
+                const audioSelects = document.querySelectorAll('.audio-file-select');
                 audioSelects.forEach(select => {
                     const currentValue = select.value;
                     
