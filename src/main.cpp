@@ -12,7 +12,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.11.7-alpha";
+const char* VERSION = "0.11.8-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -1438,10 +1438,35 @@ void setupWebServer() {
     
     server.on("/api/diagnostics", HTTP_GET, []() {
         String response = "{\"results\":[";
+        
+        // WiFi diagnostics
         response += "{\"test\":\"WiFi\",\"status\":\"" + String(WiFi.status() == WL_CONNECTED ? "Connected" : "Disconnected") + "\"},";
-        response += "{\"test\":\"Audio\",\"status\":\"" + String(isAudioReady() ? "Ready" : "Error") + "\"},";
+        
+        // Audio diagnostics with detailed status
+        String audioStatus;
+        if (!config.audioEnabled) {
+            audioStatus = "Disabled in config";
+        } else if (!audioInitialized) {
+            audioStatus = "Not initialized";
+        } else if (!isAudioReady()) {
+            audioStatus = "Hardware not responding";
+        } else {
+            // Try to get file count to determine if SD card is present
+            int fileCount = dfPlayer.readFileCounts();
+            if (fileCount <= 0) {
+                audioStatus = "Ready - No SD card or files";
+            } else {
+                audioStatus = "Ready - " + String(fileCount) + " files detected";
+            }
+        }
+        response += "{\"test\":\"Audio\",\"status\":\"" + audioStatus + "\"},";
+        
+        // Memory diagnostics
         response += "{\"test\":\"Memory\",\"status\":\"" + String(ESP.getFreeHeap()/1024) + "KB free\"},";
+        
+        // Flash diagnostics
         response += "{\"test\":\"Flash\",\"status\":\"" + String(ESP.getFlashChipSize()/1024/1024) + "MB total\"}";
+        
         response += "]}";
         server.send(200, "application/json", response);
     });
