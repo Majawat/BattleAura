@@ -3,41 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configuration - {{DEVICE_NAME}}</title>
+    <title>Configuration - BattleAura</title>
     <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <main>
-        <header>
-            <h1>Configuration</h1>
+    <div class="container">
+        <header class="hero-compact">
+            <h1>⚙️ Configuration</h1>
+            <p class="hero-subtitle">System settings and hardware configuration</p>
             <nav><a href="/">← Back to Control</a></nav>
         </header>
 
-        <section class="config-sections">
-            <h2>Configuration Areas</h2>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">⚙️</div>
+                <div>
+                    <h2 class="card-title">Configuration Areas</h2>
+                    <p class="card-description">Configure your BattleAura system settings</p>
+                </div>
+            </div>
             
             <div class="config-grid">
-                <a href="/config/device" class="config-card">
-                    <h3>📡 Device Settings</h3>
-                    <p>WiFi, hostname, and system settings</p>
+                <a href="/config/device" class="config-card device">
+                    <div class="config-card-icon">📡</div>
+                    <div class="config-card-content">
+                        <h3>Device Settings</h3>
+                        <p>WiFi, hostname, and system settings</p>
+                    </div>
                 </a>
                 
-                <a href="/config/pins" class="config-card">
-                    <h3>🔌 Pin Configuration</h3>
-                    <p>LED pin assignments and settings</p>
+                <a href="/config/pins" class="config-card pins">
+                    <div class="config-card-icon">🔌</div>
+                    <div class="config-card-content">
+                        <h3>Pin Configuration</h3>
+                        <p>LED pin assignments and settings</p>
+                    </div>
                 </a>
                 
-                <a href="/config/effects" class="config-card">
-                    <h3>⚡ Effects & Audio</h3>
-                    <p>Effect mappings and audio files</p>
+                <a href="/config/effects" class="config-card audio">
+                    <div class="config-card-icon">⚡</div>
+                    <div class="config-card-content">
+                        <h3>Effects & Audio</h3>
+                        <p>Effect mappings and audio files</p>
+                    </div>
                 </a>
                 
-                <a href="/config/system" class="config-card">
-                    <h3>🛠️ System</h3>
-                    <p>Updates, diagnostics, and maintenance</p>
+                <a href="/config/system" class="config-card update">
+                    <div class="config-card-icon">🛠️</div>
+                    <div class="config-card-content">
+                        <h3>System</h3>
+                        <p>Updates, diagnostics, and maintenance</p>
+                    </div>
                 </a>
             </div>
-        </section>
-    </main>
+        </div>
+    </div>
 </body>
 </html>
