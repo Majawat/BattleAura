@@ -7,14 +7,21 @@
     <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <main>
-        <header>
-            <h1>System Information</h1>
+    <div class="container">
+        <header class="hero-compact">
+            <h1>🛠️ System Information</h1>
+            <p class="hero-subtitle">System status, diagnostics, and maintenance</p>
             <nav><a href="/config">← Back to Config</a></nav>
         </header>
 
-        <section class="system-info">
-            <h2>System Status</h2>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">📊</div>
+                <div>
+                    <h2 class="card-title">System Status</h2>
+                    <p class="card-description">Current system information and resource usage</p>
+                </div>
+            </div>
             
             <div class="status-grid">
                 <div class="status-item">
@@ -47,12 +54,18 @@
                     <span id="uptime">{{UPTIME}}</span>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <section class="firmware-update">
-            <h2>Firmware Update</h2>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">🚀</div>
+                <div>
+                    <h2 class="card-title">Firmware Update</h2>
+                    <p class="card-description">Check for and install firmware updates</p>
+                </div>
+            </div>
             
-            <div class="update-status">
+            <div class="status-grid">
                 <div class="status-item">
                     <label>Current Version:</label>
                     <span>{{FIRMWARE_VERSION}}</span>
@@ -64,24 +77,30 @@
                 </div>
             </div>
             
-            <div class="update-actions">
-                <button type="button" onclick="checkUpdate()">🔄 Check for Updates</button>
-                <button type="button" onclick="location.href='/update'">📁 Manual Update</button>
+            <div class="form-actions">
+                <button type="button" onclick="checkUpdate()" class="btn info">🔄 Check for Updates</button>
+                <button type="button" onclick="location.href='/update'" class="btn">📁 Manual Update</button>
             </div>
-        </section>
+        </div>
 
-        <section class="diagnostics">
-            <h2>Diagnostics</h2>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">🔍</div>
+                <div>
+                    <h2 class="card-title">Diagnostics</h2>
+                    <p class="card-description">System diagnostics and log management</p>
+                </div>
+            </div>
             
-            <div class="diagnostic-actions">
-                <button type="button" onclick="runDiagnostics()">🔍 Run Diagnostics</button>
-                <button type="button" onclick="exportLogs()">📄 Export Logs</button>
-                <button type="button" onclick="clearLogs()">🗑️ Clear Logs</button>
+            <div class="form-actions">
+                <button type="button" onclick="runDiagnostics()" class="btn info">🔍 Run Diagnostics</button>
+                <button type="button" onclick="exportLogs()" class="btn">📄 Export Logs</button>
+                <button type="button" onclick="clearLogs()" class="btn warning">🗑️ Clear Logs</button>
             </div>
             
             <div id="diagnostic-results"></div>
-        </section>
-    </main>
+        </div>
+    </div>
 
     <script>
         function checkUpdate() {

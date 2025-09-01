@@ -7,16 +7,22 @@
     <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <main>
-        <header>
-            <h1>Effects & Audio Configuration</h1>
+    <div class="container">
+        <header class="hero-compact">
+            <h1>⚡ Effects & Audio Configuration</h1>
+            <p class="hero-subtitle">Configure effect mappings and audio system</p>
             <nav><a href="/config">← Back to Config</a></nav>
         </header>
 
         <form method="POST" action="/config/effects">
-            <section class="effects-config">
-                <h2>Effect Mappings</h2>
-                <p>Configure which effects trigger on which pin types, with optional audio</p>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">⚡</div>
+                    <div>
+                        <h2 class="card-title">Effect Mappings</h2>
+                        <p class="card-description">Configure which effects trigger on which pin types, with optional audio</p>
+                    </div>
+                </div>
                 
                 <table class="effects-table">
                     <thead>
@@ -164,17 +170,27 @@
                     <button type="submit">💾 Save Effects Configuration</button>
                     <button type="button" onclick="location.reload()">🔄 Reset Changes</button>
                 </div>
-            </section>
+            </div>
         </form>
 
-        <section class="audio-status">
-            <h2>Audio System Status</h2>
-            <div id="audio-status">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">🔊</div>
+                <div>
+                    <h2 class="card-title">Audio System Status</h2>
+                    <p class="card-description">Current audio system status and controls</p>
+                </div>
+            </div>
+            
+            <div id="audio-status" class="audio-status-display">
                 {{AUDIO_STATUS}}
             </div>
-            <button type="button" onclick="refreshAudioStatus()">🔄 Refresh Status</button>
-        </section>
-    </main>
+            
+            <div class="form-actions">
+                <button type="button" onclick="refreshAudioStatus()" class="btn info">🔄 Refresh Status</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {

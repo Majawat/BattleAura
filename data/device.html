@@ -7,15 +7,22 @@
     <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <main>
-        <header>
-            <h1>Device Settings</h1>
+    <div class="container">
+        <header class="hero-compact">
+            <h1>📡 Device Settings</h1>
+            <p class="hero-subtitle">Configure WiFi, hostname, and system settings</p>
             <nav><a href="/config">← Back to Config</a></nav>
         </header>
 
         <form method="POST" action="/config/device">
-            <section class="device-config">
-                <h2>Basic Device Configuration</h2>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📡</div>
+                    <div>
+                        <h2 class="card-title">Basic Device Configuration</h2>
+                        <p class="card-description">Configure device identity and network settings</p>
+                    </div>
+                </div>
                 
                 <div class="form-group">
                     <label for="deviceName">Device Name:</label>
@@ -53,20 +60,26 @@
                     <button type="submit">💾 Save Device Settings</button>
                     <button type="button" onclick="location.reload()">🔄 Reset Changes</button>
                 </div>
-            </section>
+            </div>
         </form>
 
-        <section class="device-actions">
-            <h2>Device Actions</h2>
-            
-            <div class="action-buttons">
-                <button type="button" onclick="restartDevice()" class="warning">🔄 Restart Device</button>
-                <button type="button" onclick="factoryReset()" class="danger">⚠️ Factory Reset</button>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">🔧</div>
+                <div>
+                    <h2 class="card-title">Device Actions</h2>
+                    <p class="card-description">System control and reset options</p>
+                </div>
             </div>
             
-            <small>Restart required after WiFi changes</small>
-        </section>
-    </main>
+            <div class="form-actions">
+                <button type="button" onclick="restartDevice()" class="btn warning">🔄 Restart Device</button>
+                <button type="button" onclick="factoryReset()" class="btn danger">⚠️ Factory Reset</button>
+            </div>
+            
+            <p class="text-secondary">Restart required after WiFi changes</p>
+        </div>
+    </div>
 
     <script>
         function restartDevice() {

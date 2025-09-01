@@ -7,14 +7,21 @@
     <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <main>
-        <header>
-            <h1>Firmware Update</h1>
+    <div class="container">
+        <header class="hero-compact">
+            <h1>🚀 Firmware Update</h1>
+            <p class="hero-subtitle">Upload new firmware to your device</p>
             <nav><a href="/config/system">← Back to System</a></nav>
         </header>
 
-        <section class="update-form">
-            <h2>Upload New Firmware</h2>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">🚀</div>
+                <div>
+                    <h2 class="card-title">Upload New Firmware</h2>
+                    <p class="card-description">Select a .bin firmware file to update your device</p>
+                </div>
+            </div>
             
             <form id="updateForm" enctype="multipart/form-data">
                 <div class="form-group">
@@ -37,13 +44,21 @@
                 <div id="progress-text">0%</div>
                 <p>Do not power off or close this page during update!</p>
             </div>
-        </section>
+        </div>
 
-        <section class="update-info">
-            <h2>Important Notes</h2>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">ℹ️</div>
+                <div>
+                    <h2 class="card-title">Important Notes</h2>
+                    <p class="card-description">Read before updating firmware</p>
+                </div>
+            </div>
             
-            <div class="warning">
-                <h3>⚠️ Before Updating</h3>
+            <div class="sub-card warning">
+                <div class="sub-card-header">
+                    <h3 class="sub-card-title">⚠️ Before Updating</h3>
+                </div>
                 <ul>
                     <li>Ensure device has stable power connection</li>
                     <li>Do not disconnect power during update</li>
@@ -52,12 +67,14 @@
                 </ul>
             </div>
             
-            <div class="current-version">
-                <h3>Current Version</h3>
-                <p>{{FIRMWARE_VERSION}}</p>
+            <div class="sub-card info">
+                <div class="sub-card-header">
+                    <h3 class="sub-card-title">Current Version</h3>
+                </div>
+                <p class="version-display">{{FIRMWARE_VERSION}}</p>
             </div>
-        </section>
-    </main>
+        </div>
+    </div>
 
     <script>
         document.getElementById('updateForm').addEventListener('submit', function(e) {
