@@ -12,7 +12,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.12.0-alpha";
+const char* VERSION = "0.12.1-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -1838,15 +1838,30 @@ void setupSPIFFS() {
 void initializeDefaults() {
     config = SystemConfig();  // Reset to defaults
     
-    // Set up one default pin for testing
+    // Set up default pins with ambient effects for common miniature types
+    // Pin 0: Candle/Flame effect for atmospheric lighting
     config.pins[0].gpio = 2;
     config.pins[0].mode = PinMode::OUTPUT_PWM;
-    config.pins[0].name = "Test LED";
+    config.pins[0].name = "Candle";
     config.pins[0].enabled = true;
-    config.pins[0].brightness = 255;
-    config.pins[0].color = 0xFF6600;
+    config.pins[0].brightness = 200;
+    config.pins[0].color = 0xFF4400;  // Warm orange
+    config.pins[0].defaultEffect = EffectType::EFFECT_CANDLE_FLICKER;
+    config.pins[0].type = "Candle";
+    config.pins[0].group = "Candles";
     
-    Serial.println("✓ Default configuration initialized");
+    // Pin 1: Engine ambient for vehicles
+    config.pins[1].gpio = 3;
+    config.pins[1].mode = PinMode::OUTPUT_PWM;
+    config.pins[1].name = "Engine";
+    config.pins[1].enabled = false; // Disabled by default, user enables if they have a vehicle
+    config.pins[1].brightness = 180;
+    config.pins[1].color = 0x0044FF;  // Blue engine glow
+    config.pins[1].defaultEffect = EffectType::EFFECT_ENGINE_IDLE;
+    config.pins[1].type = "Engine";
+    config.pins[1].group = "Engine1";
+    
+    Serial.println("✓ Default configuration initialized with ambient effects");
 }
 
 void loadConfiguration() {
@@ -1922,6 +1937,43 @@ void loadConfiguration() {
     
     configLoaded = true;
     Serial.println("✓ Configuration loaded from file");
+    
+    // Configuration migration: Add default ambient effects if none are set
+    bool hasAnyAmbientEffects = false;
+    for (uint8_t i = 0; i < MAX_PINS; i++) {
+        if (config.pins[i].enabled && config.pins[i].defaultEffect != EffectType::EFFECT_NONE) {
+            hasAnyAmbientEffects = true;
+            break;
+        }
+    }
+    
+    if (!hasAnyAmbientEffects) {
+        Serial.println("⚠ No ambient effects configured - adding suggested defaults");
+        
+        // Auto-configure ambient effects based on pin types
+        for (uint8_t i = 0; i < MAX_PINS; i++) {
+            if (!config.pins[i].enabled) continue;
+            
+            String type = config.pins[i].type;
+            if (type.equalsIgnoreCase("Candle")) {
+                config.pins[i].defaultEffect = EffectType::EFFECT_CANDLE_FLICKER;
+                Serial.printf("   Pin %d (%s): Added candle flicker ambient\n", i, config.pins[i].name.c_str());
+            } else if (type.equalsIgnoreCase("Engine")) {
+                config.pins[i].defaultEffect = EffectType::EFFECT_ENGINE_IDLE;
+                Serial.printf("   Pin %d (%s): Added engine idle ambient\n", i, config.pins[i].name.c_str());
+            } else if (type.equalsIgnoreCase("Console")) {
+                if (config.pins[i].mode == PinMode::OUTPUT_WS2812B) {
+                    config.pins[i].defaultEffect = EffectType::EFFECT_CONSOLE_RGB;
+                    Serial.printf("   Pin %d (%s): Added console RGB ambient\n", i, config.pins[i].name.c_str());
+                }
+            }
+            // Add more type-based defaults as needed
+        }
+        
+        // Save the updated configuration with ambient effects
+        saveConfiguration();
+        Serial.println("✓ Ambient effects migration completed and saved");
+    }
 }
 
 void saveConfiguration() {
