@@ -12,7 +12,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.12.2-alpha";
+const char* VERSION = "0.12.3-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -1838,42 +1838,21 @@ void setupSPIFFS() {
 void initializeDefaults() {
     config = SystemConfig();  // Reset to defaults
     
-    // Tank miniature default configuration - matches CLAUDE.md vision
-    // Pin 0: Candles - Atmospheric lighting 
-    config.pins[0].gpio = 2;
-    config.pins[0].mode = PinMode::OUTPUT_PWM;
-    config.pins[0].name = "Candles";
-    config.pins[0].enabled = true;
-    config.pins[0].brightness = 150;  // Match vision example
-    config.pins[0].color = 0xFF4400;
-    config.pins[0].defaultEffect = EffectType::EFFECT_CANDLE_FLICKER;
-    config.pins[0].type = "Candle";
-    config.pins[0].group = "Candles";
+    // All pins disabled by default - user must configure their actual hardware
+    // This prevents accidentally driving wrong hardware types (buttons, sensors, relays, etc.)
+    for (uint8_t i = 0; i < MAX_PINS; i++) {
+        config.pins[i].gpio = 0;
+        config.pins[i].mode = PinMode::PIN_DISABLED;
+        config.pins[i].name = "Unused";
+        config.pins[i].enabled = false;
+        config.pins[i].brightness = 255;
+        config.pins[i].color = 0xFFFFFF;
+        config.pins[i].defaultEffect = EffectType::EFFECT_NONE;
+        config.pins[i].type = "";
+        config.pins[i].group = "";
+    }
     
-    // Pin 3: Console - Data scrolling (skip pin 1,2 to match vision numbering)
-    config.pins[3].gpio = 5;
-    config.pins[3].mode = PinMode::OUTPUT_WS2812B;
-    config.pins[3].name = "Console";  
-    config.pins[3].enabled = true;
-    config.pins[3].brightness = 80;   // Match vision example
-    config.pins[3].color = 0x00FF44;
-    config.pins[3].defaultEffect = EffectType::EFFECT_CONSOLE_RGB;
-    config.pins[3].type = "Console";
-    config.pins[3].group = "Console";
-    config.pins[3].ledCount = 5;      // Realistic console strip
-    
-    // Pin 8: Engine1 - Primary engine (skip to match vision)
-    config.pins[7].gpio = 8;  // Array index 7 for "Pin 8" in UI
-    config.pins[7].mode = PinMode::OUTPUT_PWM;
-    config.pins[7].name = "Engine1";
-    config.pins[7].enabled = true;
-    config.pins[7].brightness = 200;  // Match vision example  
-    config.pins[7].color = 0x0044FF;
-    config.pins[7].defaultEffect = EffectType::EFFECT_ENGINE_IDLE;
-    config.pins[7].type = "Engine";
-    config.pins[7].group = "Engine1";
-    
-    Serial.println("✓ Tank configuration initialized - Candles, Console, Engine ready");
+    Serial.println("✓ Safe default configuration - all pins disabled, user must configure hardware");
 }
 
 void loadConfiguration() {
