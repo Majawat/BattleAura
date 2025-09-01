@@ -12,7 +12,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.12.9-alpha";
+const char* VERSION = "0.12.10-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -2007,7 +2007,57 @@ void handleConfigSave() {
         config.wifiPassword = server.arg("wifiPassword");
     }
     
-    // Update pin configurations with new modular fields
+    // First pass: collect all requested GPIO assignments for conflict detection
+    uint8_t tempGPIOAssignments[MAX_PINS];
+    bool hasConflict = false;
+    String conflictMessage = "";
+    
+    // Initialize temp assignments with current values
+    for (uint8_t i = 0; i < MAX_PINS; i++) {
+        tempGPIOAssignments[i] = config.pins[i].gpio;
+    }
+    
+    // Update temp assignments with requested values
+    for (uint8_t i = 0; i < MAX_PINS; i++) {
+        String gpioArg = "gpio" + String(i);
+        String enabledArg = "enabled" + String(i);
+        bool willBeEnabled = server.hasArg(enabledArg);
+        
+        if (server.hasArg(gpioArg) && willBeEnabled) {
+            uint8_t requestedGPIO = constrain(server.arg(gpioArg).toInt(), 0, 21);
+            
+            // Check for DFPlayer conflicts
+            if (config.audioEnabled && (requestedGPIO == DFPLAYER_RX_PIN || requestedGPIO == DFPLAYER_TX_PIN)) {
+                hasConflict = true;
+                conflictMessage += "Pin " + String(i) + ": GPIO " + String(requestedGPIO) + " reserved for DFPlayer; ";
+                continue; // Skip this assignment
+            }
+            
+            // Check for GPIO conflicts with other enabled pins
+            for (uint8_t j = 0; j < MAX_PINS; j++) {
+                if (i != j && server.hasArg("enabled" + String(j))) { // Only check other enabled pins
+                    if (tempGPIOAssignments[j] == requestedGPIO) {
+                        hasConflict = true;
+                        conflictMessage += "GPIO " + String(requestedGPIO) + " conflict between pins " + String(i) + " and " + String(j) + "; ";
+                        break;
+                    }
+                }
+            }
+            
+            if (!hasConflict || tempGPIOAssignments[i] != requestedGPIO) {
+                tempGPIOAssignments[i] = requestedGPIO;
+            }
+        }
+    }
+    
+    // If conflicts detected, send error response
+    if (hasConflict) {
+        server.send(400, "application/json", "{\"error\":\"GPIO conflicts detected: " + conflictMessage + "\"}");
+        Serial.println("❌ Configuration save blocked due to GPIO conflicts: " + conflictMessage);
+        return;
+    }
+    
+    // No conflicts - proceed with updating pin configurations
     for (uint8_t i = 0; i < MAX_PINS; i++) {
         String gpioArg = "gpio" + String(i);
         String modeArg = "mode" + String(i);
@@ -2019,17 +2069,7 @@ void handleConfigSave() {
         String ledCountArg = "ledCount" + String(i);
         
         if (server.hasArg(gpioArg)) {
-            uint8_t requestedGPIO = server.arg(gpioArg).toInt();
-            // Prevent assignment of DFPlayer pins when audio is enabled
-            if (config.audioEnabled && (requestedGPIO == DFPLAYER_RX_PIN || requestedGPIO == DFPLAYER_TX_PIN)) {
-                Serial.printf("⚠ GPIO %d blocked - reserved for DFPlayer (Audio enabled)\n", requestedGPIO);
-                // Keep existing GPIO or assign a safe default
-                if (config.pins[i].gpio == DFPLAYER_RX_PIN || config.pins[i].gpio == DFPLAYER_TX_PIN) {
-                    config.pins[i].gpio = 2; // Safe default
-                }
-            } else {
-                config.pins[i].gpio = constrain(requestedGPIO, 0, 21);
-            }
+            config.pins[i].gpio = tempGPIOAssignments[i]; // Use validated GPIO
         }
         
         if (server.hasArg(modeArg)) {

@@ -81,7 +81,7 @@
             const container = document.getElementById('pin-config-slots');
             let html = '<div class="pin-config-grid">';
             
-            for (let i = 0; i < 10; i++) { // Show 10 pin slots
+            for (let i = 0; i < 8; i++) { // MAX_PINS = 8 // Show 10 pin slots
                 const pin = pins[i] || { gpio: i, enabled: false, name: '', type: '', group: '', mode: 0, brightness: 255, ledCount: 10 };
                 
                 html += `
@@ -176,7 +176,7 @@
         async function savePinConfiguration() {
             const pins = [];
             
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < 8; i++) { // MAX_PINS = 8
                 const enabled = document.getElementById('enabled-' + i).checked;
                 
                 pins.push({
@@ -201,7 +201,17 @@
                 if (response.ok) {
                     showFeedback('Pin configuration saved!', 'success');
                 } else {
-                    showFeedback('Failed to save configuration', 'error');
+                    // Try to get specific error message from response
+                    try {
+                        const errorData = await response.json();
+                        if (errorData.error) {
+                            showFeedback('Configuration error: ' + errorData.error, 'error');
+                        } else {
+                            showFeedback('Failed to save configuration', 'error');
+                        }
+                    } catch {
+                        showFeedback('Failed to save configuration (HTTP ' + response.status + ')', 'error');
+                    }
                 }
             } catch (error) {
                 console.error('Save error:', error);
