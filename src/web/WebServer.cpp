@@ -94,25 +94,15 @@ void WebServer::startAccessPoint() {
     delay(100);
     int attempts = 0;
     while (WiFi.softAPIP().toString() == "0.0.0.0" && attempts < 10) {
-        Serial.printf("WebServer: Waiting for AP IP... attempt %d\n", attempts);
         delay(100);
         attempts++;
     }
     
     wifiConnected = false;
     apMode = true;
-    IPAddress apIP = WiFi.softAPIP();
-    currentIP = apIP.toString();
-    
-    // If IP is still 0.0.0.0, use default ESP32 AP IP
-    if (currentIP == "0.0.0.0") {
-        currentIP = "192.168.4.1";
-        Serial.println("WebServer: Using default AP IP since softAPIP() failed");
-    }
+    currentIP = WiFi.softAPIP().toString();
     
     Serial.printf("WebServer: AP started, IP: %s\n", currentIP.c_str());
-    Serial.printf("WebServer: AP Status: %s\n", WiFi.status() == WL_CONNECTED ? "Connected" : "Disconnected");
-    Serial.printf("WebServer: AP Mode: %s\n", WiFi.getMode() == WIFI_AP ? "AP" : WiFi.getMode() == WIFI_STA ? "STA" : "UNKNOWN");
 }
 
 bool WebServer::isWiFiConnected() const {

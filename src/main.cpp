@@ -12,7 +12,7 @@ WebServer webServer(config, ledController);
 
 void setup() {
     Serial.begin(115200);
-    delay(1000);
+    delay(6000);
     Serial.println("\n=== BattleAura v2.0.0 - Phase 1 Test ===");
     
     // Initialize configuration
@@ -74,19 +74,14 @@ void loop() {
             if (brightness >= 255) brightness = 255;
         }
         
-        // DIRECT LED CONTROL - bypass broken LedController
-        static bool ledsInitialized = false;
-        if (!ledsInitialized) {
-            ledcSetup(0, 5000, 8);
-            ledcAttachPin(2, 0);
-            ledcSetup(1, 5000, 8); 
-            ledcAttachPin(3, 1);
-            ledsInitialized = true;
-            Serial.println("Direct LED control initialized");
+        // Set brightness on all zones
+        auto zones = config.getAllZones();
+        for (Zone* zone : zones) {
+            ledController.setZoneBrightness(zone->id, brightness);
         }
         
-        ledcWrite(0, brightness);
-        ledcWrite(1, brightness);
+        // Apply changes to hardware
+        ledController.update();
         
         // Print status every 10 seconds
         static uint32_t lastPrint = 0;
