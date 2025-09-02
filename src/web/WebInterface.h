@@ -125,7 +125,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         </div>
         
         <div class="footer">
-            BattleAura v2.0.0 - Phase 1<br>
+            <span id="firmware-info">BattleAura Loading...</span><br>
             <span id="device-info"></span>
         </div>
     </div>
@@ -162,6 +162,8 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 if (!response.ok) throw new Error('Failed to load status');
                 
                 const data = await response.json();
+                document.getElementById('firmware-info').textContent = 
+                    `BattleAura ${data.firmwareVersion}`;
                 document.getElementById('device-info').textContent = 
                     `${data.deviceName} | ${data.ip} | Uptime: ${formatUptime(data.uptime)}`;
             } catch (error) {
