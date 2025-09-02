@@ -24,22 +24,21 @@ private:
     // Per-zone flicker state
     struct FlickerState {
         uint32_t lastUpdate;
-        uint8_t currentBrightness;
-        uint8_t targetBrightness;
-        uint16_t flickerDelay;
-        bool needsNewTarget;
+        float currentBrightness;    // Use float for smooth interpolation
+        float baseBrightness;       // Base flickering level
+        float flickerPhase;         // Phase for sine wave component
+        float flickerSpeed;         // Random flicker speed
+        uint32_t nextChange;        // When to change flicker pattern
     };
     
     std::vector<FlickerState> flickerStates;
     
-    // Effect parameters
-    static const uint16_t MIN_FLICKER_DELAY = 50;
-    static const uint16_t MAX_FLICKER_DELAY = 300;
-    static const uint8_t MIN_BRIGHTNESS = 20;
-    static const uint8_t BRIGHTNESS_VARIANCE = 60;
+    // Effect parameters - realistic candle flicker
+    static const uint16_t UPDATE_INTERVAL = 20;    // Update every 20ms for smoothness
+    static const uint8_t MIN_BRIGHTNESS = 40;      // Minimum candle brightness
+    static const uint8_t BRIGHTNESS_VARIANCE = 80;  // Maximum flicker range
     
     void updateFlickerForZone(size_t zoneIndex, Zone* zone);
-    uint8_t generateFlickerBrightness(uint8_t maxBrightness);
 };
 
 } // namespace BattleAura

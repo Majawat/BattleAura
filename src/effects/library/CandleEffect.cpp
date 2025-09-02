@@ -18,9 +18,10 @@ void CandleEffect::begin() {
         FlickerState& state = flickerStates[i];
         state.lastUpdate = millis();
         state.currentBrightness = MIN_BRIGHTNESS;
-        state.targetBrightness = MIN_BRIGHTNESS;
-        state.flickerDelay = random(MIN_FLICKER_DELAY, MAX_FLICKER_DELAY);
-        state.needsNewTarget = true;
+        state.baseBrightness = MIN_BRIGHTNESS + random(0, 30);  // Vary base brightness
+        state.flickerPhase = random(0, 628) / 100.0;  // Random starting phase (0-2π)
+        state.flickerSpeed = random(50, 200) / 100.0; // Random speed multiplier
+        state.nextChange = millis() + random(500, 2000); // Change pattern every 0.5-2s
     }
     
     Serial.printf("CandleFlicker: Initialized for %d zones\n", zones.size());
@@ -60,42 +61,50 @@ void CandleEffect::updateFlickerForZone(size_t zoneIndex, Zone* zone) {
     FlickerState& state = flickerStates[zoneIndex];
     uint32_t currentTime = millis();
     
-    // Check if it's time to update this zone
-    if (currentTime - state.lastUpdate < state.flickerDelay) {
+    // Only update every UPDATE_INTERVAL ms for smooth animation
+    if (currentTime - state.lastUpdate < UPDATE_INTERVAL) {
         return;
     }
     
-    // Generate new target brightness if needed
-    if (state.needsNewTarget) {
-        state.targetBrightness = generateFlickerBrightness(zone->brightness);
-        state.flickerDelay = random(MIN_FLICKER_DELAY, MAX_FLICKER_DELAY);
-        state.needsNewTarget = false;
-    }
+    float deltaTime = (currentTime - state.lastUpdate) / 1000.0; // Time in seconds
     
-    // Move current brightness toward target
-    if (state.currentBrightness < state.targetBrightness) {
-        state.currentBrightness = min((uint8_t)(state.currentBrightness + 5), state.targetBrightness);
-    } else if (state.currentBrightness > state.targetBrightness) {
-        state.currentBrightness = max((int)state.currentBrightness - 5, (int)state.targetBrightness);
-    }
+    // Update flicker phase
+    state.flickerPhase += deltaTime * state.flickerSpeed * 3.14159; // Advance phase
     
-    // If we reached target, mark for new target next time
-    if (state.currentBrightness == state.targetBrightness) {
-        state.needsNewTarget = true;
+    // Generate realistic candle flicker using multiple frequencies
+    float baseWave = sin(state.flickerPhase) * 0.3;                    // Main flicker
+    float microFlicker = sin(state.flickerPhase * 7.3) * 0.15;        // Fast micro-flicker
+    float slowDrift = sin(state.flickerPhase * 0.4) * 0.2;            // Slow drift
+    
+    // Add some random noise
+    float noise = (random(-100, 100) / 1000.0) * 0.1; // Small random component
+    
+    // Combine all components
+    float flickerAmount = baseWave + microFlicker + slowDrift + noise;
+    
+    // Calculate final brightness
+    float maxBrightness = (float)zone->brightness;
+    float targetBrightness = state.baseBrightness + (flickerAmount * BRIGHTNESS_VARIANCE);
+    
+    // Clamp to valid range
+    targetBrightness = max((float)MIN_BRIGHTNESS, min(maxBrightness, targetBrightness));
+    
+    // Smooth interpolation toward target
+    float smoothing = 0.3; // Adjust for responsiveness (0.1 = slow, 0.9 = fast)
+    state.currentBrightness = state.currentBrightness * (1.0 - smoothing) + targetBrightness * smoothing;
+    
+    // Occasionally change the base parameters for variety
+    if (currentTime >= state.nextChange) {
+        state.baseBrightness = MIN_BRIGHTNESS + random(0, 40);
+        state.flickerSpeed = random(50, 200) / 100.0;
+        state.nextChange = currentTime + random(1000, 3000);
     }
     
     // Apply brightness to LED controller
-    ledController.setZoneBrightness(zone->id, state.currentBrightness);
+    ledController.setZoneBrightness(zone->id, (uint8_t)round(state.currentBrightness));
     
     state.lastUpdate = currentTime;
 }
 
-uint8_t CandleEffect::generateFlickerBrightness(uint8_t maxBrightness) {
-    // Generate flickering brightness between MIN_BRIGHTNESS and maxBrightness
-    uint8_t range = min((uint8_t)BRIGHTNESS_VARIANCE, (uint8_t)(maxBrightness - MIN_BRIGHTNESS));
-    uint8_t flickerValue = random(0, range + 1);
-    
-    return min((uint8_t)(MIN_BRIGHTNESS + flickerValue), maxBrightness);
-}
 
 } // namespace BattleAura
