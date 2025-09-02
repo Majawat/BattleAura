@@ -8,7 +8,7 @@ Configuration::Configuration() {
 
 bool Configuration::begin() {
     Serial.println("Configuration: Initializing LittleFS...");
-    if (!LittleFS.begin(true, "/littlefs")) {  // Format on fail, use custom partition
+    if (!LittleFS.begin(true)) {  // Format on fail, use default partition
         Serial.println("Configuration: Failed to initialize LittleFS");
         return false;
     }
