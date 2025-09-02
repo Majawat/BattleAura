@@ -12,7 +12,7 @@
 #include "webfiles.h"
 
 // Application constants
-const char* VERSION = "0.13.0-alpha";
+const char* VERSION = "0.13.1-alpha";
 const char* AP_SSID = "BattleAura";  
 const char* AP_PASS = "battlesync";
 const int AP_CHANNEL = 1;
@@ -585,6 +585,7 @@ void setupWebServer() {
     server.on("/config", HTTP_GET, []() { handleEmbeddedFile("/config.html"); });
     server.on("/config", HTTP_POST, handleConfigSave);
     server.on("/config/device", HTTP_GET, []() { handleEmbeddedFile("/device.html"); });
+    server.on("/config/device", HTTP_POST, handleConfigSave);
     server.on("/config/pins", HTTP_GET, []() { handleEmbeddedFile("/pins.html"); });
     server.on("/config/pins", HTTP_POST, handlePinConfigSave);
     server.on("/config/effects", HTTP_GET, []() { handleEmbeddedFile("/effects.html"); });
@@ -1543,7 +1544,64 @@ void setupWebServer() {
     server.on("/test/effect/", HTTP_GET, []() {
         String uri = server.uri();
         String effect = uri.substring(13); // Remove "/test/effect/"
-        server.send(200, "text/plain", "Testing effect: " + effect);
+        
+        Serial.printf("🧪 Testing effect: %s\n", effect.c_str());
+        
+        // Map effect names to actual effect types and test them
+        if (effect == "engine_idle") {
+            // Test on all Engine type pins
+            for (uint8_t i = 0; i < MAX_PINS; i++) {
+                if (config.pins[i].enabled && config.pins[i].type.equalsIgnoreCase("Engine")) {
+                    startTemporaryEffect(i, EffectType::EFFECT_ENGINE_IDLE, 3000); // 3 second test
+                }
+            }
+        } else if (effect == "engine_rev") {
+            // Test engine rev with audio
+            for (uint8_t i = 0; i < MAX_PINS; i++) {
+                if (config.pins[i].enabled && config.pins[i].type.equalsIgnoreCase("Engine")) {
+                    startTemporaryEffect(i, EffectType::EFFECT_ENGINE_REV, 2000); // 2 second test
+                }
+            }
+            // Play engine rev audio if configured
+            if (config.audioEnabled && config.audioMap.engineRev > 0) {
+                playAudioFile(config.audioMap.engineRev);
+            }
+        } else if (effect == "damage") {
+            // Test damage on all pins
+            for (uint8_t i = 0; i < MAX_PINS; i++) {
+                if (config.pins[i].enabled) {
+                    startTemporaryEffect(i, EffectType::EFFECT_STROBE, 1500); // 1.5 second damage flash
+                }
+            }
+            // Play damage audio if configured
+            if (config.audioEnabled && config.audioMap.takingHits > 0) {
+                playAudioFile(config.audioMap.takingHits);
+            }
+        } else if (effect == "machinegun") {
+            // Test machine gun effect
+            for (uint8_t i = 0; i < MAX_PINS; i++) {
+                if (config.pins[i].enabled && config.pins[i].type.equalsIgnoreCase("Weapon")) {
+                    startTemporaryEffect(i, EffectType::EFFECT_MACHINE_GUN, 2000);
+                }
+            }
+            // Play machine gun audio if configured
+            if (config.audioEnabled && config.audioMap.machineGun > 0) {
+                playAudioFile(config.audioMap.machineGun);
+            }
+        } else if (effect == "destroyed") {
+            // Test destruction sequence
+            for (uint8_t i = 0; i < MAX_PINS; i++) {
+                if (config.pins[i].enabled) {
+                    startTemporaryEffect(i, EffectType::EFFECT_EXPLOSION, 3000);
+                }
+            }
+            // Play explosion audio if configured
+            if (config.audioEnabled && config.audioMap.explosion > 0) {
+                playAudioFile(config.audioMap.explosion);
+            }
+        }
+        
+        server.send(200, "text/plain", "✓ Testing " + effect + " effect on configured pins");
     });
     
     // Dynamic pin test endpoint
@@ -2208,42 +2266,58 @@ void handlePinConfigSave() {
 }
 
 void handleAudioMapSave() {
-    // Parse audio mapping form data and update configuration
-    if (server.hasArg("candleFlicker")) {
-        config.audioMap.candleFlicker = constrain(server.arg("candleFlicker").toInt(), 0, 255);
+    // Parse effects configuration form data and update audio mappings
+    Serial.println("📝 Saving effects configuration...");
+    
+    // Engine Idle configuration
+    if (server.hasArg("engine_idle_audio")) {
+        config.audioMap.engineIdle = constrain(server.arg("engine_idle_audio").toInt(), 0, 255);
+        Serial.printf("Engine Idle audio: %d\n", config.audioMap.engineIdle);
     }
-    if (server.hasArg("fade")) {
-        config.audioMap.fade = constrain(server.arg("fade").toInt(), 0, 255);
+    if (server.hasArg("engine_idle_enabled")) {
+        Serial.println("Engine Idle enabled: true");
     }
-    if (server.hasArg("pulse")) {
-        config.audioMap.pulse = constrain(server.arg("pulse").toInt(), 0, 255);
+    
+    // Engine Rev configuration
+    if (server.hasArg("engine_rev_audio")) {
+        config.audioMap.engineRev = constrain(server.arg("engine_rev_audio").toInt(), 0, 255);
+        Serial.printf("Engine Rev audio: %d\n", config.audioMap.engineRev);
     }
-    if (server.hasArg("strobe")) {
-        config.audioMap.strobe = constrain(server.arg("strobe").toInt(), 0, 255);
+    if (server.hasArg("engine_rev_enabled")) {
+        Serial.println("Engine Rev enabled: true");
     }
-    if (server.hasArg("engineIdle")) {
-        config.audioMap.engineIdle = constrain(server.arg("engineIdle").toInt(), 0, 255);
+    
+    // Damage configuration
+    if (server.hasArg("damage_audio")) {
+        config.audioMap.takingHits = constrain(server.arg("damage_audio").toInt(), 0, 255);
+        Serial.printf("Taking Damage audio: %d\n", config.audioMap.takingHits);
     }
-    if (server.hasArg("engineRev")) {
-        config.audioMap.engineRev = constrain(server.arg("engineRev").toInt(), 0, 255);
+    if (server.hasArg("damage_enabled")) {
+        Serial.println("Taking Damage enabled: true");
     }
-    if (server.hasArg("machineGun")) {
-        config.audioMap.machineGun = constrain(server.arg("machineGun").toInt(), 0, 255);
+    
+    // Machine Gun configuration
+    if (server.hasArg("machinegun_audio")) {
+        config.audioMap.machineGun = constrain(server.arg("machinegun_audio").toInt(), 0, 255);
+        Serial.printf("Machine Gun audio: %d\n", config.audioMap.machineGun);
     }
-    if (server.hasArg("flamethrower")) {
-        config.audioMap.flamethrower = constrain(server.arg("flamethrower").toInt(), 0, 255);
+    if (server.hasArg("machinegun_enabled")) {
+        Serial.println("Machine Gun enabled: true");
     }
-    if (server.hasArg("takingHits")) {
-        config.audioMap.takingHits = constrain(server.arg("takingHits").toInt(), 0, 255);
+    
+    // Destroyed configuration
+    if (server.hasArg("destroyed_audio")) {
+        config.audioMap.explosion = constrain(server.arg("destroyed_audio").toInt(), 0, 255);
+        Serial.printf("Destroyed audio: %d\n", config.audioMap.explosion);
     }
-    if (server.hasArg("explosion")) {
-        config.audioMap.explosion = constrain(server.arg("explosion").toInt(), 0, 255);
+    if (server.hasArg("destroyed_enabled")) {
+        Serial.println("Destroyed enabled: true");
     }
-    if (server.hasArg("rocketLauncher")) {
-        config.audioMap.rocketLauncher = constrain(server.arg("rocketLauncher").toInt(), 0, 255);
-    }
-    if (server.hasArg("killConfirmed")) {
-        config.audioMap.killConfirmed = constrain(server.arg("killConfirmed").toInt(), 0, 255);
+    
+    // Log all received form arguments for debugging
+    Serial.println("All form arguments received:");
+    for (int i = 0; i < server.args(); i++) {
+        Serial.printf("  %s = %s\n", server.argName(i).c_str(), server.arg(i).c_str());
     }
 
     // Save configuration to file
