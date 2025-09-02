@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BattleAura is an ESP32-based modular lighting and audio effects system for Warhammer 40K miniatures. The project features a configuration-driven architecture, web-based control interface, and support for both standard LEDs and WS2812B RGB strips. Built with PlatformIO using the Arduino framework.
+BattleAura is an ESP32-based modular lighting and audio effects system for Warhammer 40K miniatures. The project features a zone-based configuration architecture, web-based control interface, and support for both standard LEDs and WS2812B RGB strips. Built with PlatformIO using the Arduino framework.
 
 ## Development Environment
 
 This project uses **PlatformIO** for building and uploading to the ESP32:
 - Target board: `seeed_xiao_esp32c3`
 - Framework: Arduino
-- Key dependencies: DFRobotDFPlayerMini, EspSoftwareSerial, ArduinoJson, Adafruit NeoPixel, ESPAsyncWebServer
+- Key dependencies: ArduinoJson, FastLED, ESPAsyncWebServer, DFRobotDFPlayerMini
 
 ## Essential Commands
 
@@ -28,13 +28,13 @@ This project uses **PlatformIO** for building and uploading to the ESP32:
 # Build with verbose output  
 ~/.platformio/penv/bin/platformio run -v
 
-# Upload filesystem (SPIFFS files)
+# Upload filesystem (LittleFS files)
 ~/.platformio/penv/bin/platformio run -t uploadfs
 ```
 
 ### Build Targets
-- **Flash usage:** Keep under 70% (currently ~62%)
-- **RAM usage:** Keep under 50% (currently ~12%)
+- **Flash usage:** Keep under 70% 
+- **RAM usage:** Keep under 50% 
 - **Success indicator:** "[SUCCESS]" message at end
 
 ### CRITICAL: Always Build Before Committing
@@ -45,265 +45,243 @@ This project uses **PlatformIO** for building and uploading to the ESP32:
 ### Development Workflow
 ```bash
 # Check for connected devices
-platformio device list
+~/.platformio/penv/bin/platformio device list
 
 # Run with verbose output for debugging
-platformio run -v
+~/.platformio/penv/bin/platformio run -v
 
 # Specify environment explicitly
-platformio run -e seeed_xiao_esp32c3
+~/.platformio/penv/bin/platformio run -e seeed_xiao_esp32c3
 ```
 
-## Architecture Overview
+## New Architecture Overview
 
-### Modular Design
-The system is built around a modular, configuration-driven architecture:
+### Modular Zone-Based Design
+The system is built around a modular, zone-based architecture:
 
-- **ConfigManager**: JSON-based configuration system with SPIFFS storage
-- **EffectManager**: Lighting effects engine supporting multiple LED types
-- **AudioManager**: DFPlayer Mini integration with error handling
-- **Web Interface**: Real-time control via WebSocket and HTTP APIs
-- **OTA Updates**: Over-the-air firmware updates
+- **Zone**: Physical LED output (PWM or WS2812B) with configuration
+- **Group**: Logical collection of zones (e.g., "Engines", "Weapons")
+- **Effect**: Code that manipulates zones, targeting groups by name
+- **Priority System**: Global > Active > Ambient effects
+
+### Core Components
+- **EffectManager**: Manages effect priorities, transitions, and lifecycle
+- **LedController**: Abstracts PWM vs WS2812B hardware differences  
+- **AudioController**: Hardware Serial DFPlayer Mini integration
+- **ConfigManager**: LittleFS-based persistent configuration storage
+- **WebServer**: Real-time WebSocket + HTTP API control interface
 
 ### Hardware Support
-- **ESP32 (Seeed Xiao ESP32-C3)**: Main controller with WiFi
-- **DFPlayer Mini**: MP3 audio playback from SD card
+- **ESP32-C3 (Seeed Xiao ESP32-C3)**: Main controller with WiFi
+- **DFPlayer Mini**: MP3 audio playback from SD card via Hardware Serial
 - **Standard LEDs**: PWM-controlled single-color LEDs
 - **WS2812B RGB**: Addressable RGB LED strips/pixels
-- **14500/Li-ion Battery**: Portable power with 5-6 hour runtime
+- **Battery**: Portable power with 5-6 hour runtime
 
 ### Pin Configuration
 Pin assignments are fully configurable via web interface:
-- **GPIO 20**: DFPlayer RX (fixed)
-- **GPIO 21**: DFPlayer TX (fixed)
-- **All other pins**: User-configurable for LEDs/effects
+- **GPIO 20**: DFPlayer RX (fixed - Hardware Serial)
+- **GPIO 21**: DFPlayer TX (fixed - Hardware Serial)
+- **GPIO 2-10**: User-configurable zones (9 zones max with audio)
+- **GPIO 20-21**: Also available if audio disabled (11 zones max)
 
 ### Audio System
-MP3 files stored on SD card in `/audio_files/` directory:
-- **0001**: Tank Idle
-- **0002**: Tank Idle 2
-- **0003**: Machine Gun
-- **0004**: Flamethrower
-- **0005**: Taking Hits
-- **0006**: Engine Revving
-- **0007**: Explosion
-- **0008**: Rocket Launcher
-- **0009**: Kill Confirmed
-
-## Code Architecture
-
-### Core Components
-
-**Configuration System (`src/config.h`, `src/config.cpp`)**:
-- JSON-based configuration with SPIFFS persistence
-- Pin assignments, WiFi credentials, audio settings
-- Runtime configuration changes via web interface
-- Default fallback configurations
-
-**Effects Engine (`src/effects.h`, `src/effects.cpp`)**:
-- Modular effect system supporting multiple LED types
-- Built-in effects: Candle Flicker, Engine Pulse, Machine Gun, Flamethrower, Rocket Launcher, Taking Damage, Explosion, Console RGB, Static On/Off
-- Real-time effect triggering and control
-- Brightness and color control per pin
-
-**Audio Manager (`src/audio.h`, `src/audio.cpp`)**:
-- DFPlayer Mini integration with error handling
-- Support for looping and one-shot audio playback
-- Volume control and playback status monitoring
-- Graceful fallback when audio hardware unavailable
-
-**Main Application (`src/main.cpp`)**:
-- WiFi connection with AP fallback mode
-- Web server with REST API endpoints
-- WebSocket real-time communication
-- OTA update functionality
-- Main update loop coordination
-
-**Web Interface (`data/index.html`, `data/app.js`)**:
-- Real-time control interface with WebSocket communication
-- Pin configuration display and control
-- Audio playback controls with volume adjustment
-- Global effect triggers
-- Mobile-responsive design
-
-### Key Features
-
-**Configuration-Driven Design**:
-- No hardcoded pin assignments
-- JSON configuration stored in SPIFFS
-- Web-based configuration interface
-- Runtime reconfiguration without reflashing
-
-**Multi-LED Support**:
-- Standard PWM LEDs for brightness control
-- WS2812B RGB LEDs for full color effects
-- Mixed pin configurations supported
-- Per-pin brightness and color control
-
-**Networking**:
-- WiFi station mode with credentials storage
-- AP fallback for initial configuration
-- WebSocket for real-time communication
-- HTTP REST API for programmatic control
-- OTA updates with password protection
-
-**Effect System**:
-- Hardcoded effects library (configurable in future versions)
-- Synchronized audio and lighting effects
-- Duration-based temporary effects
-- Continuous background effects
-- Global effect broadcasting
+MP3 files stored on SD card, user manually configures file numbers during setup:
+- Files named 0001.mp3, 0002.mp3, etc.
+- User enters file number and description in web interface
+- System provides test buttons to verify audio files
+- Effects can trigger audio with automatic ambient/active management
 
 ## Project Structure
 
 ```
 ├── src/
-│   ├── main.cpp           # Main application and networking
-│   ├── config.h/.cpp      # Configuration management system
-│   ├── effects.h/.cpp     # Lighting effects engine
-│   └── audio.h/.cpp       # Audio playback system
-├── data/
-│   ├── index.html         # Web interface HTML
-│   └── app.js            # Web interface JavaScript
-├── audio_files/          # MP3 sound effects
-├── kicad_files/          # PCB design files
-├── platformio.ini        # PlatformIO configuration
-└── CLAUDE.md             # This documentation
+│   ├── main.cpp                    # Setup, WiFi, main loop
+│   ├── effects/
+│   │   ├── EffectManager.h/cpp     # Effect priority and lifecycle
+│   │   ├── BaseEffect.h            # Abstract effect base class
+│   │   └── library/
+│   │       ├── CandleEffect.h/cpp  # Candle flicker effect
+│   │       ├── EngineEffect.h/cpp  # Engine idle/rev effects
+│   │       ├── ConsoleEffect.h/cpp # Console/data effects
+│   │       ├── WeaponEffect.h/cpp  # Weapon flash effects
+│   │       └── GlobalEffect.h/cpp  # Taking hits, destroyed
+│   ├── hardware/
+│   │   ├── LedController.h/cpp     # PWM + WS2812B abstraction
+│   │   ├── AudioController.h/cpp   # Hardware Serial DFPlayer
+│   │   └── PinManager.h/cpp        # GPIO allocation/validation
+│   ├── web/
+│   │   ├── WebServer.h/cpp         # AsyncWebServer + routes
+│   │   ├── WebSocketHandler.h/cpp  # Real-time communication
+│   │   └── WebInterface.h          # Embedded HTML/CSS/JS
+│   └── config/
+│       ├── Configuration.h/cpp     # LittleFS persistent storage
+│       ├── ZoneConfig.h           # Zone/pin definitions
+│       └── EffectConfig.h         # Effect-to-group mappings
+├── data/                          # (Future: static files if needed)
+├── partitions.csv                 # Custom partition table
+├── platformio.ini                 # PlatformIO configuration
+└── CLAUDE.md                      # This documentation
+```
+
+## Data Models
+
+### Zone Definition
+```cpp
+struct Zone {
+    String name;              // "Engine LEDs Left"
+    uint8_t gpio;            // 2-10, 20-21 (if audio disabled)
+    enum Type { PWM, WS2812B } type;
+    uint8_t ledCount;        // For WS2812B strips
+    String groupName;        // "Engines"
+    uint8_t brightness;      // 0-255 max brightness
+    bool enabled;
+};
+```
+
+### Effect Configuration
+```cpp
+struct EffectConfig {
+    String name;             // "MachineGun"
+    enum Type { AMBIENT, ACTIVE, GLOBAL } type;
+    std::vector<String> groups;  // Groups this effect applies to
+    uint16_t audioFile;      // 0 = none, else file number
+    uint32_t duration;       // ms, 0 = loop/ambient
+    JsonDocument parameters; // Effect-specific params
+};
 ```
 
 ## API Endpoints
 
 ### REST API
-- `GET /config` - Retrieve current configuration
-- `POST /config` - Update configuration
-- `POST /trigger` - Trigger pin effect with optional audio
-- `POST /audio` - Audio control (play/stop/volume)
+- `GET /api/zones` - Get zone configuration
+- `POST /api/zones` - Update zone configuration
+- `GET /api/effects` - Get effect configuration  
+- `POST /api/effects` - Update effect configuration
+- `POST /api/trigger` - Trigger effect by name
+- `POST /api/audio` - Audio control (play/stop/volume)
 
-### WebSocket Commands
+### WebSocket Protocol
 ```json
+// Client -> Server (trigger effect)
 {
-  "command": "trigger_effect",
-  "pin": 2,
-  "effect": 3,
-  "duration": 1000,
-  "audio": 3
+  "cmd": "trigger",
+  "effect": "MachineGun",
+  "group": "Weapons"
+}
+
+// Server -> Client (state update)
+{
+  "type": "state",
+  "zones": [...],
+  "activeEffects": ["MachineGun"],
+  "volume": 75
 }
 ```
 
+## Web Interface Structure
+
+### Main Control Page (`/`)
+- Real-time WebSocket connection
+- Dynamic effect buttons based on configured zones
+- Audio controls and volume
+- System status display
+
+### Configuration Pages
+- `/config/zones` - Zone/pin setup and GPIO assignment
+- `/config/effects` - Effect-to-group mappings and audio files
+- `/config/device` - WiFi, hostname, system settings
+- `/config/system` - OTA updates, diagnostics, factory reset
+
+## Development Phases
+
+### Phase 1 - Core System (Current)
+- [x] Project structure and build system
+- [ ] Basic zone management and PWM LED control
+- [ ] Simple web interface for testing
+- [ ] OTA firmware updates
+- [ ] CandleFlicker and EngineIdle effects
+
+### Phase 2 - Full Effects
+- [ ] WS2812B RGB support via FastLED
+- [ ] Complete effect library implementation
+- [ ] Hardware Serial DFPlayer audio integration
+- [ ] Effect synchronization and priority system
+
+### Phase 3 - Configuration UI
+- [ ] Full web configuration interface
+- [ ] LittleFS persistent storage
+- [ ] Zone/group management UI
+- [ ] Effect testing and preview
+
+### Phase 4 - Integration & Polish
+- [ ] BattleSync WebSocket client (future)
+- [ ] Advanced effects and transitions
+- [ ] Performance optimizations
+- [ ] Documentation and user guides
+
 ## Development Notes
 
-- Configuration persists across reboots via SPIFFS
-- Web interface falls back to HTTP if WebSocket fails
-- OTA password: "battlesync"
-- AP mode password: "battlesync"
-- Serial baud rate: 115200
-- Designed for 35mm H × 60mm W × 40mm D cavity constraint
-- Target completion: October 9th, 2025
+### Memory Constraints (ESP32-C3 4MB Flash)
+- **File System**: LittleFS (SPIFFS deprecated)
+- **Web Assets**: Embedded as PROGMEM strings, not files
+- **Partition Table**: Custom for dual OTA + storage
+- **Target**: <1.5MB firmware per OTA partition
 
-## **CORE VISION: Modular Configuration-Driven Effects System**
+### Audio Configuration
+- DFPlayer uses Hardware Serial (more reliable than SoftwareSerial)
+- Files must be 0001.mp3, 0002.mp3, etc. in SD card root
+- User manually maps file numbers during configuration
+- Web interface provides test buttons to verify files
+- System handles audio conflicts (pause ambient for active effects)
 
-### **The Problem We're Solving:**
-Same firmware should work for Tank, Beast, Dreadnought, Daemon Engine - just with different configurations. Players configure once during setup, then have simple effect buttons during gameplay.
-
-### **Pin Configuration System:**
-Each pin has:
-- **Type**: "Engine", "Weapon", "Candle", "Console", "Damage", "Ambient"
-- **Group**: "Engine1", "Engine2", "Weapon1", "Candles", etc.
-- **Pin Mode**: PWM (single color), WS2812B (RGB), Digital (on/off)
-- **Brightness**: Per-pin brightness (0-255) to balance different LED types
-- **Ambient Effect**: Default always-on effect (Candle flicker, Engine idle, etc.)
-
-### **Effect System Design:**
-
-**Two Priority Levels:**
-- **Ambient Effects**: Always running (candle flicker, engine idle, console scrolling)
-- **Active Effects**: Triggered by player, interrupt ambient temporarily (weapon fire, engine rev, taking damage)
-
-**Effect Triggering:**
-- `/effect/engine/idle` → finds all pins with type="Engine" → applies engine idle
-- `/effect/weapon/fire` → finds all pins with type="Weapon" → applies weapon flash  
-- `/effect/damage/hit` → finds ALL pins → applies damage effect appropriate to pin type
-
-**Pin Type Considerations:**
-- **PWM LEDs**: Can only change brightness (dim, bright, flicker, pulse)
-- **WS2812B RGB**: Can change color AND brightness (red flash, blue glow, color cycles)
-- **Taking Damage Example**: PWM pins flicker rapidly, RGB pins flash red, then restore previous effects
-
-### **User Experience:**
-
-**Setup Phase (Config Page):**
-Pin assignments like current tank:
-- Pin 0: Type="Candle", Group="Candles", Mode=PWM, Brightness=150, Ambient=Flicker
-- Pin 3: Type="Console", Group="Console", Mode=WS2812B, Brightness=80, Ambient=DataScroll  
-- Pin 8: Type="Engine", Group="Engine1", Mode=PWM, Brightness=200, Ambient=Idle
-- Pin 9: Type="Engine", Group="Engine2", Mode=PWM, Brightness=180, Ambient=Idle
-
-**Gameplay Phase (Main Page):**
-Dynamic buttons based on configured types:
-- "Engine Rev" (appears if any Engine pins configured)
-- "Weapon Fire" (appears if any Weapon pins configured) 
-- "Taking Damage" (always available)
-- "Candle Mode" (appears if any Candle pins configured)
-
-**Same firmware, different miniature:**
-Beast config: Pin 0="Eyes", Pin 1="Claws", Pin 2="Wounds"
-→ Main page shows: "Eyes Glow", "Claw Strike", "Taking Wounds"
-
-### **Technical Implementation:**
-- Effects target types/groups, not specific pins
-- Pin brightness configured during setup to balance different LED types
-- Ambient effects start automatically, active effects interrupt then restore
-- Effect behavior adapts to pin capabilities (PWM vs RGB)
-
-### **RGB Strip Handling:**
-**One Pin = One Physical Thing**
-- Each WS2812B pin represents one complete feature (Console, Brazier, Engine, etc.)
-- Effects control all LEDs on that strip as a coordinated unit
-- Examples:
-  - Pin 3: "Console" (5 LEDs) → Console effect manages all 5 for data scrolling
-  - Pin 4: "Brazier" (8 LEDs) → Brazier effect makes each LED flicker independently
-  - Pin 5: "Engine" (12 LEDs) → Engine effect pulses all 12 together for rev
-- Configuration: Pin has LED count, effect handles coordination
-- No strip subdivision - if you want separate features, use separate pins/strips
-
-## ESP32 Framework Naming Conflicts (CRITICAL)
-**NEVER use these names in enums - they are Arduino/ESP32 macros:**
-- `DISABLED` → use `PIN_DISABLED`
-- `LOW` → use `PIN_LOW`
-- `HIGH` → use `PIN_HIGH`
-- Always check enum names against ESP32 framework before using
-
-## Physical Constraints
-- **Battery Life**: 5-6 hours on 14500 Li-ion
-- **Cavity Size**: 35mm H × 60mm W × 40mm D
-- **Components**: Battery, switch, LEDs, wiring, fiber optics, DFPlayer, MCU, perfboard
+### Effect System Design
+- **BaseEffect**: Abstract class for all effect implementations
+- **Priority Levels**: Global (taking hits) > Active (weapons) > Ambient (idle)
+- **Group Targeting**: Effects target logical groups, not specific pins
+- **Hardware Adaptation**: Same effect works on PWM (brightness) or RGB (color+brightness)
 
 ## Claude Development Rules
 
 ### **Core Architecture Rules:**
-1. **ALWAYS read CLAUDE.md first** - Understand the modular vision before changing ANY code
-2. **Ask questions to reduce ambiguity** - If requirements are unclear, ask before implementing
-3. **Think holistically towards end goal** - Don't do quick fixes that break the core user experience
-4. **Preserve the priority system** - Ambient effects should always run, active effects should interrupt and restore
-5. **Never break the type-based system** - Effects should target pin types, not hardcoded pins
-6. **Maintain the user workflow** - Configure once (setup), then use effect buttons (gameplay)
-7. **No unrelated changes** - Don't make unrelated changes without explicitly stating or asking first
+1. **Follow the zone-based modular design** - Effects target groups, not hardcoded pins
+2. **Respect the priority system** - Global > Active > Ambient, with proper restoration
+3. **Abstract hardware differences** - Same effect code for PWM and WS2812B zones
+4. **Maintain configuration-driven approach** - No hardcoded zone assignments
+5. **Use LittleFS for persistence** - SPIFFS is deprecated
+6. **Hardware Serial for audio** - More reliable than SoftwareSerial
+7. **Embed web assets as PROGMEM** - Don't use filesystem for HTML/CSS/JS
 
 ### **Change Management Rules:**
-8. **Build and test before committing** - Ensure changes compile and don't break existing functionality
-9. **Update firmware version** - Always increment version for any functional change
-10. **Commit changes frequently and properly** - With descriptive messages explaining the "why"
-11. **Consider side effects** - How does this change affect other parts of the system?
-12. **Follow existing patterns** - Don't reinvent wheels, use established code patterns
+8. **Build and test before committing** - Always run PlatformIO build
+9. **Increment firmware version** - Update version for functional changes
+10. **Commit frequently with clear messages** - Explain the "why" not just "what"
+11. **Consider memory usage** - Monitor flash/RAM, optimize when needed
+12. **Follow existing patterns** - Use established code structure and naming
 
-### **Problem-Solving Rules:**
-13. **Fix root causes, not symptoms** - If RGB color doesn't work, fix the effects system, don't add bypasses
-14. **Preserve existing working features** - Don't break ambient effects while fixing manual controls
-15. **Test against the core vision** - Will a Tank user with candle flickers still have them after my change?
-16. **Ask "Does this help the end goal?"** - If it's just a band-aid, it's probably wrong
+### **Development Workflow Rules:**
+13. **Implement phases sequentially** - Complete current phase before moving on
+14. **Test each component** - Verify core functionality before integration
+15. **Ask clarifying questions** - If requirements unclear, ask before implementing
+16. **Document breaking changes** - Explain impacts of architectural changes
+17. **Remove dead code aggressively** - Clean up old code that doesn't fit new architecture
+18. **Use the todo system** - Track progress on multi-step implementations
 
 ### **Code Quality Rules:**
-17. **Ensure best practices** - Clean, maintainable code, not just "working" code
-18. **Document breaking changes** - If you must break something, document why and how to restore it
-19. **Keep flash usage reasonable** - Monitor memory usage, optimize when needed
-20. **Remove old code aggressively** - We're pre-alpha, break backward compatibility to clean up architecture
+19. **Follow C++ best practices** - RAII, const correctness, proper memory management
+20. **Avoid ESP32 naming conflicts** - Don't use DISABLED, LOW, HIGH in enums
+21. **Prefer composition over inheritance** - Keep effect system flexible
+22. **Handle errors gracefully** - Fail safely, provide fallbacks where possible
+23. **Use semantic naming** - Classes/functions should clearly express intent
+24. **Comment complex logic** - Explain algorithms and hardware interactions
+
+## Current Status
+
+**Active Phase**: Phase 1 - Core System
+**Next Steps**: 
+1. Implement basic Zone and Group data structures
+2. Create LedController abstraction for PWM LEDs
+3. Set up basic web server with embedded interface
+4. Implement CandleFlicker effect for testing
+
+The project is in active development following the new modular architecture. All legacy code has been removed and we're building from scratch with proper separation of concerns.
