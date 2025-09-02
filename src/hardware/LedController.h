@@ -33,15 +33,16 @@ private:
         uint8_t currentBrightness;
         uint8_t targetBrightness;
         bool needsUpdate;
+        uint8_t pwmChannel;  // PWM channel for this zone
         
-        ZoneState(const Zone& z) : zone(z), currentBrightness(0), targetBrightness(0), needsUpdate(false) {}
+        ZoneState(const Zone& z) : zone(z), currentBrightness(0), targetBrightness(0), needsUpdate(false), pwmChannel(255) {}
     };
     
     std::vector<ZoneState> zones;
     
     // PWM Management
-    bool setupPWM(uint8_t gpio);
-    void updatePWM(uint8_t gpio, uint8_t brightness, uint8_t maxBrightness);
+    bool setupPWM(ZoneState& zoneState);
+    void updatePWM(uint8_t channel, uint8_t brightness, uint8_t maxBrightness);
     
     // Helper methods
     ZoneState* findZone(uint8_t zoneId);

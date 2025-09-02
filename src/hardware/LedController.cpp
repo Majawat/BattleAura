@@ -39,14 +39,15 @@ void LedController::addZone(const Zone& zone) {
         return;
     }
     
+    // Add to zones list first to get correct channel index
+    zones.emplace_back(zone);
+    
     // Setup PWM for this GPIO
-    if (!setupPWM(zone.gpio)) {
+    if (!setupPWM(zones.back())) {
         Serial.printf("LedController: Failed to setup PWM for GPIO %d\n", zone.gpio);
+        zones.pop_back(); // Remove the zone if PWM setup failed
         return;
     }
-    
-    // Add to zones list
-    zones.emplace_back(zone);
     
     Serial.printf("LedController: Added PWM zone %d on GPIO %d\n", zone.id, zone.gpio);
 }
@@ -86,7 +87,7 @@ void LedController::update() {
             // For Phase 1, directly set PWM - no smooth transitions yet
             zoneState.currentBrightness = zoneState.targetBrightness;
             
-            updatePWM(zoneState.zone.gpio, zoneState.currentBrightness, zoneState.zone.brightness);
+            updatePWM(zoneState.pwmChannel, zoneState.currentBrightness, zoneState.zone.brightness);
             
             zoneState.needsUpdate = false;
         }
@@ -102,9 +103,10 @@ void LedController::printStatus() const {
     Serial.printf("Configured zones: %d\n", zones.size());
     
     for (const ZoneState& zoneState : zones) {
-        Serial.printf("  Zone %d: GPIO %d, Current: %d, Target: %d, Max: %d\n",
+        Serial.printf("  Zone %d: GPIO %d (CH%d), Current: %d, Target: %d, Max: %d\n",
                      zoneState.zone.id,
                      zoneState.zone.gpio,
+                     zoneState.pwmChannel,
                      zoneState.currentBrightness,
                      zoneState.targetBrightness,
                      zoneState.zone.brightness);
@@ -113,22 +115,29 @@ void LedController::printStatus() const {
 
 // Private methods
 
-bool LedController::setupPWM(uint8_t gpio) {
+bool LedController::setupPWM(ZoneState& zoneState) {
     // ESP32 LEDC setup for PWM
-    // Use channel = gpio (simple mapping for Phase 1)
-    uint8_t channel = gpio;
+    // Use sequential channel assignment for Phase 1
+    uint8_t channel = zones.size() - 1;  // Use zone index as channel
+    
+    // ESP32 has 16 PWM channels (0-15)
+    if (channel >= 16) {
+        Serial.printf("LedController: No PWM channels available for GPIO %d\n", zoneState.zone.gpio);
+        return false;
+    }
+    
+    // Store channel in zone state
+    zoneState.pwmChannel = channel;
     
     // Configure LEDC channel
     ledcSetup(channel, 5000, 8);  // 5kHz frequency, 8-bit resolution
-    ledcAttachPin(gpio, channel);
+    ledcAttachPin(zoneState.zone.gpio, channel);
     
-    Serial.printf("LedController: PWM setup on GPIO %d, channel %d\n", gpio, channel);
+    Serial.printf("LedController: PWM setup on GPIO %d, channel %d\n", zoneState.zone.gpio, channel);
     return true;
 }
 
-void LedController::updatePWM(uint8_t gpio, uint8_t brightness, uint8_t maxBrightness) {
-    uint8_t channel = gpio;  // Simple channel mapping
-    
+void LedController::updatePWM(uint8_t channel, uint8_t brightness, uint8_t maxBrightness) {
     // Scale brightness from 0-maxBrightness to 0-255
     uint16_t scaledBrightness = (brightness * 255) / maxBrightness;
     if (scaledBrightness > 255) scaledBrightness = 255;

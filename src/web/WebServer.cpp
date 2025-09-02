@@ -84,6 +84,14 @@ void WebServer::startAccessPoint() {
     WiFi.mode(WIFI_AP);
     WiFi.softAP(apName.c_str(), deviceConfig.apPassword.c_str());
     
+    // Wait for AP to initialize
+    delay(100);
+    int attempts = 0;
+    while (WiFi.softAPIP().toString() == "0.0.0.0" && attempts < 10) {
+        delay(100);
+        attempts++;
+    }
+    
     wifiConnected = false;
     apMode = true;
     currentIP = WiFi.softAPIP().toString();
