@@ -878,15 +878,106 @@ body {
     border-color: var(--border-accent);
 }
 
+/* Effects Table Styles */
+.effects-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: var(--space-4) 0;
+    background: var(--bg-primary);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border-secondary);
+}
+
+.effects-table thead {
+    background: var(--bg-tertiary);
+    border-bottom: 2px solid var(--border-secondary);
+}
+
+.effects-table th {
+    padding: var(--space-3);
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    border-right: 1px solid var(--border-secondary);
+}
+
+.effects-table th:last-child {
+    border-right: none;
+}
+
+.effects-table td {
+    padding: var(--space-3);
+    border-right: 1px solid var(--border-secondary);
+    border-bottom: 1px solid var(--border-secondary);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    vertical-align: middle;
+}
+
+.effects-table td:last-child {
+    border-right: none;
+}
+
+.effects-table tbody tr:hover {
+    background: var(--bg-hover);
+}
+
+.effects-table select {
+    width: 100%;
+    max-width: 150px;
+    padding: var(--space-1);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+.effects-table select[multiple] {
+    max-height: 60px;
+}
+
+.effects-table input[type="checkbox"] {
+    transform: scale(1.2);
+    cursor: pointer;
+}
+
+.effects-table input[type="number"] {
+    width: 60px;
+    padding: var(--space-1);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+.effects-table button {
+    padding: var(--space-1) var(--space-2);
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.2s;
+}
+
+.effects-table button:hover {
+    background: var(--primary-hover);
+}
+
+/* Audio Status Display */
 .audio-status-display {
-    padding: var(--space-4);
     background: var(--bg-tertiary);
     border: 1px solid var(--border-secondary);
     border-radius: var(--radius-md);
-    color: var(--text-primary);
-    margin: var(--space-4) 0;
+    padding: var(--space-4);
     font-family: var(--font-mono);
     font-size: 0.9rem;
+    color: var(--text-secondary);
 }
 
 .text-error {

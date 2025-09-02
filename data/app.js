@@ -445,3 +445,96 @@ function formatUptime(seconds) {
     const minutes = Math.floor((seconds % 3600) / 60);
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
+
+// Update functions for homepage
+async function checkForUpdates() {
+    const button = document.getElementById('check-updates-btn');
+    const originalText = button.innerHTML;
+    
+    button.innerHTML = '⏳ Checking...';
+    button.disabled = true;
+    
+    try {
+        const response = await fetch('/api/update/check');
+        const data = await response.json();
+        
+        if (data.hasUpdate) {
+            showUpdateNotification(data);
+            showFeedback('Update available!', 'success');
+        } else {
+            showFeedback('No updates available', 'success');
+        }
+    } catch (error) {
+        console.error('Update check failed:', error);
+        showFeedback('Update check failed', 'error');
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
+    }
+}
+
+function showUpdateNotification(updateData) {
+    const notification = document.getElementById('update-notification');
+    const details = document.getElementById('update-details');
+    
+    details.innerHTML = `
+        <div style="margin-bottom: var(--space-3);">
+            <strong>Current Version:</strong> ${updateData.currentVersion}<br>
+            <strong>Latest Version:</strong> ${updateData.latestVersion}
+        </div>
+        ${updateData.changelog ? `<div style="margin-bottom: var(--space-3);"><strong>Changes:</strong><br>${updateData.changelog}</div>` : ''}
+    `;
+    
+    notification.style.display = 'block';
+    
+    // Store update data for download function
+    window.updateData = updateData;
+}
+
+async function downloadUpdate() {
+    const button = document.getElementById('download-btn');
+    const originalText = button.innerHTML;
+    
+    if (!window.updateData) {
+        showFeedback('No update data available', 'error');
+        return;
+    }
+    
+    button.innerHTML = '⏳ Downloading...';
+    button.disabled = true;
+    
+    try {
+        const response = await fetch('/api/update/download', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `url=${encodeURIComponent(window.updateData.downloadUrl)}&confirmed=true`
+        });
+        
+        if (response.ok) {
+            showFeedback('Update started - device will reboot', 'success');
+            button.innerHTML = '🔄 Installing...';
+            
+            // Hide notification after starting update
+            setTimeout(() => {
+                document.getElementById('update-notification').style.display = 'none';
+            }, 3000);
+        } else {
+            const errorText = await response.text();
+            showFeedback('Update failed: ' + errorText, 'error');
+        }
+    } catch (error) {
+        console.error('Update download failed:', error);
+        showFeedback('Update download failed', 'error');
+    } finally {
+        if (button.innerHTML !== '🔄 Installing...') {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    }
+}
+
+function dismissUpdate() {
+    document.getElementById('update-notification').style.display = 'none';
+    window.updateData = null;
+    showFeedback('Update dismissed', 'success');
+}
