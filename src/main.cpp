@@ -1,12 +1,14 @@
 #include <Arduino.h>
 #include "config/Configuration.h"
 #include "hardware/LedController.h"
+#include "web/WebServer.h"
 
 using namespace BattleAura;
 
 // Global instances
 Configuration BattleAura::config;
 LedController ledController;
+WebServer webServer(config, ledController);
 
 void setup() {
     Serial.begin(115200);
@@ -34,18 +36,31 @@ void setup() {
         ledController.addZone(*zone);
     }
     
+    // Initialize web server
+    Serial.println("Initializing web server...");
+    if (!webServer.begin()) {
+        Serial.println("ERROR: Web server failed to initialize!");
+        return;
+    }
+    
     // Print status
     config.printStatus();
     ledController.printStatus();
+    webServer.printStatus();
     
-    Serial.println("\n=== Starting LED brightness test ===");
-    Serial.println("LEDs will fade up and down on configured pins");
+    Serial.println("\n=== Phase 1 System Ready ===");
+    Serial.println("- LEDs will fade up and down automatically");
+    Serial.println("- Web interface available for remote control");
+    Serial.printf("- Access at: http://%s\n", webServer.getIPAddress().c_str());
 }
 
 void loop() {
     static uint32_t lastUpdate = 0;
     static uint8_t brightness = 0;
     static int8_t direction = 1;
+    
+    // Handle web server
+    webServer.handle();
     
     // Update every 50ms for smooth fading
     if (millis() - lastUpdate >= 50) {
@@ -68,11 +83,14 @@ void loop() {
         // Apply changes to hardware
         ledController.update();
         
-        // Print brightness every 2 seconds
+        // Print status every 10 seconds
         static uint32_t lastPrint = 0;
-        if (millis() - lastPrint >= 2000) {
+        if (millis() - lastPrint >= 10000) {
             lastPrint = millis();
-            Serial.printf("Current brightness: %d\n", brightness);
+            Serial.printf("Status: Brightness %d | WiFi: %s | IP: %s\n", 
+                         brightness, 
+                         webServer.isWiFiConnected() ? "Connected" : "AP Mode",
+                         webServer.getIPAddress().c_str());
         }
     }
 }
