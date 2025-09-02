@@ -2,6 +2,7 @@
 #include "config/Configuration.h"
 #include "hardware/LedController.h"
 #include "web/WebServer.h"
+#include "effects/library/CandleEffect.h"
 
 using namespace BattleAura;
 
@@ -9,11 +10,12 @@ using namespace BattleAura;
 Configuration BattleAura::config;
 LedController ledController;
 WebServer webServer(config, ledController);
+CandleEffect candleEffect(ledController, config);
 
 void setup() {
     Serial.begin(115200);
     delay(6000);
-    Serial.println("\n=== BattleAura v2.0.0 - Phase 1 Test ===");
+    Serial.println("\n=== BattleAura v2.0.1 - Phase 1 Complete ===");
     
     // Initialize configuration
     Serial.println("Initializing configuration...");
@@ -43,54 +45,40 @@ void setup() {
         return;
     }
     
+    // Initialize CandleEffect
+    Serial.println("Initializing CandleEffect...");
+    candleEffect.begin();
+    candleEffect.setEnabled(true);
+    
     // Print status
     config.printStatus();
     ledController.printStatus();
     webServer.printStatus();
     
     Serial.println("\n=== Phase 1 System Ready ===");
-    Serial.println("- LEDs will fade up and down automatically");
+    Serial.println("- LEDs will flicker like candles automatically");
     Serial.println("- Web interface available for remote control");
+    Serial.println("- OTA firmware updates available via web interface");
     Serial.printf("- Access at: http://%s\n", webServer.getIPAddress().c_str());
 }
 
 void loop() {
-    static uint32_t lastUpdate = 0;
-    static uint8_t brightness = 0;
-    static int8_t direction = 1;
-    
-    // Handle web server
+    // Handle web server and OTA
     webServer.handle();
     
-    // Update every 50ms for smooth fading
-    if (millis() - lastUpdate >= 50) {
-        lastUpdate = millis();
-        
-        // Update brightness
-        brightness += direction * 5;
-        if (brightness >= 255 || brightness <= 0) {
-            direction = -direction;
-            if (brightness <= 0) brightness = 0;
-            if (brightness >= 255) brightness = 255;
-        }
-        
-        // Set brightness on all zones
-        auto zones = config.getAllZones();
-        for (Zone* zone : zones) {
-            ledController.setZoneBrightness(zone->id, brightness);
-        }
-        
-        // Apply changes to hardware
-        ledController.update();
-        
-        // Print status every 10 seconds
-        static uint32_t lastPrint = 0;
-        if (millis() - lastPrint >= 10000) {
-            lastPrint = millis();
-            Serial.printf("Status: Brightness %d | WiFi: %s | IP: %s\n", 
-                         brightness, 
-                         webServer.isWiFiConnected() ? "Connected" : "AP Mode",
-                         webServer.getIPAddress().c_str());
-        }
+    // Update CandleEffect
+    candleEffect.update();
+    
+    // Apply LED changes to hardware
+    ledController.update();
+    
+    // Print status every 10 seconds
+    static uint32_t lastPrint = 0;
+    if (millis() - lastPrint >= 10000) {
+        lastPrint = millis();
+        Serial.printf("Status: CandleEffect %s | WiFi: %s | IP: %s\n", 
+                     candleEffect.isEnabled() ? "ON" : "OFF",
+                     webServer.isWiFiConnected() ? "Connected" : "AP Mode",
+                     webServer.getIPAddress().c_str());
     }
 }
