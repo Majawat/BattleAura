@@ -77,11 +77,17 @@ bool WebServer::connectToWiFi() {
 void WebServer::startAccessPoint() {
     const auto& deviceConfig = config.getDeviceConfig();
     
+    // Ensure clean WiFi state
+    WiFi.disconnect(true);
+    delay(100);
+    
     String apName = deviceConfig.deviceName + "-" + String((uint32_t)ESP.getEfuseMac(), HEX);
     
-    Serial.printf("WebServer: Starting AP '%s'...\n", apName.c_str());
+    Serial.printf("WebServer: Starting AP '%s' with password '%s'...\n", 
+                 apName.c_str(), deviceConfig.apPassword.c_str());
     
     WiFi.mode(WIFI_AP);
+    delay(100);
     WiFi.softAP(apName.c_str(), deviceConfig.apPassword.c_str());
     
     // Wait for AP to initialize

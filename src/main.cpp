@@ -74,14 +74,19 @@ void loop() {
             if (brightness >= 255) brightness = 255;
         }
         
-        // Set brightness on all zones
-        auto zones = config.getAllZones();
-        for (Zone* zone : zones) {
-            ledController.setZoneBrightness(zone->id, brightness);
+        // DIRECT LED CONTROL - bypass broken LedController
+        static bool ledsInitialized = false;
+        if (!ledsInitialized) {
+            ledcSetup(0, 5000, 8);
+            ledcAttachPin(2, 0);
+            ledcSetup(1, 5000, 8); 
+            ledcAttachPin(3, 1);
+            ledsInitialized = true;
+            Serial.println("Direct LED control initialized");
         }
         
-        // Apply changes to hardware
-        ledController.update();
+        ledcWrite(0, brightness);
+        ledcWrite(1, brightness);
         
         // Print status every 10 seconds
         static uint32_t lastPrint = 0;
