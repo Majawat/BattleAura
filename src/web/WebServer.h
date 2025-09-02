@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <ArduinoOTA.h>
+#include <Update.h>
 #include "../config/Configuration.h"
 #include "../hardware/LedController.h"
 
@@ -44,6 +45,8 @@ private:
     void handleGetZones(AsyncWebServerRequest* request);
     void handleSetBrightness(AsyncWebServerRequest* request);
     void handleGetStatus(AsyncWebServerRequest* request);
+    void handleOTAUpload(AsyncWebServerRequest* request);
+    void handleOTAUploadFile(AsyncWebServerRequest* request, String filename, size_t index, uint8_t *data, size_t len, bool final);
     
     // Utility
     void sendCORSHeaders(AsyncWebServerRequest* request);

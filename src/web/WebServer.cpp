@@ -149,6 +149,13 @@ void WebServer::setupRoutes() {
         handleGetStatus(request);
     });
     
+    // OTA firmware update endpoint
+    server.on("/update", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        handleOTAUpload(request);
+    }, [this](AsyncWebServerRequest* request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+        handleOTAUploadFile(request, filename, index, data, len, final);
+    });
+    
     // Handle CORS preflight
     server.on("/api/brightness", HTTP_OPTIONS, [this](AsyncWebServerRequest* request) {
         sendCORSHeaders(request);
@@ -284,6 +291,45 @@ void WebServer::sendJSONResponse(AsyncWebServerRequest* request, int code, const
     AsyncWebServerResponse* response = request->beginResponse(code, "application/json", json);
     response->addHeader("Access-Control-Allow-Origin", "*");
     request->send(response);
+}
+
+void WebServer::handleOTAUpload(AsyncWebServerRequest* request) {
+    bool shouldReboot = !Update.hasError();
+    AsyncWebServerResponse* response = request->beginResponse(200, "application/json", 
+        shouldReboot ? R"({"success":true,"message":"Upload successful, rebooting..."})" 
+                     : R"({"success":false,"message":"Upload failed"})");
+    response->addHeader("Access-Control-Allow-Origin", "*");
+    request->send(response);
+    
+    if (shouldReboot) {
+        delay(100);
+        ESP.restart();
+    }
+}
+
+void WebServer::handleOTAUploadFile(AsyncWebServerRequest* request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+    if (!index) {
+        Serial.printf("OTA: Starting update - %s\n", filename.c_str());
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+            Update.printError(Serial);
+            return;
+        }
+    }
+    
+    if (len) {
+        if (Update.write(data, len) != len) {
+            Update.printError(Serial);
+            return;
+        }
+    }
+    
+    if (final) {
+        if (Update.end(true)) {
+            Serial.printf("OTA: Update complete - %uB\n", index + len);
+        } else {
+            Update.printError(Serial);
+        }
+    }
 }
 
 } // namespace BattleAura

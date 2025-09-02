@@ -107,6 +107,23 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             <!-- Zones will be populated here -->
         </div>
         
+        <div class="zone-card">
+            <div class="zone-name">Firmware Update</div>
+            <div class="zone-info">Upload new firmware via OTA</div>
+            <div style="margin-top: 15px;">
+                <input type="file" id="firmware-file" accept=".bin" style="margin-bottom: 10px; width: 100%;">
+                <button onclick="uploadFirmware()" style="width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Upload Firmware
+                </button>
+                <div id="upload-progress" style="margin-top: 10px; display: none;">
+                    <div style="background: #444; border-radius: 4px; overflow: hidden;">
+                        <div id="progress-bar" style="background: #4CAF50; height: 20px; width: 0%; transition: width 0.3s;"></div>
+                    </div>
+                    <span id="progress-text">0%</span>
+                </div>
+            </div>
+        </div>
+        
         <div class="footer">
             BattleAura v2.0.0 - Phase 1<br>
             <span id="device-info"></span>
@@ -236,6 +253,58 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             if (hours > 0) return `${hours}h ${minutes % 60}m`;
             if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
             return `${seconds}s`;
+        }
+        
+        // Upload firmware
+        async function uploadFirmware() {
+            const fileInput = document.getElementById('firmware-file');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                updateStatus('error', 'Please select a firmware file');
+                return;
+            }
+            
+            if (!file.name.endsWith('.bin')) {
+                updateStatus('error', 'Please select a .bin file');
+                return;
+            }
+            
+            const progressDiv = document.getElementById('upload-progress');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            
+            try {
+                updateStatus('loading', 'Starting firmware upload...');
+                progressDiv.style.display = 'block';
+                
+                const formData = new FormData();
+                formData.append('firmware', file);
+                
+                const response = await fetch('/update', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error(`Upload failed: ${response.statusText}`);
+                
+                updateStatus('success', 'Firmware uploaded successfully! Device will restart...');
+                progressBar.style.width = '100%';
+                progressText.textContent = '100%';
+                
+                // Reset form after delay
+                setTimeout(() => {
+                    fileInput.value = '';
+                    progressDiv.style.display = 'none';
+                    progressBar.style.width = '0%';
+                    progressText.textContent = '0%';
+                }, 3000);
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                updateStatus('error', 'Upload failed: ' + error.message);
+                progressDiv.style.display = 'none';
+            }
         }
     </script>
 </body>
