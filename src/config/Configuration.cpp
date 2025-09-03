@@ -539,22 +539,11 @@ void Configuration::createDefaultConfiguration() {
     deviceConfig.otaPassword = "battlesync";
     deviceConfig.apPassword = "battlesync";
     
-    // Initialize default audio tracks (moved from AudioController hardcoded values)
-    addAudioTrack(AudioTrack(1, "Tank Idle", true, 0));
-    addAudioTrack(AudioTrack(2, "Tank Idle 2", true, 0));
-    addAudioTrack(AudioTrack(3, "Machine Gun", false, 2000));
-    addAudioTrack(AudioTrack(4, "Flamethrower", false, 3000));
-    addAudioTrack(AudioTrack(5, "Taking Hits", false, 1500));
-    addAudioTrack(AudioTrack(6, "Engine Revving", false, 4000));
-    addAudioTrack(AudioTrack(7, "Explosion", false, 2500));
-    addAudioTrack(AudioTrack(8, "Rocket Launcher", false, 3000));
-    addAudioTrack(AudioTrack(9, "Kill Confirmed", false, 1000));
-    
-    // Start with no zones - user will configure via web interface
+    // Start with no zones or audio tracks - user will configure via web interface
     // This allows testing with any hardware setup
     // Effects will be enabled automatically when zones are added
     
-    Serial.printf("Configuration: Default configuration created with %d audio tracks\n", audioTracks.size());
+    Serial.println("Configuration: Default configuration created");
 }
 
 } // namespace BattleAura
