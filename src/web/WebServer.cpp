@@ -735,47 +735,7 @@ void WebServer::handleSetVolume(AsyncWebServerRequest* request) {
 }
 
 void WebServer::handleSetVolumeBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
-    // Only process when we have the complete body
-    if (index + len == total) {
-        String body = String((char*)data, len);
-        JsonDocument doc;
-        
-        DeserializationError error = deserializeJson(doc, body);
-        if (error) {
-            sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid JSON"})");
-            return;
-        }
-        
-        if (!doc["volume"].is<uint8_t>()) {
-            sendJSONResponse(request, 400, R"({"success":false,"error":"Missing volume"})");
-            return;
-        }
-        
-        uint8_t volume = doc["volume"];
-        if (volume > 30) {
-            sendJSONResponse(request, 400, R"({"success":false,"error":"Volume must be 0-30"})");
-            return;
-        }
-        
-        if (audioController.isAvailable()) {
-            if (audioController.setVolume(volume)) {
-                Serial.printf("WebServer: Set audio volume to %d\n", volume);
-                
-                JsonDocument responseDoc;
-                responseDoc["success"] = true;
-                responseDoc["message"] = String("Volume set to ") + volume;
-                responseDoc["volume"] = volume;
-                
-                String response;
-                serializeJson(responseDoc, response);
-                sendJSONResponse(request, 200, response);
-            } else {
-                sendJSONResponse(request, 400, R"({"success":false,"error":"Failed to set volume"})");
-            }
-        } else {
-            sendJSONResponse(request, 400, R"({"success":false,"error":"Audio hardware not available"})");
-        }
-    }
+    parseJSONBody(request, data, len, index, total, &WebServer::processSetVolume);
 }
 
 void WebServer::handleGetAudioStatus(AsyncWebServerRequest* request) {
@@ -829,86 +789,7 @@ void WebServer::handleWiFiConfig(AsyncWebServerRequest* request) {
 }
 
 void WebServer::handleWiFiConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
-    // Only process when we have the complete body
-    if (index + len == total) {
-        String body = String((char*)data, len);
-        JsonDocument doc;
-        
-        DeserializationError error = deserializeJson(doc, body);
-        if (error) {
-            sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid JSON"})");
-            return;
-        }
-        
-        if (!doc["ssid"].is<String>()) {
-            sendJSONResponse(request, 400, R"({"success":false,"error":"Missing SSID"})");
-            return;
-        }
-        
-        String ssid = doc["ssid"];
-        String password = doc["password"] | "";
-        String deviceName = doc["deviceName"] | "";
-        
-        if (ssid.length() == 0 || ssid.length() > 32) {
-            sendJSONResponse(request, 400, R"({"success":false,"error":"SSID must be 1-32 characters"})");
-            return;
-        }
-        
-        if (password.length() > 64) {
-            sendJSONResponse(request, 400, R"({"success":false,"error":"Password must be 64 characters or less"})");
-            return;
-        }
-        
-        // Update configuration
-        auto& deviceConfig = config.getDeviceConfig();
-        deviceConfig.wifiSSID = ssid;
-        deviceConfig.wifiPassword = password;
-        
-        // Update device name if provided
-        if (deviceName.length() > 0) {
-            if (deviceName.length() > 32) {
-                sendJSONResponse(request, 400, R"({"success":false,"error":"Device name must be 32 characters or less"})");
-                return;
-            }
-            deviceConfig.deviceName = deviceName;
-            
-            // Update hostname and mDNS with new device name
-            String cleanHostname = generateHostname(deviceName);
-            
-            WiFi.setHostname(cleanHostname.c_str());
-            MDNS.end();
-            if (MDNS.begin(cleanHostname.c_str())) {
-                Serial.printf("WebServer: mDNS updated to %s.local\n", cleanHostname.c_str());
-            } else {
-                Serial.println("WebServer: Failed to restart mDNS with new hostname");
-            }
-        }
-        
-        // Save configuration
-        if (!config.save()) {
-            sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to save configuration"})");
-            return;
-        }
-        
-        Serial.printf("WebServer: Configuration updated - Device: %s, SSID: %s\n", 
-                     deviceConfig.deviceName.c_str(), ssid.c_str());
-        
-        // Send success response first
-        JsonDocument responseDoc;
-        responseDoc["success"] = true;
-        responseDoc["message"] = deviceName.length() > 0 ? 
-            "Device name and WiFi configuration saved. Attempting to connect..." :
-            "WiFi configuration saved. Attempting to connect...";
-        
-        String response;
-        serializeJson(responseDoc, response);
-        sendJSONResponse(request, 200, response);
-        
-        // Attempt WiFi connection after a short delay
-        // Note: This could disconnect the current session if successful
-        Serial.println("WebServer: Attempting WiFi reconnection in 2 seconds...");
-        // TODO: Implement reconnection logic that doesn't break current session
-    }
+    parseJSONBody(request, data, len, index, total, &WebServer::processWiFiConfig);
 }
 
 void WebServer::handleClearWiFi(AsyncWebServerRequest* request) {
@@ -947,6 +828,124 @@ String WebServer::generateHostname(const String& deviceName) {
         cleanHostname = "battleaura";
     }
     return cleanHostname;
+}
+
+void WebServer::parseJSONBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total, void (WebServer::*handler)(AsyncWebServerRequest*, JsonDocument&)) {
+    // Only process when we have the complete body
+    if (index + len == total) {
+        String body = String((char*)data, len);
+        JsonDocument doc;
+        
+        DeserializationError error = deserializeJson(doc, body);
+        if (error) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid JSON"})");
+            return;
+        }
+        
+        // Call the specific handler with parsed JSON
+        (this->*handler)(request, doc);
+    }
+}
+
+void WebServer::processWiFiConfig(AsyncWebServerRequest* request, JsonDocument& doc) {
+    if (!doc["ssid"].is<String>()) {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Missing SSID"})");
+        return;
+    }
+    
+    String ssid = doc["ssid"];
+    String password = doc["password"] | "";
+    String deviceName = doc["deviceName"] | "";
+    
+    if (ssid.length() == 0 || ssid.length() > 32) {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"SSID must be 1-32 characters"})");
+        return;
+    }
+    
+    if (password.length() > 64) {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Password must be 64 characters or less"})");
+        return;
+    }
+    
+    // Update configuration
+    auto& deviceConfig = config.getDeviceConfig();
+    deviceConfig.wifiSSID = ssid;
+    deviceConfig.wifiPassword = password;
+    
+    // Update device name if provided
+    if (deviceName.length() > 0) {
+        if (deviceName.length() > 32) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Device name must be 32 characters or less"})");
+            return;
+        }
+        deviceConfig.deviceName = deviceName;
+        
+        // Update hostname and mDNS with new device name
+        String cleanHostname = generateHostname(deviceName);
+        
+        WiFi.setHostname(cleanHostname.c_str());
+        MDNS.end();
+        if (MDNS.begin(cleanHostname.c_str())) {
+            Serial.printf("WebServer: mDNS updated to %s.local\n", cleanHostname.c_str());
+        } else {
+            Serial.println("WebServer: Failed to restart mDNS with new hostname");
+        }
+    }
+    
+    // Save configuration
+    if (!config.save()) {
+        sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to save configuration"})");
+        return;
+    }
+    
+    Serial.printf("WebServer: Configuration updated - Device: %s, SSID: %s\n", 
+                 deviceConfig.deviceName.c_str(), ssid.c_str());
+    
+    // Send success response first
+    JsonDocument responseDoc;
+    responseDoc["success"] = true;
+    responseDoc["message"] = deviceName.length() > 0 ? 
+        "Device name and WiFi configuration saved. Attempting to connect..." :
+        "WiFi configuration saved. Attempting to connect...";
+    
+    String response;
+    serializeJson(responseDoc, response);
+    sendJSONResponse(request, 200, response);
+    
+    // Attempt WiFi connection after a short delay
+    Serial.println("WebServer: Attempting WiFi reconnection in 2 seconds...");
+}
+
+void WebServer::processSetVolume(AsyncWebServerRequest* request, JsonDocument& doc) {
+    if (!doc["volume"].is<uint8_t>()) {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Missing volume"})");
+        return;
+    }
+    
+    uint8_t volume = doc["volume"];
+    if (volume > 30) {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Volume must be 0-30"})");
+        return;
+    }
+    
+    if (audioController.isAvailable()) {
+        if (audioController.setVolume(volume)) {
+            Serial.printf("WebServer: Set audio volume to %d\n", volume);
+            
+            JsonDocument responseDoc;
+            responseDoc["success"] = true;
+            responseDoc["message"] = String("Volume set to ") + volume;
+            responseDoc["volume"] = volume;
+            
+            String response;
+            serializeJson(responseDoc, response);
+            sendJSONResponse(request, 200, response);
+        } else {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Failed to set volume"})");
+        }
+    } else {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Audio hardware not available"})");
+    }
 }
 
 } // namespace BattleAura

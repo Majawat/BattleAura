@@ -76,6 +76,11 @@ private:
     void sendCORSHeaders(AsyncWebServerRequest* request);
     void sendJSONResponse(AsyncWebServerRequest* request, int code, const String& json);
     String generateHostname(const String& deviceName);
+    void parseJSONBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total, void (WebServer::*handler)(AsyncWebServerRequest*, JsonDocument&));
+    
+    // JSON business logic handlers
+    void processWiFiConfig(AsyncWebServerRequest* request, JsonDocument& doc);
+    void processSetVolume(AsyncWebServerRequest* request, JsonDocument& doc);
 };
 
 } // namespace BattleAura
