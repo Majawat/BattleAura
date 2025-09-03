@@ -216,30 +216,30 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             <div class="zone-form">
                 <h3>Add New Zone</h3>
                 <div class="form-row">
-                    <label>Name:</label>
+                    <label for="zoneName">Name:</label>
                     <input type="text" id="zoneName" placeholder="e.g., Engine LED">
                 </div>
                 <div class="form-row">
-                    <label>GPIO Pin:</label>
+                    <label for="zoneGpio">GPIO Pin:</label>
                     <input type="number" id="zoneGpio" min="2" max="21" placeholder="2-10, 20-21">
                 </div>
                 <div class="form-row">
-                    <label>Type:</label>
+                    <label for="zoneType">Type:</label>
                     <select id="zoneType">
                         <option value="PWM">PWM (Single LED)</option>
                         <option value="WS2812B">WS2812B (RGB Strip)</option>
                     </select>
                 </div>
                 <div class="form-row" id="ledCountRow" style="display:none;">
-                    <label>LED Count:</label>
+                    <label for="ledCount">LED Count:</label>
                     <input type="number" id="ledCount" min="1" max="100" value="5">
                 </div>
                 <div class="form-row">
-                    <label>Group:</label>
+                    <label for="zoneGroup">Group:</label>
                     <input type="text" id="zoneGroup" placeholder="e.g., Engines, Weapons" value="Default">
                 </div>
                 <div class="form-row">
-                    <label>Max Brightness:</label>
+                    <label for="zoneBrightness">Max Brightness:</label>
                     <input type="range" id="zoneBrightness" min="1" max="255" value="255">
                     <span id="brightnessValue">255</span>
                 </div>
@@ -276,13 +276,13 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 </div>
                 <div style="margin-top: 15px;">
                     <div class="form-row">
-                        <label>Track Number (1-9):</label>
+                        <label for="track-number">Track Number (1-9):</label>
                         <input type="number" id="track-number" min="1" max="9" value="1">
                         <input type="checkbox" id="loop-audio" style="margin-left: 10px;">
                         <label for="loop-audio" style="margin-left: 5px;">Loop</label>
                     </div>
                     <div class="form-row">
-                        <label>Volume (0-30):</label>
+                        <label for="audio-volume">Volume (0-30):</label>
                         <input type="range" id="audio-volume" min="0" max="30" value="15" oninput="setVolume(this.value)">
                         <span id="volume-value">15</span>
                     </div>
