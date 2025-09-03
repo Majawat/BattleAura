@@ -17,7 +17,7 @@ WebServer webServer(config, ledController, effectManager, audioController);
 void setup() {
     Serial.begin(115200);
     delay(6000);
-    Serial.println("\n=== BattleAura v2.3.1-volume-slider-ux - Consistent Interface ===");
+    Serial.println("\n=== BattleAura v2.4.0-wifi-config - Network Configuration ===");
     
     // Initialize configuration
     Serial.println("Initializing configuration...");

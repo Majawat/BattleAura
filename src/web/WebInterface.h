@@ -174,6 +174,36 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             Loading system...
         </div>
         
+        <!-- WiFi Configuration Section -->
+        <div class="section">
+            <h2>WiFi Configuration</h2>
+            <div class="zone-card">
+                <div class="zone-name">WiFi Network Settings</div>
+                <div class="zone-info">
+                    Current: <span id="wifi-status">Checking...</span> | 
+                    Network: <span id="wifi-ssid">None</span> |
+                    IP: <span id="wifi-ip">Unknown</span>
+                </div>
+                <div style="margin-top: 15px;">
+                    <div class="form-row">
+                        <label>Network Name (SSID):</label>
+                        <input type="text" id="wifi-network" placeholder="e.g., MyWiFi" maxlength="32">
+                    </div>
+                    <div class="form-row">
+                        <label>Password:</label>
+                        <input type="password" id="wifi-password" placeholder="WiFi Password" maxlength="64">
+                        <input type="checkbox" id="show-password" style="margin-left: 10px;">
+                        <label for="show-password" style="margin-left: 5px;">Show</label>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <button onclick="saveWiFiConfig()" class="btn btn-success" style="margin-right: 10px;">Save & Connect</button>
+                        <button onclick="clearWiFiConfig()" class="btn btn-danger" style="margin-right: 10px;">Clear WiFi</button>
+                        <button onclick="refreshWiFiStatus()" class="btn">Refresh Status</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Zone Configuration Section -->
         <div class="section">
             <h2>Zone Configuration</h2>
@@ -769,7 +799,116 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             
             // Load initial audio status
             refreshAudioStatus();
+            
+            // Load initial WiFi status
+            refreshWiFiStatus();
+            
+            // Setup show/hide password toggle
+            const showPasswordCheckbox = document.getElementById('show-password');
+            const passwordInput = document.getElementById('wifi-password');
+            if (showPasswordCheckbox && passwordInput) {
+                showPasswordCheckbox.addEventListener('change', function() {
+                    passwordInput.type = this.checked ? 'text' : 'password';
+                });
+            }
         });
+        
+        // WiFi configuration functions
+        async function saveWiFiConfig() {
+            const ssid = document.getElementById('wifi-network').value.trim();
+            const password = document.getElementById('wifi-password').value;
+            
+            if (!ssid) {
+                updateStatus('error', 'Please enter a network name (SSID)');
+                return;
+            }
+            
+            try {
+                updateStatus('loading', 'Saving WiFi configuration and connecting...');
+                
+                const response = await fetch('/api/wifi/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ssid, password })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('success', result.message);
+                    // Clear password field for security
+                    document.getElementById('wifi-password').value = '';
+                    // Refresh status after a few seconds to see connection result
+                    setTimeout(() => refreshWiFiStatus(), 5000);
+                } else {
+                    updateStatus('error', result.error || 'Failed to save WiFi configuration');
+                }
+                
+            } catch (error) {
+                console.error('Error saving WiFi config:', error);
+                updateStatus('error', 'Failed to save WiFi configuration: ' + error.message);
+            }
+        }
+        
+        async function clearWiFiConfig() {
+            if (!confirm('Clear WiFi configuration? The device will switch to AP mode.')) {
+                return;
+            }
+            
+            try {
+                updateStatus('loading', 'Clearing WiFi configuration...');
+                
+                const response = await fetch('/api/wifi/clear', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('success', result.message);
+                    document.getElementById('wifi-network').value = '';
+                    document.getElementById('wifi-password').value = '';
+                    setTimeout(() => refreshWiFiStatus(), 3000);
+                } else {
+                    updateStatus('error', result.error || 'Failed to clear WiFi configuration');
+                }
+                
+            } catch (error) {
+                console.error('Error clearing WiFi config:', error);
+                updateStatus('error', 'Failed to clear WiFi configuration: ' + error.message);
+            }
+        }
+        
+        async function refreshWiFiStatus() {
+            try {
+                const response = await fetch('/api/status');
+                if (!response.ok) throw new Error('Failed to get status');
+                
+                const data = await response.json();
+                
+                // Update WiFi status display
+                const wifiConnected = data.wifiConnected || false;
+                const wifiMode = wifiConnected ? 'Station Mode' : 'Access Point Mode';
+                const ssid = data.wifiSSID || 'BattleAura-' + data.deviceId;
+                const ip = data.ip || 'Unknown';
+                
+                document.getElementById('wifi-status').textContent = wifiMode;
+                document.getElementById('wifi-ssid').textContent = ssid;
+                document.getElementById('wifi-ip').textContent = ip;
+                
+                // Pre-fill current SSID if in station mode
+                if (wifiConnected && data.wifiSSID && data.wifiSSID !== '') {
+                    document.getElementById('wifi-network').value = data.wifiSSID;
+                }
+                
+            } catch (error) {
+                console.error('Error getting WiFi status:', error);
+                document.getElementById('wifi-status').textContent = 'Error';
+                document.getElementById('wifi-ssid').textContent = 'Error';
+                document.getElementById('wifi-ip').textContent = 'Error';
+            }
+        }
     </script>
 </body>
 </html>

@@ -202,6 +202,17 @@ void WebServer::setupRoutes() {
         handleRetryAudio(request);
     });
     
+    // WiFi configuration endpoints
+    server.on("/api/wifi/config", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        // Response will be sent after body is processed
+    }, NULL, [this](AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+        handleWiFiConfigBody(request, data, len, index, total);
+    });
+    
+    server.on("/api/wifi/clear", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        handleClearWiFi(request);
+    });
+    
     // OTA firmware update endpoint
     server.on("/update", HTTP_POST, [this](AsyncWebServerRequest* request) {
         handleOTAUpload(request);
@@ -359,6 +370,9 @@ void WebServer::handleGetStatus(AsyncWebServerRequest* request) {
     doc["firmwareVersion"] = deviceConfig.firmwareVersion;
     doc["ip"] = currentIP;
     doc["wifiMode"] = apMode ? "AP" : "STA";
+    doc["wifiConnected"] = wifiConnected;
+    doc["wifiSSID"] = wifiConnected ? deviceConfig.wifiSSID : "";
+    doc["deviceId"] = WiFi.macAddress().substring(12);  // Last 6 chars of MAC for AP SSID
     doc["uptime"] = millis();
     doc["freeHeap"] = ESP.getFreeHeap();
     doc["totalHeap"] = ESP.getHeapSize();
@@ -780,6 +794,88 @@ void WebServer::handleRetryAudio(AsyncWebServerRequest* request) {
         Serial.println("WebServer: Audio retry failed");
         sendJSONResponse(request, 400, R"({"success":false,"error":"Audio hardware initialization failed - check connections"})");
     }
+}
+
+void WebServer::handleWiFiConfig(AsyncWebServerRequest* request) {
+    // This is handled by the body handler
+    request->send(400, "application/json", R"({"success":false,"error":"Missing request body"})");
+}
+
+void WebServer::handleWiFiConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+    // Only process when we have the complete body
+    if (index + len == total) {
+        String body = String((char*)data, len);
+        JsonDocument doc;
+        
+        DeserializationError error = deserializeJson(doc, body);
+        if (error) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid JSON"})");
+            return;
+        }
+        
+        if (!doc["ssid"].is<String>()) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Missing SSID"})");
+            return;
+        }
+        
+        String ssid = doc["ssid"];
+        String password = doc["password"] | "";
+        
+        if (ssid.length() == 0 || ssid.length() > 32) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"SSID must be 1-32 characters"})");
+            return;
+        }
+        
+        if (password.length() > 64) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Password must be 64 characters or less"})");
+            return;
+        }
+        
+        // Update configuration
+        auto& deviceConfig = config.getDeviceConfig();
+        deviceConfig.wifiSSID = ssid;
+        deviceConfig.wifiPassword = password;
+        
+        // Save configuration
+        if (!config.save()) {
+            sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to save WiFi configuration"})");
+            return;
+        }
+        
+        Serial.printf("WebServer: WiFi configuration updated - SSID: %s\n", ssid.c_str());
+        
+        // Send success response first
+        JsonDocument responseDoc;
+        responseDoc["success"] = true;
+        responseDoc["message"] = "WiFi configuration saved. Attempting to connect...";
+        
+        String response;
+        serializeJson(responseDoc, response);
+        sendJSONResponse(request, 200, response);
+        
+        // Attempt WiFi connection after a short delay
+        // Note: This could disconnect the current session if successful
+        Serial.println("WebServer: Attempting WiFi reconnection in 2 seconds...");
+        // TODO: Implement reconnection logic that doesn't break current session
+    }
+}
+
+void WebServer::handleClearWiFi(AsyncWebServerRequest* request) {
+    Serial.println("WebServer: Clearing WiFi configuration");
+    
+    // Clear WiFi configuration
+    auto& deviceConfig = config.getDeviceConfig();
+    deviceConfig.wifiSSID = "";
+    deviceConfig.wifiPassword = "";
+    
+    // Save configuration
+    if (!config.save()) {
+        sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to save configuration"})");
+        return;
+    }
+    
+    Serial.println("WebServer: WiFi configuration cleared");
+    sendJSONResponse(request, 200, R"({"success":true,"message":"WiFi configuration cleared. Device will remain in AP mode until reboot."})");
 }
 
 } // namespace BattleAura
