@@ -332,15 +332,16 @@ void Configuration::createDefaultConfiguration() {
     
     // Set device defaults
     deviceConfig.deviceName = "BattleAura";
-    deviceConfig.firmwareVersion = "2.0.2-smooth-candle";
+    deviceConfig.firmwareVersion = "2.1.0-rgb-support";
     deviceConfig.audioEnabled = true;
     deviceConfig.audioVolume = 20;
     deviceConfig.otaPassword = "battlesync";
     deviceConfig.apPassword = "battlesync";
     
-    // Create default zones for testing
-    addZone(Zone(1, "Test LED 1", 2, ZoneType::PWM, 1, "Test"));
-    addZone(Zone(2, "Test LED 2", 3, ZoneType::PWM, 1, "Test"));
+    // Create default zones for testing - mixed PWM and WS2812B
+    addZone(Zone(1, "PWM LED 1", 2, ZoneType::PWM, 1, "Test"));
+    addZone(Zone(2, "RGB Strip 1", 3, ZoneType::WS2812B, 5, "Test")); // 5 RGB LEDs
+    addZone(Zone(3, "PWM LED 2", 4, ZoneType::PWM, 1, "Test"));
     
     // Create default effects
     EffectConfig candleEffect("CandleFlicker", EffectType::AMBIENT);

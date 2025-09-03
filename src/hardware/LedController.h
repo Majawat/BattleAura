@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include "../config/ZoneConfig.h"
 #include <vector>
+#include <FastLED.h>
 
 namespace BattleAura {
 
@@ -18,7 +19,10 @@ public:
     
     // LED Control
     void setZoneBrightness(uint8_t zoneId, uint8_t brightness);
+    void setZoneColor(uint8_t zoneId, CRGB color);
+    void setZoneColorAndBrightness(uint8_t zoneId, CRGB color, uint8_t brightness);
     uint8_t getZoneBrightness(uint8_t zoneId) const;
+    CRGB getZoneColor(uint8_t zoneId) const;
     
     // Update hardware (apply changes)
     void update();
@@ -32,17 +36,31 @@ private:
         Zone zone;
         uint8_t currentBrightness;
         uint8_t targetBrightness;
+        CRGB currentColor;
+        CRGB targetColor;
         bool needsUpdate;
-        uint8_t pwmChannel;  // PWM channel for this zone
+        uint8_t pwmChannel;          // PWM channel for PWM zones
+        CRGB* leds;                  // FastLED array for WS2812B zones
         
-        ZoneState(const Zone& z) : zone(z), currentBrightness(0), targetBrightness(0), needsUpdate(false), pwmChannel(255) {}
+        ZoneState(const Zone& z) : zone(z), currentBrightness(0), targetBrightness(0), 
+                                   currentColor(CRGB::Black), targetColor(CRGB::White),
+                                   needsUpdate(false), pwmChannel(255), leds(nullptr) {}
+        
+        ~ZoneState() {
+            if (leds) {
+                delete[] leds;
+                leds = nullptr;
+            }
+        }
     };
     
     std::vector<ZoneState> zones;
     
-    // PWM Management
+    // Hardware Management
     bool setupPWM(ZoneState& zoneState);
+    bool setupWS2812B(ZoneState& zoneState);
     void updatePWM(uint8_t channel, uint8_t brightness, uint8_t maxBrightness);
+    void updateWS2812B(ZoneState& zoneState);
     
     // Helper methods
     ZoneState* findZone(uint8_t zoneId);

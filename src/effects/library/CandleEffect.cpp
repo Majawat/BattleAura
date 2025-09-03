@@ -1,4 +1,5 @@
 #include "CandleEffect.h"
+#include <FastLED.h>
 
 namespace BattleAura {
 
@@ -100,8 +101,22 @@ void CandleEffect::updateFlickerForZone(size_t zoneIndex, Zone* zone) {
         state.nextChange = currentTime + random(1000, 3000);
     }
     
-    // Apply brightness to LED controller
-    ledController.setZoneBrightness(zone->id, (uint8_t)round(state.currentBrightness));
+    // Apply brightness to LED controller - adapt to zone type
+    uint8_t brightness = (uint8_t)round(state.currentBrightness);
+    
+    if (zone->type == ZoneType::PWM) {
+        // PWM zones: just set brightness
+        ledController.setZoneBrightness(zone->id, brightness);
+    } else if (zone->type == ZoneType::WS2812B) {
+        // RGB zones: set warm flickering candle color with brightness
+        // Candle flame colors: orange-yellow with some red variation
+        uint8_t red = 255;
+        uint8_t green = map(brightness, 0, 255, 60, 180);  // Varies with flicker
+        uint8_t blue = map(brightness, 0, 255, 0, 30);     // Minimal blue for warmth
+        
+        CRGB candleColor = CRGB(red, green, blue);
+        ledController.setZoneColorAndBrightness(zone->id, candleColor, brightness);
+    }
     
     state.lastUpdate = currentTime;
 }
