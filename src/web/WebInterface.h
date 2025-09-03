@@ -187,16 +187,16 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 </div>
                 <div style="margin-top: 15px;">
                     <div class="form-row">
-                        <label>Device Name:</label>
+                        <label for="device-name">Device Name:</label>
                         <input type="text" id="device-name" placeholder="e.g., BattleTank" maxlength="32">
                         <small style="color: #666; margin-left: 10px;">Used for hostname (e.g., battletank.local)</small>
                     </div>
                     <div class="form-row">
-                        <label>Network Name (SSID):</label>
+                        <label for="wifi-network">Network Name (SSID):</label>
                         <input type="text" id="wifi-network" placeholder="e.g., MyWiFi" maxlength="32">
                     </div>
                     <div class="form-row">
-                        <label>Password:</label>
+                        <label for="wifi-password">Password:</label>
                         <input type="password" id="wifi-password" placeholder="WiFi Password" maxlength="64">
                         <input type="checkbox" id="show-password" style="margin-left: 10px;">
                         <label for="show-password" style="margin-left: 5px;">Show</label>
