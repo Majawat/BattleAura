@@ -93,6 +93,50 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             color: #666; 
             font-size: 12px; 
         }
+        .nav-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #444;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            background: #333;
+            color: #ccc;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        .tab-btn.active {
+            color: #4CAF50;
+            border-bottom-color: #4CAF50;
+        }
+        .tab-btn:hover {
+            background: #444;
+        }
+        .config-tab {
+            display: none;
+        }
+        .config-tab.active {
+            display: block;
+        }
+        .form-row {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            gap: 10px;
+        }
+        .form-row label {
+            min-width: 100px;
+        }
+        .form-row input, .form-row select {
+            flex: 1;
+            padding: 5px;
+            border: 1px solid #555;
+            background: #333;
+            color: white;
+            border-radius: 3px;
+        }
         .btn {
             padding: 10px 20px;
             background: #4CAF50;
@@ -264,6 +308,87 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             </div>
         </div>
         
+        <!-- Configuration Sections -->
+        <div class="section" id="config-section" style="display: none;">
+            <div class="nav-tabs">
+                <button class="tab-btn active" onclick="showConfigTab('zones')">Zones</button>
+                <button class="tab-btn" onclick="showConfigTab('effects')">Effects</button>
+                <button class="tab-btn" onclick="showConfigTab('device')">Device</button>
+                <button class="tab-btn" onclick="showConfigTab('system')">System</button>
+            </div>
+            
+            <!-- Zones Config Tab -->
+            <div id="config-zones" class="config-tab active">
+                <h3>Zone Configuration</h3>
+                <div class="zone-form">
+                    <div class="form-row">
+                        <label for="newZoneName">Name:</label>
+                        <input type="text" id="newZoneName" placeholder="e.g., Engine LED">
+                    </div>
+                    <div class="form-row">
+                        <label for="newZoneGpio">GPIO Pin:</label>
+                        <input type="number" id="newZoneGpio" min="2" max="21" placeholder="2-10, 20-21">
+                    </div>
+                    <div class="form-row">
+                        <label for="newZoneType">Type:</label>
+                        <select id="newZoneType">
+                            <option value="PWM">PWM (Single LED)</option>
+                            <option value="WS2812B">WS2812B (RGB Strip)</option>
+                        </select>
+                    </div>
+                    <div class="form-row" id="newLedCountRow" style="display:none;">
+                        <label for="newLedCount">LED Count:</label>
+                        <input type="number" id="newLedCount" min="1" max="100" value="5">
+                    </div>
+                    <div class="form-row">
+                        <label for="newZoneGroup">Group:</label>
+                        <input type="text" id="newZoneGroup" placeholder="e.g., Engines, Weapons" value="Default">
+                    </div>
+                    <button onclick="addNewZone()" class="btn btn-success">Add Zone</button>
+                    <button onclick="clearAllZones()" class="btn btn-danger">Clear All Zones</button>
+                </div>
+            </div>
+            
+            <!-- Effects Config Tab -->
+            <div id="config-effects" class="config-tab">
+                <h3>Effect Configuration</h3>
+                <p>Configure effect-to-group mappings and audio associations.</p>
+                <div class="form-row">
+                    <label>Audio Track:</label>
+                    <input type="number" id="trackNumber" min="1" max="999" value="1">
+                    <input type="text" id="trackDescription" placeholder="Track description">
+                    <input type="checkbox" id="trackLoop"> <label for="trackLoop">Loop</label>
+                    <button onclick="addAudioTrack()" class="btn">Add Track</button>
+                </div>
+                <div id="audio-tracks-list"></div>
+            </div>
+            
+            <!-- Device Config Tab -->
+            <div id="config-device" class="config-tab">
+                <h3>Device Settings</h3>
+                <div class="form-row">
+                    <label for="deviceName">Device Name:</label>
+                    <input type="text" id="deviceName" placeholder="BattleAura">
+                </div>
+                <div class="form-row">
+                    <label for="audioEnabled">Audio Enabled:</label>
+                    <input type="checkbox" id="audioEnabled" checked>
+                </div>
+                <button onclick="saveDeviceConfig()" class="btn btn-success">Save Device Config</button>
+            </div>
+            
+            <!-- System Config Tab -->
+            <div id="config-system" class="config-tab">
+                <h3>System Management</h3>
+                <button onclick="restartDevice()" class="btn btn-warning">Restart Device</button>
+                <button onclick="factoryReset()" class="btn btn-danger">Factory Reset</button>
+                <div style="margin-top: 20px;">
+                    <input type="file" id="firmware-file" accept=".bin">
+                    <button onclick="uploadFirmware()" class="btn">Upload Firmware</button>
+                </div>
+            </div>
+        </div>
+        
         <!-- Audio Control Section -->
         <div class="section">
             <h2>Audio Controls</h2>
@@ -311,6 +436,10 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                     <span id="progress-text">0%</span>
                 </div>
             </div>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <button onclick="toggleConfig()" class="btn" id="config-toggle">Show Configuration</button>
         </div>
         
         <div class="footer">
@@ -1354,6 +1483,165 @@ const char EFFECTS_CONFIG_HTML[] PROGMEM = R"rawliteral(
                 updateStatus('error', 'Failed to test audio track: ' + error.message);
             }
         }
+        
+        // Configuration functions
+        function toggleConfig() {
+            const section = document.getElementById('config-section');
+            const btn = document.getElementById('config-toggle');
+            
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                btn.textContent = 'Hide Configuration';
+            } else {
+                section.style.display = 'none';
+                btn.textContent = 'Show Configuration';
+            }
+        }
+        
+        function showConfigTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.config-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById('config-' + tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        async function addNewZone() {
+            const name = document.getElementById('newZoneName').value.trim();
+            const gpio = parseInt(document.getElementById('newZoneGpio').value);
+            const type = document.getElementById('newZoneType').value;
+            const group = document.getElementById('newZoneGroup').value.trim();
+            
+            if (!name || !group || !gpio) {
+                updateStatus('error', 'Please fill all zone fields');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/zones', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: name,
+                        gpio: gpio,
+                        type: type,
+                        groupName: group,
+                        brightness: 255,
+                        ledCount: type === 'WS2812B' ? parseInt(document.getElementById('newLedCount').value) || 5 : 1,
+                        enabled: true
+                    })
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    updateStatus('success', 'Zone added successfully');
+                    document.getElementById('newZoneName').value = '';
+                    document.getElementById('newZoneGroup').value = 'Default';
+                    loadZones();
+                } else {
+                    updateStatus('error', result.error || 'Failed to add zone');
+                }
+            } catch (error) {
+                updateStatus('error', 'Failed to add zone: ' + error.message);
+            }
+        }
+        
+        async function addAudioTrack() {
+            const fileNumber = parseInt(document.getElementById('trackNumber').value);
+            const description = document.getElementById('trackDescription').value.trim();
+            const isLoop = document.getElementById('trackLoop').checked;
+            
+            if (!description) {
+                updateStatus('error', 'Please enter track description');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/audio/tracks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fileNumber: fileNumber,
+                        description: description,
+                        isLoop: isLoop,
+                        duration: 0
+                    })
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    updateStatus('success', 'Audio track added');
+                    document.getElementById('trackDescription').value = '';
+                    loadAudioTracks();
+                } else {
+                    updateStatus('error', result.error || 'Failed to add audio track');
+                }
+            } catch (error) {
+                updateStatus('error', 'Failed to add audio track: ' + error.message);
+            }
+        }
+        
+        async function loadAudioTracks() {
+            try {
+                const response = await fetch('/api/audio/tracks');
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                const container = document.getElementById('audio-tracks-list');
+                
+                if (!data.tracks || data.tracks.length === 0) {
+                    container.innerHTML = '<p>No audio tracks configured</p>';
+                    return;
+                }
+                
+                container.innerHTML = data.tracks.map(track => 
+                    `<div style="padding: 5px; background: #333; margin: 5px 0; border-radius: 3px;">
+                        Track ${track.fileNumber}: ${track.description} ${track.isLoop ? '(Loop)' : ''}
+                        <button onclick="removeAudioTrack(${track.fileNumber})" class="btn btn-danger" style="float: right; padding: 2px 8px; margin-left: 10px;">Remove</button>
+                    </div>`
+                ).join('');
+            } catch (error) {
+                console.error('Error loading audio tracks:', error);
+            }
+        }
+        
+        async function removeAudioTrack(fileNumber) {
+            try {
+                const response = await fetch(`/api/audio/tracks?fileNumber=${fileNumber}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    updateStatus('success', 'Audio track removed');
+                    loadAudioTracks();
+                } else {
+                    updateStatus('error', 'Failed to remove audio track');
+                }
+            } catch (error) {
+                updateStatus('error', 'Failed to remove audio track: ' + error.message);
+            }
+        }
+        
+        // Initialize configuration features
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(loadAudioTracks, 1000);
+            
+            // Show LED count field for WS2812B zones
+            const zoneTypeSelect = document.getElementById('newZoneType');
+            if (zoneTypeSelect) {
+                zoneTypeSelect.addEventListener('change', function() {
+                    const ledCountRow = document.getElementById('newLedCountRow');
+                    ledCountRow.style.display = this.value === 'WS2812B' ? 'flex' : 'none';
+                });
+            }
+        });
+        
     </script>
 </body>
 </html>
