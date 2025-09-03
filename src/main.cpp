@@ -17,7 +17,7 @@ WebServer webServer(config, ledController, effectManager, audioController);
 void setup() {
     Serial.begin(115200);
     delay(6000);
-    Serial.println("\n=== BattleAura v2.2.1-audio-uart-fix - GPIO Pin Correction ===");
+    Serial.println("\n=== BattleAura v2.2.2-config-and-audio-fix - Complete Persistence ===");
     
     // Initialize configuration
     Serial.println("Initializing configuration...");

@@ -313,13 +313,126 @@ size_t Configuration::getConfigSize() const {
 
 // Private methods
 bool Configuration::loadFromLittleFS() {
-    // For Phase 1, just return false to trigger default creation
-    return false;  // TODO: Implement actual loading
+    Serial.println("Configuration: Attempting to load from LittleFS...");
+    
+    if (!LittleFS.exists("/config.json")) {
+        Serial.println("Configuration: config.json does not exist");
+        return false;
+    }
+    
+    File file = LittleFS.open("/config.json", "r");
+    if (!file) {
+        Serial.println("Configuration: Failed to open config.json for reading");
+        return false;
+    }
+    
+    size_t fileSize = file.size();
+    if (fileSize == 0) {
+        Serial.println("Configuration: config.json is empty");
+        file.close();
+        return false;
+    }
+    
+    // Read file content
+    String jsonString = file.readString();
+    file.close();
+    
+    // Parse JSON
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, jsonString);
+    if (error) {
+        Serial.printf("Configuration: JSON parse error: %s\n", error.c_str());
+        return false;
+    }
+    
+    // Load device config
+    if (doc["device"]) {
+        JsonObject deviceObj = doc["device"];
+        deviceConfig.deviceName = deviceObj["name"] | "BattleAura";
+        deviceConfig.wifiSSID = deviceObj["wifiSSID"] | "";
+        deviceConfig.wifiPassword = deviceObj["wifiPassword"] | "";
+        deviceConfig.audioEnabled = deviceObj["audioEnabled"] | true;
+        deviceConfig.audioVolume = deviceObj["audioVolume"] | 20;
+        deviceConfig.otaPassword = deviceObj["otaPassword"] | "battlesync";
+        deviceConfig.apPassword = deviceObj["apPassword"] | "battlesync";
+    }
+    
+    // Load zones
+    if (doc["zones"]) {
+        zones.clear();
+        for (JsonPair zonePair : doc["zones"].as<JsonObject>()) {
+            uint8_t zoneId = atoi(zonePair.key().c_str());
+            JsonObject zoneObj = zonePair.value();
+            
+            Zone zone;
+            zone.id = zoneId;
+            zone.gpio = zoneObj["gpio"];
+            zone.type = static_cast<ZoneType>(zoneObj["type"].as<int>());
+            zone.groupName = zoneObj["group"] | "Default";
+            zone.name = zoneObj["name"] | "";
+            zone.brightness = zoneObj["brightness"] | 255;
+            zone.ledCount = zoneObj["ledCount"] | 1;
+            zone.enabled = zoneObj["enabled"] | true;
+            
+            zones[zoneId] = zone;
+        }
+    }
+    
+    updateGroupMembership();
+    
+    Serial.printf("Configuration: Loaded %d zones from LittleFS\n", zones.size());
+    return true;
 }
 
 bool Configuration::saveToLittleFS() {
-    // For Phase 1, just return true - we'll implement this later
-    return true;   // TODO: Implement actual saving
+    Serial.println("Configuration: Saving to LittleFS...");
+    
+    // Create JSON document
+    JsonDocument doc;
+    
+    // Save device config
+    JsonObject deviceObj = doc["device"].to<JsonObject>();
+    deviceObj["name"] = deviceConfig.deviceName;
+    deviceObj["wifiSSID"] = deviceConfig.wifiSSID;
+    deviceObj["wifiPassword"] = deviceConfig.wifiPassword;
+    deviceObj["audioEnabled"] = deviceConfig.audioEnabled;
+    deviceObj["audioVolume"] = deviceConfig.audioVolume;
+    deviceObj["otaPassword"] = deviceConfig.otaPassword;
+    deviceObj["apPassword"] = deviceConfig.apPassword;
+    
+    // Save zones
+    JsonObject zonesObj = doc["zones"].to<JsonObject>();
+    for (const auto& pair : zones) {
+        const Zone& zone = pair.second;
+        JsonObject zoneObj = zonesObj[String(zone.id)].to<JsonObject>();
+        
+        zoneObj["gpio"] = zone.gpio;
+        zoneObj["type"] = static_cast<int>(zone.type);
+        zoneObj["group"] = zone.groupName;
+        zoneObj["name"] = zone.name;
+        zoneObj["brightness"] = zone.brightness;
+        zoneObj["ledCount"] = zone.ledCount;
+        zoneObj["enabled"] = zone.enabled;
+    }
+    
+    // Open file for writing
+    File file = LittleFS.open("/config.json", "w");
+    if (!file) {
+        Serial.println("Configuration: Failed to open config.json for writing");
+        return false;
+    }
+    
+    // Write JSON to file
+    size_t bytesWritten = serializeJson(doc, file);
+    file.close();
+    
+    if (bytesWritten == 0) {
+        Serial.println("Configuration: Failed to write JSON to file");
+        return false;
+    }
+    
+    Serial.printf("Configuration: Saved %d bytes to LittleFS\n", bytesWritten);
+    return true;
 }
 
 void Configuration::createDefaultConfiguration() {
@@ -332,7 +445,7 @@ void Configuration::createDefaultConfiguration() {
     
     // Set device defaults
     deviceConfig.deviceName = "BattleAura";
-    deviceConfig.firmwareVersion = "2.2.1-audio-uart-fix";
+    deviceConfig.firmwareVersion = "2.2.2-config-and-audio-fix";
     deviceConfig.audioEnabled = true;
     deviceConfig.audioVolume = 20;
     deviceConfig.otaPassword = "battlesync";

@@ -40,14 +40,9 @@ bool AudioController::begin() {
     }
     Serial.println("AudioController: dfPlayer.begin() succeeded");
     
-    // Wait for DFPlayer to be ready
-    Serial.println("AudioController: Waiting for DFPlayer to respond...");
-    if (!waitForReady(3000)) {
-        Serial.println("AudioController: DFPlayer not responding within 3000ms");
-        audioAvailable = false;
-        return false;
-    }
-    Serial.println("AudioController: DFPlayer responded successfully");
+    // Give DFPlayer additional time to stabilize
+    Serial.println("AudioController: Waiting additional 500ms for DFPlayer stabilization...");
+    delay(500);
     
     audioAvailable = true;
     
