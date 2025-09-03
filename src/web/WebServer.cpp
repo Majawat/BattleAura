@@ -151,7 +151,9 @@ void WebServer::setupRoutes() {
     
     // Zone management endpoints
     server.on("/api/zones", HTTP_POST, [this](AsyncWebServerRequest* request) {
-        handleAddZone(request);
+        // Response will be sent after body is processed
+    }, NULL, [this](AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+        handleAddZoneBody(request, data, len, index, total);
     });
     
     server.on("/api/zones", HTTP_DELETE, [this](AsyncWebServerRequest* request) {
@@ -168,7 +170,9 @@ void WebServer::setupRoutes() {
     });
     
     server.on("/api/effects/trigger", HTTP_POST, [this](AsyncWebServerRequest* request) {
-        handleTriggerEffect(request);
+        // Response will be sent after body is processed
+    }, NULL, [this](AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+        handleTriggerEffectBody(request, data, len, index, total);
     });
     
     // OTA firmware update endpoint
@@ -366,85 +370,96 @@ void WebServer::handleOTAUploadFile(AsyncWebServerRequest* request, String filen
 
 // Zone management handlers
 void WebServer::handleAddZone(AsyncWebServerRequest* request) {
-    JsonDocument doc;
+    // This method is no longer used - body handler does the work
+}
+
+static String addZoneBody = "";
+
+void WebServer::handleAddZoneBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+    // Accumulate body data
+    if (index == 0) {
+        addZoneBody = "";
+    }
     
-    if (request->hasParam("body", true)) {
-        String body = request->getParam("body", true)->value();
-        DeserializationError error = deserializeJson(doc, body);
+    for (size_t i = 0; i < len; i++) {
+        addZoneBody += (char)data[i];
+    }
+    
+    // Process when complete
+    if (index + len == total) {
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, addZoneBody);
         
         if (error) {
             sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid JSON"})");
             return;
         }
-    } else {
-        sendJSONResponse(request, 400, R"({"success":false,"error":"Missing request body"})");
-        return;
-    }
-    
-    // Validate required fields
-    if (!doc["name"] || !doc["gpio"] || !doc["type"]) {
-        sendJSONResponse(request, 400, R"({"success":false,"error":"Missing required fields: name, gpio, type"})");
-        return;
-    }
-    
-    // Parse zone data
-    String name = doc["name"];
-    uint8_t gpio = doc["gpio"];
-    String typeStr = doc["type"];
-    uint8_t ledCount = doc["ledCount"] | 1;
-    String groupName = doc["groupName"] | "Default";
-    uint8_t brightness = doc["brightness"] | 255;
-    
-    // Validate GPIO
-    if (!config.isValidGPIO(gpio)) {
-        sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid GPIO pin"})");
-        return;
-    }
-    
-    if (config.isGPIOInUse(gpio)) {
-        sendJSONResponse(request, 400, R"({"success":false,"error":"GPIO pin already in use"})");
-        return;
-    }
-    
-    // Parse zone type
-    ZoneType zoneType;
-    if (typeStr == "PWM") {
-        zoneType = ZoneType::PWM;
-        ledCount = 1; // PWM zones always have 1 LED
-    } else if (typeStr == "WS2812B") {
-        zoneType = ZoneType::WS2812B;
-        if (ledCount < 1 || ledCount > 100) {
-            sendJSONResponse(request, 400, R"({"success":false,"error":"LED count must be 1-100 for RGB zones"})");
+        
+        // Validate required fields
+        if (!doc["name"] || !doc["gpio"] || !doc["type"]) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Missing required fields: name, gpio, type"})");
             return;
         }
-    } else {
-        sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid zone type. Use PWM or WS2812B"})");
-        return;
-    }
-    
-    // Create zone
-    uint8_t zoneId = config.getNextZoneId();
-    Zone zone(zoneId, name, gpio, zoneType, ledCount, groupName, brightness);
-    
-    if (config.addZone(zone)) {
-        // Add zone to LED controller
-        ledController.addZone(zone);
         
-        // Save configuration
-        config.save();
+        // Parse zone data
+        String name = doc["name"];
+        uint8_t gpio = doc["gpio"];
+        String typeStr = doc["type"];
+        uint8_t ledCount = doc["ledCount"] | 1;
+        String groupName = doc["groupName"] | "Default";
+        uint8_t brightness = doc["brightness"] | 255;
         
-        Serial.printf("WebServer: Added zone %d '%s' on GPIO %d\n", zoneId, name.c_str(), gpio);
+        // Validate GPIO
+        if (!config.isValidGPIO(gpio)) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid GPIO pin"})");
+            return;
+        }
         
-        JsonDocument responseDoc;
-        responseDoc["success"] = true;
-        responseDoc["zoneId"] = zoneId;
-        responseDoc["message"] = "Zone added successfully";
+        if (config.isGPIOInUse(gpio)) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"GPIO pin already in use"})");
+            return;
+        }
         
-        String response;
-        serializeJson(responseDoc, response);
-        sendJSONResponse(request, 201, response);
-    } else {
-        sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to add zone"})");
+        // Parse zone type
+        ZoneType zoneType;
+        if (typeStr == "PWM") {
+            zoneType = ZoneType::PWM;
+            ledCount = 1; // PWM zones always have 1 LED
+        } else if (typeStr == "WS2812B") {
+            zoneType = ZoneType::WS2812B;
+            if (ledCount < 1 || ledCount > 100) {
+                sendJSONResponse(request, 400, R"({"success":false,"error":"LED count must be 1-100 for RGB zones"})");
+                return;
+            }
+        } else {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid zone type. Use PWM or WS2812B"})");
+            return;
+        }
+        
+        // Create zone
+        uint8_t zoneId = config.getNextZoneId();
+        Zone zone(zoneId, name, gpio, zoneType, ledCount, groupName, brightness);
+        
+        if (config.addZone(zone)) {
+            // Add zone to LED controller
+            ledController.addZone(zone);
+            
+            // Save configuration
+            config.save();
+            
+            Serial.printf("WebServer: Added zone %d '%s' on GPIO %d\n", zoneId, name.c_str(), gpio);
+            
+            JsonDocument responseDoc;
+            responseDoc["success"] = true;
+            responseDoc["zoneId"] = zoneId;
+            responseDoc["message"] = "Zone added successfully";
+            
+            String response;
+            serializeJson(responseDoc, response);
+            sendJSONResponse(request, 201, response);
+        } else {
+            sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to add zone"})");
+        }
     }
 }
 
@@ -510,41 +525,52 @@ void WebServer::handleGetEffects(AsyncWebServerRequest* request) {
 }
 
 void WebServer::handleTriggerEffect(AsyncWebServerRequest* request) {
-    JsonDocument doc;
+    // This method is no longer used - body handler does the work
+}
+
+static String triggerEffectBody = "";
+
+void WebServer::handleTriggerEffectBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+    // Accumulate body data
+    if (index == 0) {
+        triggerEffectBody = "";
+    }
     
-    if (request->hasParam("body", true)) {
-        String body = request->getParam("body", true)->value();
-        DeserializationError error = deserializeJson(doc, body);
+    for (size_t i = 0; i < len; i++) {
+        triggerEffectBody += (char)data[i];
+    }
+    
+    // Process when complete
+    if (index + len == total) {
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, triggerEffectBody);
         
         if (error) {
             sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid JSON"})");
             return;
         }
-    } else {
-        sendJSONResponse(request, 400, R"({"success":false,"error":"Missing request body"})");
-        return;
-    }
-    
-    if (!doc["effectName"]) {
-        sendJSONResponse(request, 400, R"({"success":false,"error":"Missing effectName"})");
-        return;
-    }
-    
-    String effectName = doc["effectName"];
-    uint32_t duration = doc["duration"] | 0; // Default to continuous
-    
-    if (effectManager.triggerEffect(effectName, duration)) {
-        Serial.printf("WebServer: Triggered effect '%s' for %dms\n", effectName.c_str(), duration);
         
-        JsonDocument responseDoc;
-        responseDoc["success"] = true;
-        responseDoc["message"] = String("Triggered effect: ") + effectName;
+        if (!doc["effectName"]) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Missing effectName"})");
+            return;
+        }
         
-        String response;
-        serializeJson(responseDoc, response);
-        sendJSONResponse(request, 200, response);
-    } else {
-        sendJSONResponse(request, 404, R"({"success":false,"error":"Effect not found"})");
+        String effectName = doc["effectName"];
+        uint32_t duration = doc["duration"] | 0; // Default to continuous
+        
+        if (effectManager.triggerEffect(effectName, duration)) {
+            Serial.printf("WebServer: Triggered effect '%s' for %dms\n", effectName.c_str(), duration);
+            
+            JsonDocument responseDoc;
+            responseDoc["success"] = true;
+            responseDoc["message"] = String("Triggered effect: ") + effectName;
+            
+            String response;
+            serializeJson(responseDoc, response);
+            sendJSONResponse(request, 200, response);
+        } else {
+            sendJSONResponse(request, 404, R"({"success":false,"error":"Effect not found"})");
+        }
     }
 }
 

@@ -48,10 +48,12 @@ private:
     void handleSetBrightness(AsyncWebServerRequest* request);
     void handleGetStatus(AsyncWebServerRequest* request);
     void handleAddZone(AsyncWebServerRequest* request);
+    void handleAddZoneBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
     void handleDeleteZone(AsyncWebServerRequest* request);
     void handleClearZones(AsyncWebServerRequest* request);
     void handleGetEffects(AsyncWebServerRequest* request);
     void handleTriggerEffect(AsyncWebServerRequest* request);
+    void handleTriggerEffectBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
     void handleOTAUpload(AsyncWebServerRequest* request);
     void handleOTAUploadFile(AsyncWebServerRequest* request, String filename, size_t index, uint8_t *data, size_t len, bool final);
     
