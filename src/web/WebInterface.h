@@ -218,83 +218,26 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             Loading system...
         </div>
         
-        <!-- WiFi Configuration Section -->
+        <!-- System Status Section -->
         <div class="section">
-            <h2>WiFi Configuration</h2>
+            <h2>System Status</h2>
             <div class="zone-card">
-                <div class="zone-name">WiFi Network Settings</div>
+                <div class="zone-name">Device Information</div>
                 <div class="zone-info">
-                    Current: <span id="wifi-status">Checking...</span> | 
+                    WiFi: <span id="wifi-status">Checking...</span> | 
                     Network: <span id="wifi-ssid">None</span> |
                     IP: <span id="wifi-ip">Unknown</span> |
                     Hostname: <span id="device-hostname">Unknown</span>
                 </div>
-                <div style="margin-top: 15px;">
-                    <div class="form-row">
-                        <label for="device-name">Device Name:</label>
-                        <input type="text" id="device-name" placeholder="e.g., BattleTank" maxlength="32">
-                        <small style="color: #666; margin-left: 10px;">Used for hostname (e.g., battletank.local)</small>
-                    </div>
-                    <div class="form-row">
-                        <label for="wifi-network">Network Name (SSID):</label>
-                        <input type="text" id="wifi-network" placeholder="e.g., MyWiFi" maxlength="32">
-                    </div>
-                    <div class="form-row">
-                        <label for="wifi-password">Password:</label>
-                        <input type="password" id="wifi-password" placeholder="WiFi Password" maxlength="64">
-                        <input type="checkbox" id="show-password" style="margin-left: 10px;">
-                        <label for="show-password" style="margin-left: 5px;">Show</label>
-                    </div>
-                    <div style="margin-top: 10px;">
-                        <button onclick="saveWiFiConfig()" class="btn btn-success" style="margin-right: 10px;">Save & Connect</button>
-                        <button onclick="clearWiFiConfig()" class="btn btn-danger" style="margin-right: 10px;">Clear WiFi</button>
-                        <button onclick="refreshWiFiStatus()" class="btn">Refresh Status</button>
-                    </div>
+                <div style="margin-top: 10px;">
+                    <button onclick="refreshWiFiStatus()" class="btn">Refresh Status</button>
                 </div>
-            </div>
-        </div>
-        
-        <!-- Zone Configuration Section -->
-        <div class="section">
-            <h2>Zone Configuration</h2>
-            <div class="zone-form">
-                <h3>Add New Zone</h3>
-                <div class="form-row">
-                    <label for="zoneName">Name:</label>
-                    <input type="text" id="zoneName" placeholder="e.g., Engine LED">
-                </div>
-                <div class="form-row">
-                    <label for="zoneGpio">GPIO Pin:</label>
-                    <input type="number" id="zoneGpio" min="2" max="21" placeholder="2-10, 20-21">
-                </div>
-                <div class="form-row">
-                    <label for="zoneType">Type:</label>
-                    <select id="zoneType">
-                        <option value="PWM">PWM (Single LED)</option>
-                        <option value="WS2812B">WS2812B (RGB Strip)</option>
-                    </select>
-                </div>
-                <div class="form-row" id="ledCountRow" style="display:none;">
-                    <label for="ledCount">LED Count:</label>
-                    <input type="number" id="ledCount" min="1" max="100" value="5">
-                </div>
-                <div class="form-row">
-                    <label for="zoneGroup">Group:</label>
-                    <input type="text" id="zoneGroup" placeholder="e.g., Engines, Weapons" value="Default">
-                </div>
-                <div class="form-row">
-                    <label for="zoneBrightness">Max Brightness:</label>
-                    <input type="range" id="zoneBrightness" min="1" max="255" value="255">
-                    <span id="brightnessValue">255</span>
-                </div>
-                <button onclick="addZone()" class="btn btn-success">Add Zone</button>
-                <button onclick="clearAllZones()" class="btn btn-danger">Clear All Zones</button>
             </div>
         </div>
         
         <!-- Current Zones Section -->
         <div class="section">
-            <h2>Current Zones</h2>
+            <h2>Zone Control</h2>
             <div id="zones-container">
                 <!-- Zones will be populated here -->
             </div>
@@ -305,87 +248,6 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             <h2>Effect Controls</h2>
             <div id="effects-container">
                 <!-- Effects will be populated here -->
-            </div>
-        </div>
-        
-        <!-- Configuration Sections -->
-        <div class="section" id="config-section" style="display: none;">
-            <div class="nav-tabs">
-                <button class="tab-btn active" onclick="showConfigTab('zones')">Zones</button>
-                <button class="tab-btn" onclick="showConfigTab('effects')">Effects</button>
-                <button class="tab-btn" onclick="showConfigTab('device')">Device</button>
-                <button class="tab-btn" onclick="showConfigTab('system')">System</button>
-            </div>
-            
-            <!-- Zones Config Tab -->
-            <div id="config-zones" class="config-tab active">
-                <h3>Zone Configuration</h3>
-                <div class="zone-form">
-                    <div class="form-row">
-                        <label for="newZoneName">Name:</label>
-                        <input type="text" id="newZoneName" placeholder="e.g., Engine LED">
-                    </div>
-                    <div class="form-row">
-                        <label for="newZoneGpio">GPIO Pin:</label>
-                        <input type="number" id="newZoneGpio" min="2" max="21" placeholder="2-10, 20-21">
-                    </div>
-                    <div class="form-row">
-                        <label for="newZoneType">Type:</label>
-                        <select id="newZoneType">
-                            <option value="PWM">PWM (Single LED)</option>
-                            <option value="WS2812B">WS2812B (RGB Strip)</option>
-                        </select>
-                    </div>
-                    <div class="form-row" id="newLedCountRow" style="display:none;">
-                        <label for="newLedCount">LED Count:</label>
-                        <input type="number" id="newLedCount" min="1" max="100" value="5">
-                    </div>
-                    <div class="form-row">
-                        <label for="newZoneGroup">Group:</label>
-                        <input type="text" id="newZoneGroup" placeholder="e.g., Engines, Weapons" value="Default">
-                    </div>
-                    <button onclick="addNewZone()" class="btn btn-success">Add Zone</button>
-                    <button onclick="clearAllZones()" class="btn btn-danger">Clear All Zones</button>
-                </div>
-            </div>
-            
-            <!-- Effects Config Tab -->
-            <div id="config-effects" class="config-tab">
-                <h3>Effect Configuration</h3>
-                <p>Configure effect-to-group mappings and audio associations.</p>
-                <div class="form-row">
-                    <label>Audio Track:</label>
-                    <input type="number" id="trackNumber" min="1" max="999" value="1">
-                    <input type="text" id="trackDescription" placeholder="Track description">
-                    <input type="checkbox" id="trackLoop"> <label for="trackLoop">Loop</label>
-                    <button onclick="addAudioTrack()" class="btn">Add Track</button>
-                </div>
-                <div id="audio-tracks-list"></div>
-            </div>
-            
-            <!-- Device Config Tab -->
-            <div id="config-device" class="config-tab">
-                <h3>Device Settings</h3>
-                <div class="form-row">
-                    <label for="deviceName">Device Name:</label>
-                    <input type="text" id="deviceName" placeholder="BattleAura">
-                </div>
-                <div class="form-row">
-                    <label for="audioEnabled">Audio Enabled:</label>
-                    <input type="checkbox" id="audioEnabled" checked>
-                </div>
-                <button onclick="saveDeviceConfig()" class="btn btn-success">Save Device Config</button>
-            </div>
-            
-            <!-- System Config Tab -->
-            <div id="config-system" class="config-tab">
-                <h3>System Management</h3>
-                <button onclick="restartDevice()" class="btn btn-warning">Restart Device</button>
-                <button onclick="factoryReset()" class="btn btn-danger">Factory Reset</button>
-                <div style="margin-top: 20px;">
-                    <input type="file" id="firmware-file" accept=".bin">
-                    <button onclick="uploadFirmware()" class="btn">Upload Firmware</button>
-                </div>
             </div>
         </div>
         
@@ -421,19 +283,139 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             </div>
         </div>
         
-        <div class="zone-card">
-            <div class="zone-name">Firmware Update</div>
-            <div class="zone-info">Upload new firmware via OTA</div>
-            <div style="margin-top: 15px;">
-                <input type="file" id="firmware-file" accept=".bin" style="margin-bottom: 10px; width: 100%;">
-                <button onclick="uploadFirmware()" style="width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Upload Firmware
-                </button>
-                <div id="upload-progress" style="margin-top: 10px; display: none;">
-                    <div style="background: #444; border-radius: 4px; overflow: hidden;">
-                        <div id="progress-bar" style="background: #4CAF50; height: 20px; width: 0%; transition: width 0.3s;"></div>
+        <!-- Configuration Section -->
+        <div class="section" id="config-section" style="display: none;">
+            <h2>Configuration</h2>
+            <div class="nav-tabs">
+                <button class="tab-btn active" onclick="showConfigTab('zones')">Zones</button>
+                <button class="tab-btn" onclick="showConfigTab('effects')">Effects & Audio</button>
+                <button class="tab-btn" onclick="showConfigTab('device')">Device</button>
+                <button class="tab-btn" onclick="showConfigTab('system')">System</button>
+            </div>
+            
+            <!-- Zones Config Tab -->
+            <div id="config-zones" class="config-tab active">
+                <h3>Zone Management</h3>
+                <div class="zone-form">
+                    <div class="form-row">
+                        <label for="newZoneName">Name:</label>
+                        <input type="text" id="newZoneName" placeholder="e.g., Engine LED">
                     </div>
-                    <span id="progress-text">0%</span>
+                    <div class="form-row">
+                        <label for="newZoneGpio">GPIO Pin:</label>
+                        <input type="number" id="newZoneGpio" min="2" max="21" placeholder="2-10, 20-21">
+                    </div>
+                    <div class="form-row">
+                        <label for="newZoneType">Type:</label>
+                        <select id="newZoneType">
+                            <option value="PWM">PWM (Single LED)</option>
+                            <option value="WS2812B">WS2812B (RGB Strip)</option>
+                        </select>
+                    </div>
+                    <div class="form-row" id="newLedCountRow" style="display:none;">
+                        <label for="newLedCount">LED Count:</label>
+                        <input type="number" id="newLedCount" min="1" max="100" value="5">
+                    </div>
+                    <div class="form-row">
+                        <label for="newZoneGroup">Group:</label>
+                        <input type="text" id="newZoneGroup" placeholder="e.g., Engines, Weapons" value="Default">
+                    </div>
+                    <button onclick="addNewZone()" class="btn btn-success">Add Zone</button>
+                    <button onclick="clearAllZones()" class="btn btn-danger">Clear All Zones</button>
+                </div>
+                <div id="configured-zones-list">
+                    <h4>Configured Zones</h4>
+                    <div id="zones-config-list"></div>
+                </div>
+            </div>
+            
+            <!-- Effects & Audio Config Tab -->
+            <div id="config-effects" class="config-tab">
+                <h3>Audio Tracks</h3>
+                <p>Configure audio files for effects. Files must be named 0001.mp3, 0002.mp3, etc. on SD card.</p>
+                <div class="form-row">
+                    <label>File Number:</label>
+                    <input type="number" id="trackNumber" min="1" max="999" value="1">
+                    <label>Description:</label>
+                    <input type="text" id="trackDescription" placeholder="Track description">
+                    <input type="checkbox" id="trackLoop"> <label for="trackLoop">Loop</label>
+                    <button onclick="addAudioTrack()" class="btn">Add Track</button>
+                </div>
+                <div id="audio-tracks-list"></div>
+                
+                <h3 style="margin-top: 30px;">Effect Configuration</h3>
+                <p>Configure which effects apply to which groups and their audio associations.</p>
+                <div class="form-row">
+                    <label>Effect:</label>
+                    <select id="effectName">
+                        <!-- Will be populated from available effects -->
+                    </select>
+                    <label>Group:</label>
+                    <input type="text" id="effectGroup" placeholder="e.g., Weapons, Engines">
+                    <label>Audio Track:</label>
+                    <select id="effectAudio">
+                        <option value="0">None</option>
+                        <!-- Will be populated from audio tracks -->
+                    </select>
+                    <button onclick="addEffectConfig()" class="btn">Configure Effect</button>
+                </div>
+                <div id="effect-configs-list"></div>
+            </div>
+            
+            <!-- Device Config Tab -->
+            <div id="config-device" class="config-tab">
+                <h3>WiFi Configuration</h3>
+                <div class="form-row">
+                    <label for="deviceName">Device Name:</label>
+                    <input type="text" id="deviceName" placeholder="e.g., BattleTank" maxlength="32">
+                    <small style="color: #666; margin-left: 10px;">Used for hostname (e.g., battletank.local)</small>
+                </div>
+                <div class="form-row">
+                    <label for="wifiNetwork">Network Name (SSID):</label>
+                    <input type="text" id="wifiNetwork" placeholder="e.g., MyWiFi" maxlength="32">
+                </div>
+                <form>
+                    <div class="form-row">
+                        <label for="wifiPassword">Password:</label>
+                        <input type="password" id="wifiPassword" placeholder="WiFi Password" maxlength="64">
+                        <input type="checkbox" id="showPassword" style="margin-left: 10px;">
+                        <label for="showPassword" style="margin-left: 5px;">Show</label>
+                    </div>
+                </form>
+                <div style="margin-top: 10px;">
+                    <button onclick="saveWiFiConfig()" class="btn btn-success" style="margin-right: 10px;">Save & Connect</button>
+                    <button onclick="clearWiFiConfig()" class="btn btn-danger">Clear WiFi</button>
+                </div>
+                
+                <h3 style="margin-top: 30px;">Audio Settings</h3>
+                <div class="form-row">
+                    <label for="audioEnabled">Audio Enabled:</label>
+                    <input type="checkbox" id="audioEnabled" checked>
+                </div>
+                <button onclick="saveDeviceConfig()" class="btn btn-success">Save Device Settings</button>
+            </div>
+            
+            <!-- System Config Tab -->
+            <div id="config-system" class="config-tab">
+                <h3>System Management</h3>
+                <div style="margin: 20px 0;">
+                    <button onclick="restartDevice()" class="btn btn-warning">Restart Device</button>
+                    <button onclick="factoryReset()" class="btn btn-danger">Factory Reset</button>
+                </div>
+                
+                <h3>Firmware Update</h3>
+                <p>Upload new firmware via OTA</p>
+                <div style="margin-top: 15px;">
+                    <input type="file" id="firmwareFile" accept=".bin" style="margin-bottom: 10px; width: 100%;">
+                    <button onclick="uploadFirmware()" class="btn btn-success" style="width: 100%; padding: 10px;">
+                        Upload Firmware
+                    </button>
+                    <div id="upload-progress" style="margin-top: 10px; display: none;">
+                        <div style="background: #444; border-radius: 4px; overflow: hidden;">
+                            <div id="progress-bar" style="background: #4CAF50; height: 20px; width: 0%; transition: width 0.3s;"></div>
+                        </div>
+                        <span id="progress-text">0%</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -456,8 +438,314 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             loadZones();
             loadStatus();
             loadEffects();
-            setupZoneForm();
+            setupNewZoneForm();
+            setTimeout(() => {
+                loadAudioTracks();
+                loadEffectConfigs();
+                loadAvailableEffects();
+            }, 1000);
         });
+        
+        // Configuration functions
+        function toggleConfig() {
+            const section = document.getElementById('config-section');
+            const btn = document.getElementById('config-toggle');
+            
+            if (section && btn) {
+                if (section.style.display === 'none' || section.style.display === '') {
+                    section.style.display = 'block';
+                    btn.textContent = 'Hide Configuration';
+                } else {
+                    section.style.display = 'none';
+                    btn.textContent = 'Show Configuration';
+                }
+            }
+        }
+        
+        function showConfigTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.config-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            const targetTab = document.getElementById('config-' + tabName);
+            if (targetTab && event && event.target) {
+                targetTab.classList.add('active');
+                event.target.classList.add('active');
+            }
+        }
+        
+        async function addNewZone() {
+            const name = document.getElementById('newZoneName')?.value.trim();
+            const gpio = parseInt(document.getElementById('newZoneGpio')?.value);
+            const type = document.getElementById('newZoneType')?.value;
+            const group = document.getElementById('newZoneGroup')?.value.trim();
+            
+            if (!name || !group || !gpio) {
+                updateStatus('error', 'Please fill all zone fields');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/zones', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: name,
+                        gpio: gpio,
+                        type: type,
+                        groupName: group,
+                        brightness: 255,
+                        ledCount: type === 'WS2812B' ? parseInt(document.getElementById('newLedCount')?.value) || 5 : 1,
+                        enabled: true
+                    })
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    updateStatus('success', 'Zone added successfully');
+                    const nameField = document.getElementById('newZoneName');
+                    const groupField = document.getElementById('newZoneGroup');
+                    if (nameField) nameField.value = '';
+                    if (groupField) groupField.value = 'Default';
+                    loadZones();
+                } else {
+                    updateStatus('error', result.error || 'Failed to add zone');
+                }
+            } catch (error) {
+                updateStatus('error', 'Failed to add zone: ' + error.message);
+            }
+        }
+        
+        async function addAudioTrack() {
+            const fileNumber = parseInt(document.getElementById('trackNumber')?.value);
+            const description = document.getElementById('trackDescription')?.value.trim();
+            const isLoop = document.getElementById('trackLoop')?.checked;
+            
+            if (!description) {
+                updateStatus('error', 'Please enter track description');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/audio/tracks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fileNumber: fileNumber,
+                        description: description,
+                        isLoop: isLoop,
+                        duration: 0
+                    })
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    updateStatus('success', 'Audio track added');
+                    const descField = document.getElementById('trackDescription');
+                    if (descField) descField.value = '';
+                    loadAudioTracks();
+                } else {
+                    updateStatus('error', result.error || 'Failed to add audio track');
+                }
+            } catch (error) {
+                updateStatus('error', 'Failed to add audio track: ' + error.message);
+            }
+        }
+        
+        async function loadAudioTracks() {
+            try {
+                const response = await fetch('/api/audio/tracks');
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                const container = document.getElementById('audio-tracks-list');
+                
+                if (!container) return; // Element doesn't exist yet
+                
+                if (!data.tracks || data.tracks.length === 0) {
+                    container.innerHTML = '<p>No audio tracks configured</p>';
+                    return;
+                }
+                
+                container.innerHTML = data.tracks.map(track => 
+                    `<div style="padding: 10px; background: #333; margin: 5px 0; border-radius: 3px; border: 1px solid #555;">
+                        <strong>Track ${track.fileNumber}: ${track.description}</strong> ${track.isLoop ? '(Loop)' : '(One-shot)'}
+                        <div style="margin-top: 5px;">
+                            <button onclick="testAudioTrack(${track.fileNumber})" class="btn btn-warning" style="padding: 5px 10px; margin-right: 5px;">Test</button>
+                            <button onclick="removeAudioTrack(${track.fileNumber})" class="btn btn-danger" style="padding: 5px 10px;">Remove</button>
+                        </div>
+                    </div>`
+                ).join('');
+                
+                // Update effect audio select options
+                populateAudioSelects(data.tracks);
+            } catch (error) {
+                console.error('Error loading audio tracks:', error);
+            }
+        }
+        
+        async function testAudioTrack(fileNumber) {
+            try {
+                updateStatus('loading', 'Testing audio track...');
+                
+                const response = await fetch('/api/audio/play', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        trackNumber: fileNumber,
+                        loop: false
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('success', 'Playing audio track');
+                } else {
+                    updateStatus('error', result.error || 'Failed to play audio track');
+                }
+                
+            } catch (error) {
+                console.error('Error testing audio track:', error);
+                updateStatus('error', 'Failed to test audio track: ' + error.message);
+            }
+        }
+        
+        function populateAudioSelects(tracks) {
+            const select = document.getElementById('effectAudio');
+            if (!select) return;
+            
+            select.innerHTML = '<option value="0">None</option>' + 
+                tracks.map(track => 
+                    `<option value="${track.fileNumber}">Track ${track.fileNumber}: ${track.description}</option>`
+                ).join('');
+        }
+        
+        async function addEffectConfig() {
+            const effectName = document.getElementById('effectName')?.value;
+            const group = document.getElementById('effectGroup')?.value.trim();
+            const audioFile = document.getElementById('effectAudio')?.value;
+            
+            if (!effectName || !group) {
+                updateStatus('error', 'Please select effect and enter group name');
+                return;
+            }
+            
+            try {
+                updateStatus('loading', 'Configuring effect...');
+                
+                const response = await fetch('/api/effects/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: effectName,
+                        groups: [group],
+                        audioFile: parseInt(audioFile) || 0
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('success', 'Effect configured successfully');
+                    document.getElementById('effectGroup').value = '';
+                    loadEffectConfigs();
+                } else {
+                    updateStatus('error', result.error || 'Failed to configure effect');
+                }
+                
+            } catch (error) {
+                console.error('Error configuring effect:', error);
+                updateStatus('error', 'Failed to configure effect: ' + error.message);
+            }
+        }
+        
+        async function loadEffectConfigs() {
+            try {
+                const response = await fetch('/api/effects/config');
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                const container = document.getElementById('effect-configs-list');
+                
+                if (!container) return;
+                
+                if (!data.configs || data.configs.length === 0) {
+                    container.innerHTML = '<p>No effect configurations</p>';
+                    return;
+                }
+                
+                container.innerHTML = data.configs.map(config => 
+                    `<div style="padding: 10px; background: #333; margin: 5px 0; border-radius: 3px; border: 1px solid #555;">
+                        <strong>${config.name}</strong> → Groups: ${config.groups.join(', ')} | Audio: ${config.audioFile ? 'Track ' + config.audioFile : 'None'}
+                        <div style="margin-top: 5px;">
+                            <button onclick="removeEffectConfig('${config.name}')" class="btn btn-danger" style="padding: 5px 10px;">Remove</button>
+                        </div>
+                    </div>`
+                ).join('');
+            } catch (error) {
+                console.error('Error loading effect configs:', error);
+            }
+        }
+        
+        async function removeEffectConfig(effectName) {
+            try {
+                const response = await fetch('/api/effects/config', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: effectName })
+                });
+                
+                if (response.ok) {
+                    updateStatus('success', 'Effect configuration removed');
+                    loadEffectConfigs();
+                } else {
+                    updateStatus('error', 'Failed to remove effect configuration');
+                }
+            } catch (error) {
+                updateStatus('error', 'Failed to remove effect configuration: ' + error.message);
+            }
+        }
+        
+        async function loadAvailableEffects() {
+            try {
+                const response = await fetch('/api/effects');
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                const select = document.getElementById('effectName');
+                
+                if (!select) return;
+                
+                select.innerHTML = (data.effects || []).map(effect => 
+                    `<option value="${effect.name}">${effect.name}</option>`
+                ).join('');
+            } catch (error) {
+                console.error('Error loading available effects:', error);
+            }
+        }
+        
+        async function removeAudioTrack(fileNumber) {
+            try {
+                const response = await fetch(`/api/audio/tracks?fileNumber=${fileNumber}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    updateStatus('success', 'Audio track removed');
+                    loadAudioTracks();
+                } else {
+                    updateStatus('error', 'Failed to remove audio track');
+                }
+            } catch (error) {
+                updateStatus('error', 'Failed to remove audio track: ' + error.message);
+            }
+        }
         
         // Load zones from server
         async function loadZones() {
@@ -468,10 +756,49 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 const data = await response.json();
                 zones = data.zones || [];
                 renderZones();
+                renderConfiguredZones();
                 updateStatus('success', `Loaded ${zones.length} zones`);
             } catch (error) {
                 console.error('Error loading zones:', error);
                 updateStatus('error', 'Failed to load zones: ' + error.message);
+            }
+        }
+        
+        function renderConfiguredZones() {
+            const container = document.getElementById('zones-config-list');
+            if (!container) return;
+            
+            if (zones.length === 0) {
+                container.innerHTML = '<p>No zones configured</p>';
+                return;
+            }
+            
+            container.innerHTML = zones.map(zone => `
+                <div style="padding: 10px; background: #333; margin: 5px 0; border-radius: 3px; border: 1px solid #555;">
+                    <strong>${zone.name}</strong> - GPIO ${zone.gpio} (${zone.type})
+                    <br><small>Group: ${zone.groupName} | Max Brightness: ${zone.brightness} | ${zone.type === 'WS2812B' ? zone.ledCount + ' LEDs' : 'Single LED'}</small>
+                    <div style="margin-top: 5px;">
+                        <button onclick="removeZone(${zone.id})" class="btn btn-danger" style="padding: 5px 10px;">Remove</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function removeZone(zoneId) {
+            try {
+                const response = await fetch('/api/zones/' + zoneId, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    updateStatus('success', 'Zone removed');
+                    loadZones();
+                    loadEffects(); // Effects may have changed
+                } else {
+                    updateStatus('error', 'Failed to remove zone');
+                }
+            } catch (error) {
+                updateStatus('error', 'Failed to remove zone: ' + error.message);
             }
         }
         
@@ -579,7 +906,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         
         // Upload firmware
         async function uploadFirmware() {
-            const fileInput = document.getElementById('firmware-file');
+            const fileInput = document.getElementById('firmwareFile');
             const file = fileInput.files[0];
             
             if (!file) {
@@ -630,75 +957,17 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         }
         
         // Zone configuration functions
-        function setupZoneForm() {
+        function setupNewZoneForm() {
             // Setup zone type change handler
-            document.getElementById('zoneType').addEventListener('change', function() {
-                const ledCountRow = document.getElementById('ledCountRow');
-                ledCountRow.style.display = this.value === 'WS2812B' ? 'flex' : 'none';
-            });
-            
-            // Setup brightness slider
-            document.getElementById('zoneBrightness').addEventListener('input', function() {
-                document.getElementById('brightnessValue').textContent = this.value;
-            });
-        }
-        
-        async function addZone() {
-            const name = document.getElementById('zoneName').value.trim();
-            const gpio = parseInt(document.getElementById('zoneGpio').value);
-            const type = document.getElementById('zoneType').value;
-            const ledCount = parseInt(document.getElementById('ledCount').value) || 1;
-            const groupName = document.getElementById('zoneGroup').value.trim() || 'Default';
-            const brightness = parseInt(document.getElementById('zoneBrightness').value);
-            
-            // Validate inputs
-            if (!name) {
-                updateStatus('error', 'Zone name is required');
-                return;
-            }
-            
-            if (!gpio || gpio < 2 || gpio > 21) {
-                updateStatus('error', 'Valid GPIO pin (2-21) is required');
-                return;
-            }
-            
-            try {
-                updateStatus('loading', 'Adding zone...');
-                
-                const response = await fetch('/api/zones', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name, gpio, type, ledCount, groupName, brightness
-                    })
+            const newZoneTypeSelect = document.getElementById('newZoneType');
+            if (newZoneTypeSelect) {
+                newZoneTypeSelect.addEventListener('change', function() {
+                    const ledCountRow = document.getElementById('newLedCountRow');
+                    if (ledCountRow) {
+                        ledCountRow.style.display = this.value === 'WS2812B' ? 'flex' : 'none';
+                    }
                 });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    updateStatus('success', result.message);
-                    clearZoneForm();
-                    loadZones(); // Reload zones
-                    loadEffects(); // Reload effects (might have changed)
-                } else {
-                    updateStatus('error', result.error || 'Failed to add zone');
-                }
-                
-            } catch (error) {
-                console.error('Error adding zone:', error);
-                updateStatus('error', 'Failed to add zone: ' + error.message);
             }
-        }
-        
-        function clearZoneForm() {
-            document.getElementById('zoneName').value = '';
-            document.getElementById('zoneGpio').value = '';
-            document.getElementById('zoneType').value = 'PWM';
-            document.getElementById('ledCount').value = '5';
-            document.getElementById('zoneGroup').value = 'Default';
-            document.getElementById('zoneBrightness').value = '255';
-            document.getElementById('brightnessValue').textContent = '255';
-            document.getElementById('ledCountRow').style.display = 'none';
         }
         
         async function clearAllZones() {
@@ -939,8 +1208,8 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             refreshWiFiStatus();
             
             // Setup show/hide password toggle
-            const showPasswordCheckbox = document.getElementById('show-password');
-            const passwordInput = document.getElementById('wifi-password');
+            const showPasswordCheckbox = document.getElementById('showPassword');
+            const passwordInput = document.getElementById('wifiPassword');
             if (showPasswordCheckbox && passwordInput) {
                 showPasswordCheckbox.addEventListener('change', function() {
                     passwordInput.type = this.checked ? 'text' : 'password';
@@ -950,9 +1219,9 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         
         // WiFi configuration functions
         async function saveWiFiConfig() {
-            const deviceName = document.getElementById('device-name').value.trim();
-            const ssid = document.getElementById('wifi-network').value.trim();
-            const password = document.getElementById('wifi-password').value;
+            const deviceName = document.getElementById('deviceName').value.trim();
+            const ssid = document.getElementById('wifiNetwork').value.trim();
+            const password = document.getElementById('wifiPassword').value;
             
             if (!deviceName) {
                 updateStatus('error', 'Please enter a device name');
@@ -978,7 +1247,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 if (response.ok) {
                     updateStatus('success', result.message);
                     // Clear password field for security
-                    document.getElementById('wifi-password').value = '';
+                    document.getElementById('wifiPassword').value = '';
                     // Refresh status after a few seconds to see connection result
                     setTimeout(() => refreshWiFiStatus(), 5000);
                 } else {
@@ -1008,8 +1277,8 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 
                 if (response.ok) {
                     updateStatus('success', result.message);
-                    document.getElementById('wifi-network').value = '';
-                    document.getElementById('wifi-password').value = '';
+                    document.getElementById('wifiNetwork').value = '';
+                    document.getElementById('wifiPassword').value = '';
                     setTimeout(() => refreshWiFiStatus(), 3000);
                 } else {
                     updateStatus('error', result.error || 'Failed to clear WiFi configuration');
@@ -1042,10 +1311,10 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 
                 // Pre-fill current device name and SSID
                 if (data.deviceName) {
-                    document.getElementById('device-name').value = data.deviceName;
+                    document.getElementById('deviceName').value = data.deviceName;
                 }
                 if (wifiConnected && data.wifiSSID && data.wifiSSID !== '') {
-                    document.getElementById('wifi-network').value = data.wifiSSID;
+                    document.getElementById('wifiNetwork').value = data.wifiSSID;
                 }
                 
             } catch (error) {
@@ -1056,595 +1325,94 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 document.getElementById('device-hostname').textContent = 'Error';
             }
         }
+        
+        async function saveDeviceConfig() {
+            const deviceName = document.getElementById('deviceName').value.trim();
+            const audioEnabled = document.getElementById('audioEnabled').checked;
+            
+            if (!deviceName) {
+                updateStatus('error', 'Please enter a device name');
+                return;
+            }
+            
+            try {
+                updateStatus('loading', 'Saving device configuration...');
+                
+                const response = await fetch('/api/device/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ deviceName, audioEnabled })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('success', result.message || 'Device configuration saved');
+                } else {
+                    updateStatus('error', result.error || 'Failed to save device configuration');
+                }
+                
+            } catch (error) {
+                console.error('Error saving device config:', error);
+                updateStatus('error', 'Failed to save device configuration: ' + error.message);
+            }
+        }
+        
+        async function restartDevice() {
+            if (!confirm('Restart the device? This will disconnect the current session.')) {
+                return;
+            }
+            
+            try {
+                updateStatus('loading', 'Restarting device...');
+                
+                const response = await fetch('/api/system/restart', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    updateStatus('success', 'Device is restarting...');
+                } else {
+                    updateStatus('error', 'Failed to restart device');
+                }
+                
+            } catch (error) {
+                console.error('Error restarting device:', error);
+                updateStatus('error', 'Failed to restart device: ' + error.message);
+            }
+        }
+        
+        async function factoryReset() {
+            if (!confirm('Factory reset will erase ALL configuration and restart the device. This cannot be undone. Are you sure?')) {
+                return;
+            }
+            
+            try {
+                updateStatus('loading', 'Performing factory reset...');
+                
+                const response = await fetch('/api/system/factory-reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('success', 'Factory reset complete. Device is restarting...');
+                } else {
+                    updateStatus('error', result.error || 'Failed to perform factory reset');
+                }
+                
+            } catch (error) {
+                console.error('Error performing factory reset:', error);
+                updateStatus('error', 'Failed to perform factory reset: ' + error.message);
+            }
+        }
     </script>
 </body>
 </html>
 )rawliteral";
 
-// Effects Configuration Page
-const char EFFECTS_CONFIG_HTML[] PROGMEM = R"rawliteral(
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Effects Configuration - BattleAura</title>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 0; 
-            padding: 20px; 
-            background: #1a1a1a; 
-            color: #fff; 
-        }
-        .container { 
-            max-width: 800px; 
-            margin: 0 auto; 
-        }
-        h1 { 
-            text-align: center; 
-            color: #4CAF50; 
-            margin-bottom: 30px; 
-        }
-        .nav-links {
-            text-align: center;
-            margin-bottom: 30px;
-            padding: 15px;
-            background: #2d2d2d;
-            border-radius: 8px;
-        }
-        .nav-links a {
-            color: #4CAF50;
-            text-decoration: none;
-            margin: 0 15px;
-            padding: 8px 15px;
-            border-radius: 4px;
-            background: #333;
-        }
-        .nav-links a:hover {
-            background: #4CAF50;
-            color: white;
-        }
-        .section {
-            background: #2d2d2d;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-            border: 1px solid #444;
-        }
-        h2 {
-            color: #4CAF50;
-            margin-top: 0;
-        }
-        .form-row {
-            display: flex;
-            align-items: center;
-            margin: 15px 0;
-            gap: 15px;
-        }
-        .form-row label {
-            min-width: 120px;
-            color: #ccc;
-        }
-        .form-row input, .form-row select {
-            flex: 1;
-            padding: 8px;
-            border: 1px solid #555;
-            border-radius: 4px;
-            background: #333;
-            color: white;
-        }
-        .btn {
-            padding: 10px 20px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 5px;
-        }
-        .btn-danger { background: #f44336; }
-        .btn-warning { background: #ff9800; }
-        .btn:hover {
-            opacity: 0.8;
-        }
-        .effect-card {
-            background: #333;
-            border-radius: 6px;
-            padding: 15px;
-            margin: 10px 0;
-            border: 1px solid #555;
-        }
-        .effect-name {
-            font-size: 16px;
-            font-weight: bold;
-            color: #4CAF50;
-            margin-bottom: 8px;
-        }
-        .effect-info {
-            color: #aaa;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-        .status {
-            text-align: center;
-            padding: 10px;
-            margin: 20px 0;
-            border-radius: 4px;
-            background: #333;
-        }
-        .error { color: #f44336; background: #2d1b1b; }
-        .success { color: #4CAF50; background: #1b2d1b; }
-        .loading { color: #ff9800; }
-        .footer {
-            text-align: center;
-            margin-top: 30px;
-            color: #666;
-            font-size: 12px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Effects Configuration</h1>
-        
-        <div class="nav-links">
-            <a href="/">Main Control</a>
-            <a href="/config/zones">Zones</a>
-            <a href="/config/effects">Effects</a>
-            <a href="/config/device">Device</a>
-            <a href="/config/system">System</a>
-        </div>
-        
-        <div id="status" class="status" style="display: none;"></div>
-        
-        <!-- Audio Tracks Configuration -->
-        <div class="section">
-            <h2>Audio Tracks</h2>
-            <p>Configure audio files for effects. Files must be named 0001.mp3, 0002.mp3, etc. on SD card.</p>
-            
-            <div class="form-row">
-                <label>File Number:</label>
-                <input type="number" id="trackFileNumber" min="1" max="999" value="1">
-                <label>Description:</label>
-                <input type="text" id="trackDescription" placeholder="e.g., Machine Gun Fire">
-                <input type="checkbox" id="trackIsLoop">
-                <label for="trackIsLoop">Loop</label>
-                <button onclick="addAudioTrack()" class="btn">Add Track</button>
-            </div>
-            
-            <div id="audio-tracks-container">
-                <!-- Audio tracks will be populated here -->
-            </div>
-        </div>
-        
-        <!-- Effect Configurations -->
-        <div class="section">
-            <h2>Effect Configurations</h2>
-            <p>Configure which effects apply to which groups and their audio associations.</p>
-            
-            <div class="form-row">
-                <label>Effect:</label>
-                <select id="effectName">
-                    <!-- Will be populated from available effects -->
-                </select>
-                <label>Group:</label>
-                <input type="text" id="effectGroup" placeholder="e.g., Weapons, Engines">
-                <label>Audio Track:</label>
-                <select id="effectAudio">
-                    <option value="0">None</option>
-                    <!-- Will be populated from audio tracks -->
-                </select>
-                <button onclick="addEffectConfig()" class="btn">Add Configuration</button>
-            </div>
-            
-            <div id="effect-configs-container">
-                <!-- Effect configs will be populated here -->
-            </div>
-        </div>
-        
-        <!-- Effect Testing -->
-        <div class="section">
-            <h2>Effect Testing</h2>
-            <p>Test effects to verify configuration.</p>
-            
-            <div class="form-row">
-                <label>Effect:</label>
-                <select id="testEffect">
-                    <!-- Will be populated from configured effects -->
-                </select>
-                <label>Group:</label>
-                <select id="testGroup">
-                    <!-- Will be populated from configured groups -->
-                </select>
-                <button onclick="testEffect()" class="btn btn-warning">Test Effect</button>
-                <button onclick="stopAllEffects()" class="btn btn-danger">Stop All</button>
-            </div>
-        </div>
-        
-        <div class="footer">
-            BattleAura Effects Configuration
-        </div>
-    </div>
-
-    <script>
-        let audioTracks = [];
-        let effectConfigs = [];
-        let availableEffects = [];
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            loadAudioTracks();
-            loadEffectConfigs();
-            loadAvailableEffects();
-        });
-        
-        function updateStatus(type, message) {
-            const status = document.getElementById('status');
-            status.className = `status ${type}`;
-            status.textContent = message;
-            status.style.display = 'block';
-            
-            if (type === 'success') {
-                setTimeout(() => status.style.display = 'none', 3000);
-            }
-        }
-        
-        async function loadAudioTracks() {
-            try {
-                const response = await fetch('/api/audio/tracks');
-                if (!response.ok) throw new Error('Failed to load audio tracks');
-                
-                const data = await response.json();
-                audioTracks = data.tracks || [];
-                renderAudioTracks();
-                populateAudioSelects();
-            } catch (error) {
-                console.error('Error loading audio tracks:', error);
-                updateStatus('error', 'Failed to load audio tracks: ' + error.message);
-            }
-        }
-        
-        async function loadEffectConfigs() {
-            try {
-                const response = await fetch('/api/effects/config');
-                if (!response.ok) throw new Error('Failed to load effect configs');
-                
-                const data = await response.json();
-                effectConfigs = data.configs || [];
-                renderEffectConfigs();
-            } catch (error) {
-                console.error('Error loading effect configs:', error);
-                updateStatus('error', 'Failed to load effect configs: ' + error.message);
-            }
-        }
-        
-        async function loadAvailableEffects() {
-            try {
-                const response = await fetch('/api/effects');
-                if (!response.ok) throw new Error('Failed to load effects');
-                
-                const data = await response.json();
-                availableEffects = data.effects || [];
-                populateEffectSelects();
-            } catch (error) {
-                console.error('Error loading effects:', error);
-                updateStatus('error', 'Failed to load effects: ' + error.message);
-            }
-        }
-        
-        function renderAudioTracks() {
-            const container = document.getElementById('audio-tracks-container');
-            
-            if (audioTracks.length === 0) {
-                container.innerHTML = '<div class="effect-info">No audio tracks configured</div>';
-                return;
-            }
-            
-            container.innerHTML = audioTracks.map(track => `
-                <div class="effect-card">
-                    <div class="effect-name">Track ${track.fileNumber}: ${track.description}</div>
-                    <div class="effect-info">
-                        ${track.isLoop ? 'Loop' : 'One-shot'}
-                    </div>
-                    <button onclick="testAudioTrack(${track.fileNumber})" class="btn btn-warning">Test</button>
-                    <button onclick="removeAudioTrack(${track.fileNumber})" class="btn btn-danger">Remove</button>
-                </div>
-            `).join('');
-        }
-        
-        function renderEffectConfigs() {
-            const container = document.getElementById('effect-configs-container');
-            
-            if (effectConfigs.length === 0) {
-                container.innerHTML = '<div class="effect-info">No effect configurations</div>';
-                return;
-            }
-            
-            container.innerHTML = effectConfigs.map(config => `
-                <div class="effect-card">
-                    <div class="effect-name">${config.name}</div>
-                    <div class="effect-info">
-                        Type: ${config.type} | Groups: ${config.groups.join(', ') || 'None'} | 
-                        Audio: ${config.audioFile || 'None'}
-                    </div>
-                    <button onclick="removeEffectConfig('${config.name}')" class="btn btn-danger">Remove</button>
-                </div>
-            `).join('');
-        }
-        
-        function populateEffectSelects() {
-            const selects = ['effectName', 'testEffect'];
-            selects.forEach(selectId => {
-                const select = document.getElementById(selectId);
-                select.innerHTML = availableEffects.map(effect => 
-                    `<option value="${effect.name}">${effect.name}</option>`
-                ).join('');
-            });
-        }
-        
-        function populateAudioSelects() {
-            const select = document.getElementById('effectAudio');
-            select.innerHTML = '<option value="0">None</option>' + 
-                audioTracks.map(track => 
-                    `<option value="${track.fileNumber}">Track ${track.fileNumber}: ${track.description}</option>`
-                ).join('');
-        }
-        
-        async function addAudioTrack() {
-            const fileNumber = parseInt(document.getElementById('trackFileNumber').value);
-            const description = document.getElementById('trackDescription').value.trim();
-            const isLoop = document.getElementById('trackIsLoop').checked;
-            
-            if (!description) {
-                updateStatus('error', 'Please enter a track description');
-                return;
-            }
-            
-            try {
-                updateStatus('loading', 'Adding audio track...');
-                
-                const response = await fetch('/api/audio/tracks', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        fileNumber: fileNumber,
-                        description: description,
-                        isLoop: isLoop,
-                        duration: 0
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    updateStatus('success', 'Audio track added successfully');
-                    document.getElementById('trackDescription').value = '';
-                    document.getElementById('trackIsLoop').checked = false;
-                    document.getElementById('trackFileNumber').value = fileNumber + 1;
-                    loadAudioTracks();
-                } else {
-                    updateStatus('error', result.error || 'Failed to add audio track');
-                }
-                
-            } catch (error) {
-                console.error('Error adding audio track:', error);
-                updateStatus('error', 'Failed to add audio track: ' + error.message);
-            }
-        }
-        
-        async function removeAudioTrack(fileNumber) {
-            if (!confirm(`Remove track ${fileNumber}?`)) return;
-            
-            try {
-                updateStatus('loading', 'Removing audio track...');
-                
-                const response = await fetch(`/api/audio/tracks?fileNumber=${fileNumber}`, {
-                    method: 'DELETE'
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    updateStatus('success', 'Audio track removed');
-                    loadAudioTracks();
-                } else {
-                    updateStatus('error', result.error || 'Failed to remove audio track');
-                }
-                
-            } catch (error) {
-                console.error('Error removing audio track:', error);
-                updateStatus('error', 'Failed to remove audio track: ' + error.message);
-            }
-        }
-        
-        async function testAudioTrack(fileNumber) {
-            try {
-                updateStatus('loading', 'Testing audio track...');
-                
-                const response = await fetch('/api/audio/play', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        trackNumber: fileNumber,
-                        loop: false
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    updateStatus('success', 'Playing audio track');
-                } else {
-                    updateStatus('error', result.error || 'Failed to play audio track');
-                }
-                
-            } catch (error) {
-                console.error('Error testing audio track:', error);
-                updateStatus('error', 'Failed to test audio track: ' + error.message);
-            }
-        }
-        
-        // Configuration functions
-        function toggleConfig() {
-            const section = document.getElementById('config-section');
-            const btn = document.getElementById('config-toggle');
-            
-            if (section.style.display === 'none') {
-                section.style.display = 'block';
-                btn.textContent = 'Hide Configuration';
-            } else {
-                section.style.display = 'none';
-                btn.textContent = 'Show Configuration';
-            }
-        }
-        
-        function showConfigTab(tabName) {
-            // Hide all tabs
-            document.querySelectorAll('.config-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            // Show selected tab
-            document.getElementById('config-' + tabName).classList.add('active');
-            event.target.classList.add('active');
-        }
-        
-        async function addNewZone() {
-            const name = document.getElementById('newZoneName').value.trim();
-            const gpio = parseInt(document.getElementById('newZoneGpio').value);
-            const type = document.getElementById('newZoneType').value;
-            const group = document.getElementById('newZoneGroup').value.trim();
-            
-            if (!name || !group || !gpio) {
-                updateStatus('error', 'Please fill all zone fields');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/zones', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: name,
-                        gpio: gpio,
-                        type: type,
-                        groupName: group,
-                        brightness: 255,
-                        ledCount: type === 'WS2812B' ? parseInt(document.getElementById('newLedCount').value) || 5 : 1,
-                        enabled: true
-                    })
-                });
-                
-                const result = await response.json();
-                if (response.ok) {
-                    updateStatus('success', 'Zone added successfully');
-                    document.getElementById('newZoneName').value = '';
-                    document.getElementById('newZoneGroup').value = 'Default';
-                    loadZones();
-                } else {
-                    updateStatus('error', result.error || 'Failed to add zone');
-                }
-            } catch (error) {
-                updateStatus('error', 'Failed to add zone: ' + error.message);
-            }
-        }
-        
-        async function addAudioTrack() {
-            const fileNumber = parseInt(document.getElementById('trackNumber').value);
-            const description = document.getElementById('trackDescription').value.trim();
-            const isLoop = document.getElementById('trackLoop').checked;
-            
-            if (!description) {
-                updateStatus('error', 'Please enter track description');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/audio/tracks', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        fileNumber: fileNumber,
-                        description: description,
-                        isLoop: isLoop,
-                        duration: 0
-                    })
-                });
-                
-                const result = await response.json();
-                if (response.ok) {
-                    updateStatus('success', 'Audio track added');
-                    document.getElementById('trackDescription').value = '';
-                    loadAudioTracks();
-                } else {
-                    updateStatus('error', result.error || 'Failed to add audio track');
-                }
-            } catch (error) {
-                updateStatus('error', 'Failed to add audio track: ' + error.message);
-            }
-        }
-        
-        async function loadAudioTracks() {
-            try {
-                const response = await fetch('/api/audio/tracks');
-                if (!response.ok) return;
-                
-                const data = await response.json();
-                const container = document.getElementById('audio-tracks-list');
-                
-                if (!data.tracks || data.tracks.length === 0) {
-                    container.innerHTML = '<p>No audio tracks configured</p>';
-                    return;
-                }
-                
-                container.innerHTML = data.tracks.map(track => 
-                    `<div style="padding: 5px; background: #333; margin: 5px 0; border-radius: 3px;">
-                        Track ${track.fileNumber}: ${track.description} ${track.isLoop ? '(Loop)' : ''}
-                        <button onclick="removeAudioTrack(${track.fileNumber})" class="btn btn-danger" style="float: right; padding: 2px 8px; margin-left: 10px;">Remove</button>
-                    </div>`
-                ).join('');
-            } catch (error) {
-                console.error('Error loading audio tracks:', error);
-            }
-        }
-        
-        async function removeAudioTrack(fileNumber) {
-            try {
-                const response = await fetch(`/api/audio/tracks?fileNumber=${fileNumber}`, {
-                    method: 'DELETE'
-                });
-                
-                if (response.ok) {
-                    updateStatus('success', 'Audio track removed');
-                    loadAudioTracks();
-                } else {
-                    updateStatus('error', 'Failed to remove audio track');
-                }
-            } catch (error) {
-                updateStatus('error', 'Failed to remove audio track: ' + error.message);
-            }
-        }
-        
-        // Initialize configuration features
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(loadAudioTracks, 1000);
-            
-            // Show LED count field for WS2812B zones
-            const zoneTypeSelect = document.getElementById('newZoneType');
-            if (zoneTypeSelect) {
-                zoneTypeSelect.addEventListener('change', function() {
-                    const ledCountRow = document.getElementById('newLedCountRow');
-                    ledCountRow.style.display = this.value === 'WS2812B' ? 'flex' : 'none';
-                });
-            }
-        });
-        
-    </script>
-</body>
-</html>
-)rawliteral";
 
 } // namespace BattleAura

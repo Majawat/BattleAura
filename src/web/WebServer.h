@@ -48,7 +48,6 @@ private:
     
     // Route handlers
     void handleRoot(AsyncWebServerRequest* request);
-    void handleEffectsConfig(AsyncWebServerRequest* request);
     void handleGetZones(AsyncWebServerRequest* request);
     void handleSetBrightness(AsyncWebServerRequest* request);
     void handleSetBrightnessBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);

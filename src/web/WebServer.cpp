@@ -147,10 +147,6 @@ void WebServer::setupRoutes() {
         handleRoot(request);
     });
     
-    // Configuration pages
-    server.on("/config/effects", HTTP_GET, [this](AsyncWebServerRequest* request) {
-        handleEffectsConfig(request);
-    });
     
     // API routes
     server.on("/api/zones", HTTP_GET, [this](AsyncWebServerRequest* request) {
@@ -344,10 +340,6 @@ void WebServer::setupmDNS() {
 
 void WebServer::handleRoot(AsyncWebServerRequest* request) {
     request->send(200, "text/html", MAIN_HTML);
-}
-
-void WebServer::handleEffectsConfig(AsyncWebServerRequest* request) {
-    request->send(200, "text/html", EFFECTS_CONFIG_HTML);
 }
 
 void WebServer::handleGetZones(AsyncWebServerRequest* request) {
