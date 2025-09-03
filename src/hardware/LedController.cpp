@@ -3,7 +3,8 @@
 namespace BattleAura {
 
 LedController::LedController() {
-    // Constructor - nothing to initialize
+    // Reserve space to prevent vector reallocation which breaks WS2812B leds pointers
+    zones.reserve(12); // ESP32-C3 supports max ~11 GPIO pins for zones
 }
 
 LedController::~LedController() {
