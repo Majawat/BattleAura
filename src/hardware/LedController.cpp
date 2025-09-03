@@ -282,10 +282,6 @@ void LedController::updateWS2812B(ZoneState& zoneState) {
     
     color.nscale8(scaledBrightness);  // Apply brightness scaling to color
     
-    // Debug output
-    Serial.printf("LedController: Updating WS2812B Zone %d: R=%d G=%d B=%d brightness=%d->%d\n", 
-                 zoneState.zone.id, color.r, color.g, color.b, zoneState.currentBrightness, scaledBrightness);
-    
     // Set all LEDs in this zone to the same color/brightness
     for (uint8_t i = 0; i < zoneState.zone.ledCount; i++) {
         zoneState.leds[i] = color;

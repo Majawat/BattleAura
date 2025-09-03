@@ -115,8 +115,6 @@ void CandleEffect::updateFlickerForZone(size_t zoneIndex, Zone* zone) {
         uint8_t blue = map(brightness, 0, 255, 0, 30);     // Minimal blue for warmth
         
         CRGB candleColor = CRGB(red, green, blue);
-        Serial.printf("CandleFlicker: Setting RGB Zone %d to R%d G%d B%d brightness=%d\n", 
-                     zone->id, red, green, blue, brightness);
         ledController.setZoneColorAndBrightness(zone->id, candleColor, brightness);
     }
     
