@@ -185,28 +185,28 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                     IP: <span id="wifi-ip">Unknown</span> |
                     Hostname: <span id="device-hostname">Unknown</span>
                 </div>
-                <div style="margin-top: 15px;">
+                <form id="wifi-config-form" onsubmit="saveWiFiConfig(); return false;" style="margin-top: 15px;">
                     <div class="form-row">
                         <label for="device-name">Device Name:</label>
-                        <input type="text" id="device-name" placeholder="e.g., BattleTank" maxlength="32">
+                        <input type="text" id="device-name" placeholder="e.g., BattleTank" maxlength="32" required>
                         <small style="color: #666; margin-left: 10px;">Used for hostname (e.g., battletank.local)</small>
                     </div>
                     <div class="form-row">
                         <label for="wifi-network">Network Name (SSID):</label>
-                        <input type="text" id="wifi-network" placeholder="e.g., MyWiFi" maxlength="32">
+                        <input type="text" id="wifi-network" placeholder="e.g., MyWiFi" maxlength="32" required>
                     </div>
                     <div class="form-row">
                         <label for="wifi-password">Password:</label>
-                        <input type="password" id="wifi-password" placeholder="WiFi Password" maxlength="64">
+                        <input type="password" id="wifi-password" placeholder="WiFi Password" maxlength="64" autocomplete="current-password">
                         <input type="checkbox" id="show-password" style="margin-left: 10px;">
                         <label for="show-password" style="margin-left: 5px;">Show</label>
                     </div>
                     <div style="margin-top: 10px;">
-                        <button onclick="saveWiFiConfig()" class="btn btn-success" style="margin-right: 10px;">Save & Connect</button>
-                        <button onclick="clearWiFiConfig()" class="btn btn-danger" style="margin-right: 10px;">Clear WiFi</button>
-                        <button onclick="refreshWiFiStatus()" class="btn">Refresh Status</button>
+                        <button type="submit" class="btn btn-success" style="margin-right: 10px;">Save & Connect</button>
+                        <button type="button" onclick="clearWiFiConfig()" class="btn btn-danger" style="margin-right: 10px;">Clear WiFi</button>
+                        <button type="button" onclick="refreshWiFiStatus()" class="btn">Refresh Status</button>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
         
@@ -215,36 +215,38 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             <h2>Zone Configuration</h2>
             <div class="zone-form">
                 <h3>Add New Zone</h3>
-                <div class="form-row">
-                    <label for="zoneName">Name:</label>
-                    <input type="text" id="zoneName" placeholder="e.g., Engine LED">
-                </div>
-                <div class="form-row">
-                    <label for="zoneGpio">GPIO Pin:</label>
-                    <input type="number" id="zoneGpio" min="2" max="21" placeholder="2-10, 20-21">
-                </div>
-                <div class="form-row">
-                    <label for="zoneType">Type:</label>
-                    <select id="zoneType">
-                        <option value="PWM">PWM (Single LED)</option>
-                        <option value="WS2812B">WS2812B (RGB Strip)</option>
-                    </select>
-                </div>
-                <div class="form-row" id="ledCountRow" style="display:none;">
-                    <label for="ledCount">LED Count:</label>
-                    <input type="number" id="ledCount" min="1" max="100" value="5">
-                </div>
-                <div class="form-row">
-                    <label for="zoneGroup">Group:</label>
-                    <input type="text" id="zoneGroup" placeholder="e.g., Engines, Weapons" value="Default">
-                </div>
-                <div class="form-row">
-                    <label for="zoneBrightness">Max Brightness:</label>
-                    <input type="range" id="zoneBrightness" min="1" max="255" value="255">
-                    <span id="brightnessValue">255</span>
-                </div>
-                <button onclick="addZone()" class="btn btn-success">Add Zone</button>
-                <button onclick="clearAllZones()" class="btn btn-danger">Clear All Zones</button>
+                <form id="zone-config-form" onsubmit="addZone(); return false;">
+                    <div class="form-row">
+                        <label for="zoneName">Name:</label>
+                        <input type="text" id="zoneName" placeholder="e.g., Engine LED" required>
+                    </div>
+                    <div class="form-row">
+                        <label for="zoneGpio">GPIO Pin:</label>
+                        <input type="number" id="zoneGpio" min="2" max="21" placeholder="2-10, 20-21" required>
+                    </div>
+                    <div class="form-row">
+                        <label for="zoneType">Type:</label>
+                        <select id="zoneType" required>
+                            <option value="PWM">PWM (Single LED)</option>
+                            <option value="WS2812B">WS2812B (RGB Strip)</option>
+                        </select>
+                    </div>
+                    <div class="form-row" id="ledCountRow" style="display:none;">
+                        <label for="ledCount">LED Count:</label>
+                        <input type="number" id="ledCount" min="1" max="100" value="5">
+                    </div>
+                    <div class="form-row">
+                        <label for="zoneGroup">Group:</label>
+                        <input type="text" id="zoneGroup" placeholder="e.g., Engines, Weapons" value="Default" required>
+                    </div>
+                    <div class="form-row">
+                        <label for="zoneBrightness">Max Brightness:</label>
+                        <input type="range" id="zoneBrightness" min="1" max="255" value="255">
+                        <span id="brightnessValue">255</span>
+                    </div>
+                    <button type="submit" class="btn btn-success">Add Zone</button>
+                    <button type="button" onclick="clearAllZones()" class="btn btn-danger">Clear All Zones</button>
+                </form>
             </div>
         </div>
         
