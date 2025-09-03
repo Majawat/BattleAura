@@ -142,7 +142,9 @@ void WebServer::setupRoutes() {
     });
     
     server.on("/api/brightness", HTTP_POST, [this](AsyncWebServerRequest* request) {
-        handleSetBrightness(request);
+        // Response will be sent after body is processed
+    }, NULL, [this](AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+        handleSetBrightnessBody(request, data, len, index, total);
     });
     
     server.on("/api/status", HTTP_GET, [this](AsyncWebServerRequest* request) {
@@ -262,19 +264,34 @@ void WebServer::handleGetZones(AsyncWebServerRequest* request) {
 }
 
 void WebServer::handleSetBrightness(AsyncWebServerRequest* request) {
-    // Handle JSON body
-    if (request->hasParam("body", true)) {
-        String body = request->getParam("body", true)->value();
-        
+    // This method is no longer used - body handler does the work
+}
+
+static String setBrightnessBody = "";
+
+void WebServer::handleSetBrightnessBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+    // Accumulate body data
+    if (index == 0) {
+        setBrightnessBody = "";
+    }
+    
+    for (size_t i = 0; i < len; i++) {
+        setBrightnessBody += (char)data[i];
+    }
+    
+    // Process when complete
+    if (index + len == total) {
         JsonDocument doc;
-        DeserializationError error = deserializeJson(doc, body);
+        DeserializationError error = deserializeJson(doc, setBrightnessBody);
         
         if (error) {
+            Serial.printf("WebServer: Brightness JSON error: %s\n", error.c_str());
             sendJSONResponse(request, 400, R"({"error":"Invalid JSON"})");
             return;
         }
         
-        if (!doc["zoneId"].is<uint8_t>() || !doc["brightness"].is<uint8_t>()) {
+        if (!doc["zoneId"] || !doc["brightness"]) {
+            Serial.println("WebServer: Missing zoneId or brightness in request");
             sendJSONResponse(request, 400, R"({"error":"Missing zoneId or brightness"})");
             return;
         }
@@ -282,7 +299,10 @@ void WebServer::handleSetBrightness(AsyncWebServerRequest* request) {
         uint8_t zoneId = doc["zoneId"];
         uint8_t brightness = doc["brightness"];
         
+        Serial.printf("WebServer: Setting zone %d brightness to %d\n", zoneId, brightness);
+        
         if (!ledController.isZoneConfigured(zoneId)) {
+            Serial.printf("WebServer: Zone %d not configured\n", zoneId);
             sendJSONResponse(request, 404, R"({"error":"Zone not found"})");
             return;
         }
@@ -292,9 +312,7 @@ void WebServer::handleSetBrightness(AsyncWebServerRequest* request) {
         
         sendJSONResponse(request, 200, R"({"success":true})");
         
-        Serial.printf("WebServer: Set zone %d brightness to %d\n", zoneId, brightness);
-    } else {
-        sendJSONResponse(request, 400, R"({"error":"No body provided"})");
+        Serial.printf("WebServer: Successfully set zone %d brightness to %d\n", zoneId, brightness);
     }
 }
 

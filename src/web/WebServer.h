@@ -46,6 +46,7 @@ private:
     void handleRoot(AsyncWebServerRequest* request);
     void handleGetZones(AsyncWebServerRequest* request);
     void handleSetBrightness(AsyncWebServerRequest* request);
+    void handleSetBrightnessBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
     void handleGetStatus(AsyncWebServerRequest* request);
     void handleAddZone(AsyncWebServerRequest* request);
     void handleAddZoneBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
