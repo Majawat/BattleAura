@@ -58,6 +58,11 @@ bool WebServer::connectToWiFi() {
     
     Serial.printf("WebServer: Connecting to WiFi '%s'...\n", deviceConfig.wifiSSID.c_str());
     
+    // Set hostname BEFORE WiFi connection for proper DHCP registration
+    String hostname = generateHostname(deviceConfig.deviceName);
+    Serial.printf("WebServer: Setting WiFi hostname to '%s'\n", hostname.c_str());
+    WiFi.setHostname(hostname.c_str());
+    
     WiFi.mode(WIFI_STA);
     WiFi.begin(deviceConfig.wifiSSID.c_str(), deviceConfig.wifiPassword.c_str());
     
@@ -293,12 +298,9 @@ void WebServer::setupmDNS() {
     
     String hostname = generateHostname(deviceConfig.deviceName);
     
-    Serial.printf("WebServer: Setting hostname to '%s.local'\n", hostname.c_str());
+    Serial.printf("WebServer: Initializing mDNS for '%s.local'\n", hostname.c_str());
     
-    // Set WiFi hostname
-    WiFi.setHostname(hostname.c_str());
-    
-    // Initialize mDNS
+    // Initialize mDNS (hostname already set during WiFi connection)
     if (MDNS.begin(hostname.c_str())) {
         Serial.printf("WebServer: mDNS responder started at %s.local\n", hostname.c_str());
         
