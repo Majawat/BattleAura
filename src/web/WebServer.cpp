@@ -229,7 +229,7 @@ void WebServer::setupRoutes() {
         handleAddAudioTrackBody(request, data, len, index, total);
     });
     
-    server.on("/api/audio/tracks/(\\d+)", HTTP_DELETE, [this](AsyncWebServerRequest* request) {
+    server.on("/api/audio/tracks", HTTP_DELETE, [this](AsyncWebServerRequest* request) {
         handleDeleteAudioTrack(request);
     });
     
@@ -1063,15 +1063,12 @@ void WebServer::processAddAudioTrack(AsyncWebServerRequest* request, JsonDocumen
 }
 
 void WebServer::handleDeleteAudioTrack(AsyncWebServerRequest* request) {
-    // Extract fileNumber from URL path - it's the parameter after /api/audio/tracks/
-    String path = request->url();
-    int lastSlash = path.lastIndexOf('/');
-    if (lastSlash == -1) {
-        sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid URL format"})");
+    if (!request->hasParam("fileNumber")) {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Missing fileNumber parameter"})");
         return;
     }
     
-    uint16_t fileNumber = path.substring(lastSlash + 1).toInt();
+    uint16_t fileNumber = request->getParam("fileNumber")->value().toInt();
     if (fileNumber == 0) {
         sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid file number"})");
         return;

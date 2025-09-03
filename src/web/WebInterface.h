@@ -1215,7 +1215,7 @@ const char EFFECTS_CONFIG_HTML[] PROGMEM = R"rawliteral(
                 <div class="effect-card">
                     <div class="effect-name">Track ${track.fileNumber}: ${track.description}</div>
                     <div class="effect-info">
-                        ${track.isLoop ? 'Loop' : 'One-shot'} | Duration: ${track.duration || 'Unknown'}ms
+                        ${track.isLoop ? 'Loop' : 'One-shot'}
                     </div>
                     <button onclick="testAudioTrack(${track.fileNumber})" class="btn btn-warning">Test</button>
                     <button onclick="removeAudioTrack(${track.fileNumber})" class="btn btn-danger">Remove</button>
@@ -1309,7 +1309,7 @@ const char EFFECTS_CONFIG_HTML[] PROGMEM = R"rawliteral(
             try {
                 updateStatus('loading', 'Removing audio track...');
                 
-                const response = await fetch(`/api/audio/tracks/${fileNumber}`, {
+                const response = await fetch(`/api/audio/tracks?fileNumber=${fileNumber}`, {
                     method: 'DELETE'
                 });
                 
@@ -1336,7 +1336,7 @@ const char EFFECTS_CONFIG_HTML[] PROGMEM = R"rawliteral(
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        fileNumber: fileNumber,
+                        trackNumber: fileNumber,
                         loop: false
                     })
                 });
