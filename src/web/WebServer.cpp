@@ -24,6 +24,9 @@ bool WebServer::begin() {
         startAccessPoint();
     }
     
+    // Setup mDNS
+    setupmDNS();
+    
     // Setup web routes
     setupRoutes();
     
@@ -282,6 +285,29 @@ void WebServer::setupOTA() {
     ArduinoOTA.begin();
 }
 
+void WebServer::setupmDNS() {
+    const auto& deviceConfig = config.getDeviceConfig();
+    
+    String hostname = generateHostname(deviceConfig.deviceName);
+    
+    Serial.printf("WebServer: Setting hostname to '%s.local'\n", hostname.c_str());
+    
+    // Set WiFi hostname
+    WiFi.setHostname(hostname.c_str());
+    
+    // Initialize mDNS
+    if (MDNS.begin(hostname.c_str())) {
+        Serial.printf("WebServer: mDNS responder started at %s.local\n", hostname.c_str());
+        
+        // Add HTTP service
+        MDNS.addService("http", "tcp", 80);
+        MDNS.addServiceTxt("http", "tcp", "device", "BattleAura");
+        MDNS.addServiceTxt("http", "tcp", "version", deviceConfig.firmwareVersion.c_str());
+    } else {
+        Serial.println("WebServer: Failed to start mDNS responder");
+    }
+}
+
 void WebServer::handleRoot(AsyncWebServerRequest* request) {
     request->send(200, "text/html", MAIN_HTML);
 }
@@ -367,6 +393,7 @@ void WebServer::handleGetStatus(AsyncWebServerRequest* request) {
     
     JsonDocument doc;
     doc["deviceName"] = deviceConfig.deviceName;
+    doc["hostname"] = generateHostname(deviceConfig.deviceName);
     doc["firmwareVersion"] = deviceConfig.firmwareVersion;
     doc["ip"] = currentIP;
     doc["wifiMode"] = apMode ? "AP" : "STA";
@@ -820,6 +847,7 @@ void WebServer::handleWiFiConfigBody(AsyncWebServerRequest* request, uint8_t *da
         
         String ssid = doc["ssid"];
         String password = doc["password"] | "";
+        String deviceName = doc["deviceName"] | "";
         
         if (ssid.length() == 0 || ssid.length() > 32) {
             sendJSONResponse(request, 400, R"({"success":false,"error":"SSID must be 1-32 characters"})");
@@ -836,18 +864,41 @@ void WebServer::handleWiFiConfigBody(AsyncWebServerRequest* request, uint8_t *da
         deviceConfig.wifiSSID = ssid;
         deviceConfig.wifiPassword = password;
         
+        // Update device name if provided
+        if (deviceName.length() > 0) {
+            if (deviceName.length() > 32) {
+                sendJSONResponse(request, 400, R"({"success":false,"error":"Device name must be 32 characters or less"})");
+                return;
+            }
+            deviceConfig.deviceName = deviceName;
+            
+            // Update hostname and mDNS with new device name
+            String cleanHostname = generateHostname(deviceName);
+            
+            WiFi.setHostname(cleanHostname.c_str());
+            MDNS.end();
+            if (MDNS.begin(cleanHostname.c_str())) {
+                Serial.printf("WebServer: mDNS updated to %s.local\n", cleanHostname.c_str());
+            } else {
+                Serial.println("WebServer: Failed to restart mDNS with new hostname");
+            }
+        }
+        
         // Save configuration
         if (!config.save()) {
-            sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to save WiFi configuration"})");
+            sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to save configuration"})");
             return;
         }
         
-        Serial.printf("WebServer: WiFi configuration updated - SSID: %s\n", ssid.c_str());
+        Serial.printf("WebServer: Configuration updated - Device: %s, SSID: %s\n", 
+                     deviceConfig.deviceName.c_str(), ssid.c_str());
         
         // Send success response first
         JsonDocument responseDoc;
         responseDoc["success"] = true;
-        responseDoc["message"] = "WiFi configuration saved. Attempting to connect...";
+        responseDoc["message"] = deviceName.length() > 0 ? 
+            "Device name and WiFi configuration saved. Attempting to connect..." :
+            "WiFi configuration saved. Attempting to connect...";
         
         String response;
         serializeJson(responseDoc, response);
@@ -876,6 +927,26 @@ void WebServer::handleClearWiFi(AsyncWebServerRequest* request) {
     
     Serial.println("WebServer: WiFi configuration cleared");
     sendJSONResponse(request, 200, R"({"success":true,"message":"WiFi configuration cleared. Device will remain in AP mode until reboot."})");
+}
+
+String WebServer::generateHostname(const String& deviceName) {
+    String hostname = deviceName;
+    hostname.toLowerCase();
+    hostname.replace(" ", "");
+    hostname.replace("_", "");
+    hostname.replace("-", "");
+    // Remove any non-alphanumeric characters for hostname compliance
+    String cleanHostname = "";
+    for (int i = 0; i < hostname.length(); i++) {
+        char c = hostname.charAt(i);
+        if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+            cleanHostname += c;
+        }
+    }
+    if (cleanHostname.length() == 0) {
+        cleanHostname = "battleaura";
+    }
+    return cleanHostname;
 }
 
 } // namespace BattleAura

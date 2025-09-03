@@ -5,6 +5,7 @@
 #include <ESPAsyncWebServer.h>
 #include <ArduinoOTA.h>
 #include <Update.h>
+#include <ESPmDNS.h>
 #include "../config/Configuration.h"
 #include "../hardware/LedController.h"
 #include "../effects/EffectManager.h"
@@ -43,6 +44,7 @@ private:
     // Setup methods
     void setupRoutes();
     void setupOTA();
+    void setupmDNS();
     
     // Route handlers
     void handleRoot(AsyncWebServerRequest* request);
@@ -73,6 +75,7 @@ private:
     // Utility
     void sendCORSHeaders(AsyncWebServerRequest* request);
     void sendJSONResponse(AsyncWebServerRequest* request, int code, const String& json);
+    String generateHostname(const String& deviceName);
 };
 
 } // namespace BattleAura

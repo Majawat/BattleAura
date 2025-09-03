@@ -182,9 +182,15 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 <div class="zone-info">
                     Current: <span id="wifi-status">Checking...</span> | 
                     Network: <span id="wifi-ssid">None</span> |
-                    IP: <span id="wifi-ip">Unknown</span>
+                    IP: <span id="wifi-ip">Unknown</span> |
+                    Hostname: <span id="device-hostname">Unknown</span>
                 </div>
                 <div style="margin-top: 15px;">
+                    <div class="form-row">
+                        <label>Device Name:</label>
+                        <input type="text" id="device-name" placeholder="e.g., BattleTank" maxlength="32">
+                        <small style="color: #666; margin-left: 10px;">Used for hostname (e.g., battletank.local)</small>
+                    </div>
                     <div class="form-row">
                         <label>Network Name (SSID):</label>
                         <input type="text" id="wifi-network" placeholder="e.g., MyWiFi" maxlength="32">
@@ -815,8 +821,14 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         
         // WiFi configuration functions
         async function saveWiFiConfig() {
+            const deviceName = document.getElementById('device-name').value.trim();
             const ssid = document.getElementById('wifi-network').value.trim();
             const password = document.getElementById('wifi-password').value;
+            
+            if (!deviceName) {
+                updateStatus('error', 'Please enter a device name');
+                return;
+            }
             
             if (!ssid) {
                 updateStatus('error', 'Please enter a network name (SSID)');
@@ -829,7 +841,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 const response = await fetch('/api/wifi/config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ssid, password })
+                    body: JSON.stringify({ deviceName, ssid, password })
                 });
                 
                 const result = await response.json();
@@ -892,12 +904,17 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 const wifiMode = wifiConnected ? 'Station Mode' : 'Access Point Mode';
                 const ssid = data.wifiSSID || 'BattleAura-' + data.deviceId;
                 const ip = data.ip || 'Unknown';
+                const hostname = (data.hostname || 'battleaura') + '.local';
                 
                 document.getElementById('wifi-status').textContent = wifiMode;
                 document.getElementById('wifi-ssid').textContent = ssid;
                 document.getElementById('wifi-ip').textContent = ip;
+                document.getElementById('device-hostname').textContent = hostname;
                 
-                // Pre-fill current SSID if in station mode
+                // Pre-fill current device name and SSID
+                if (data.deviceName) {
+                    document.getElementById('device-name').value = data.deviceName;
+                }
                 if (wifiConnected && data.wifiSSID && data.wifiSSID !== '') {
                     document.getElementById('wifi-network').value = data.wifiSSID;
                 }
@@ -907,6 +924,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 document.getElementById('wifi-status').textContent = 'Error';
                 document.getElementById('wifi-ssid').textContent = 'Error';
                 document.getElementById('wifi-ip').textContent = 'Error';
+                document.getElementById('device-hostname').textContent = 'Error';
             }
         }
     </script>
