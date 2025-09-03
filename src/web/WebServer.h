@@ -59,6 +59,7 @@ private:
     void handleGetEffects(AsyncWebServerRequest* request);
     void handleTriggerEffect(AsyncWebServerRequest* request);
     void handleTriggerEffectBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
+    void handleStopAllEffects(AsyncWebServerRequest* request);
     void handlePlayAudio(AsyncWebServerRequest* request);
     void handlePlayAudioBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
     void handleStopAudio(AsyncWebServerRequest* request);
@@ -70,6 +71,12 @@ private:
     void handleAddAudioTrack(AsyncWebServerRequest* request);
     void handleAddAudioTrackBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
     void handleDeleteAudioTrack(AsyncWebServerRequest* request);
+    void handleGetEffectConfigs(AsyncWebServerRequest* request);
+    void handleAddEffectConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
+    void handleDeleteEffectConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
+    void handleDeviceConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
+    void handleSystemRestart(AsyncWebServerRequest* request);
+    void handleFactoryReset(AsyncWebServerRequest* request);
     void handleWiFiConfig(AsyncWebServerRequest* request);
     void handleWiFiConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
     void handleClearWiFi(AsyncWebServerRequest* request);
@@ -84,6 +91,9 @@ private:
     
     // JSON processing handlers
     void processAddAudioTrack(AsyncWebServerRequest* request, JsonDocument& doc);
+    void processAddEffectConfig(AsyncWebServerRequest* request, JsonDocument& doc);
+    void processDeleteEffectConfig(AsyncWebServerRequest* request, JsonDocument& doc);
+    void processDeviceConfig(AsyncWebServerRequest* request, JsonDocument& doc);
     
     // JSON business logic handlers
     void processWiFiConfig(AsyncWebServerRequest* request, JsonDocument& doc);

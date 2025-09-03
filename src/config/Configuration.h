@@ -31,7 +31,7 @@ struct DeviceConfig {
     
     DeviceConfig() : deviceName("BattleAura"), otaPassword("battlesync"), 
                     apPassword("battlesync"), audioVolume(20), audioEnabled(true),
-                    firmwareVersion("2.5.0-full-config") {}
+                    firmwareVersion("2.5.1-user-workflow") {}
 };
 
 class Configuration {

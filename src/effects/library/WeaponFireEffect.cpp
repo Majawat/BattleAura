@@ -4,11 +4,11 @@
 namespace BattleAura {
 
 WeaponFireEffect::WeaponFireEffect(LedController& ledController, Configuration& config) 
-    : BaseEffect(ledController, config, "WeaponFire", EffectPriority::ACTIVE) {
+    : BaseEffect(ledController, config, "MachineGun", EffectPriority::ACTIVE) {
 }
 
 void WeaponFireEffect::begin() {
-    Serial.println("WeaponFire: Initializing...");
+    Serial.println("MachineGun: Initializing...");
     
     auto zones = config.getAllZones();
     fireStates.clear();
@@ -24,7 +24,7 @@ void WeaponFireEffect::begin() {
         state.isFlashing = false;
     }
     
-    Serial.printf("WeaponFire: Initialized for %d zones\n", zones.size());
+    Serial.printf("MachineGun: Initialized for %d zones\n", zones.size());
 }
 
 void WeaponFireEffect::trigger(uint32_t duration) {

@@ -189,6 +189,10 @@ void WebServer::setupRoutes() {
         handleTriggerEffectBody(request, data, len, index, total);
     });
     
+    server.on("/api/effects/stop-all", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        handleStopAllEffects(request);
+    });
+    
     // Audio control endpoints
     server.on("/api/audio/play", HTTP_POST, [this](AsyncWebServerRequest* request) {
         // Response will be sent after body is processed
@@ -271,6 +275,39 @@ void WebServer::setupRoutes() {
     server.on("/api/audio/volume", HTTP_OPTIONS, [this](AsyncWebServerRequest* request) {
         sendCORSHeaders(request);
         request->send(200);
+    });
+    
+    // Effects configuration
+    server.on("/api/effects/config", HTTP_GET, [this](AsyncWebServerRequest* request) {
+        handleGetEffectConfigs(request);
+    });
+    
+    server.on("/api/effects/config", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        // Will be handled by body handler
+    }, NULL, [this](AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+        handleAddEffectConfigBody(request, data, len, index, total);
+    });
+    
+    server.on("/api/effects/config", HTTP_DELETE, [this](AsyncWebServerRequest* request) {
+        // Will be handled by body handler
+    }, NULL, [this](AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+        handleDeleteEffectConfigBody(request, data, len, index, total);
+    });
+    
+    // Device configuration
+    server.on("/api/device/config", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        // Will be handled by body handler
+    }, NULL, [this](AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+        handleDeviceConfigBody(request, data, len, index, total);
+    });
+    
+    // System management
+    server.on("/api/system/restart", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        handleSystemRestart(request);
+    });
+    
+    server.on("/api/system/factory-reset", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        handleFactoryReset(request);
     });
     
     // 404 handler
@@ -1083,6 +1120,187 @@ void WebServer::handleDeleteAudioTrack(AsyncWebServerRequest* request) {
     } else {
         sendJSONResponse(request, 404, R"({"success":false,"error":"Audio track not found"})");
     }
+}
+
+void WebServer::handleGetEffectConfigs(AsyncWebServerRequest* request) {
+    JsonDocument doc;
+    JsonArray configsArray = doc["configs"].to<JsonArray>();
+    
+    auto effectConfigs = config.getAllEffectConfigs();
+    for (const EffectConfig* effectConfig : effectConfigs) {
+        if (effectConfig) {
+            JsonObject configObj = configsArray.add<JsonObject>();
+            configObj["name"] = effectConfig->name;
+            configObj["type"] = static_cast<int>(effectConfig->type);
+            configObj["audioFile"] = effectConfig->audioFile;
+            
+            JsonArray groupsArray = configObj["groups"].to<JsonArray>();
+            for (const String& group : effectConfig->targetGroups) {
+                groupsArray.add(group);
+            }
+        }
+    }
+    
+    String response;
+    serializeJson(doc, response);
+    sendJSONResponse(request, 200, response);
+}
+
+void WebServer::handleAddEffectConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+    parseJSONBody(request, data, len, index, total, &WebServer::processAddEffectConfig);
+}
+
+void WebServer::processAddEffectConfig(AsyncWebServerRequest* request, JsonDocument& doc) {
+    String effectName = doc["name"] | "";
+    JsonArray groupsArray = doc["groups"];
+    uint16_t audioFile = doc["audioFile"] | 0;
+    
+    if (effectName.isEmpty()) {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Effect name is required"})");
+        return;
+    }
+    
+    EffectConfig effectConfig;
+    effectConfig.name = effectName;
+    effectConfig.type = EffectType::ACTIVE; // Default type
+    effectConfig.audioFile = audioFile;
+    
+    // Add groups
+    for (JsonVariant group : groupsArray) {
+        String groupName = group.as<String>();
+        if (!groupName.isEmpty()) {
+            effectConfig.addTargetGroup(groupName);
+        }
+    }
+    
+    if (config.addEffectConfig(effectConfig)) {
+        if (config.save()) {
+            Serial.printf("WebServer: Added effect config '%s'\n", effectName.c_str());
+            
+            JsonDocument responseDoc;
+            responseDoc["success"] = true;
+            responseDoc["message"] = "Effect configuration added successfully";
+            
+            String response;
+            serializeJson(responseDoc, response);
+            sendJSONResponse(request, 200, response);
+        } else {
+            sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to save configuration"})");
+        }
+    } else {
+        sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to add effect configuration"})");
+    }
+}
+
+void WebServer::handleDeleteEffectConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+    parseJSONBody(request, data, len, index, total, &WebServer::processDeleteEffectConfig);
+}
+
+void WebServer::processDeleteEffectConfig(AsyncWebServerRequest* request, JsonDocument& doc) {
+    String effectName = doc["name"] | "";
+    
+    if (effectName.isEmpty()) {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Effect name is required"})");
+        return;
+    }
+    
+    if (config.removeEffectConfig(effectName)) {
+        if (config.save()) {
+            Serial.printf("WebServer: Removed effect config '%s'\n", effectName.c_str());
+            
+            JsonDocument responseDoc;
+            responseDoc["success"] = true;
+            responseDoc["message"] = "Effect configuration removed successfully";
+            
+            String response;
+            serializeJson(responseDoc, response);
+            sendJSONResponse(request, 200, response);
+        } else {
+            sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to save configuration"})");
+        }
+    } else {
+        sendJSONResponse(request, 404, R"({"success":false,"error":"Effect configuration not found"})");
+    }
+}
+
+void WebServer::handleDeviceConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+    parseJSONBody(request, data, len, index, total, &WebServer::processDeviceConfig);
+}
+
+void WebServer::processDeviceConfig(AsyncWebServerRequest* request, JsonDocument& doc) {
+    String deviceName = doc["deviceName"] | "";
+    bool audioEnabled = doc["audioEnabled"] | true;
+    
+    if (!deviceName.isEmpty()) {
+        config.getDeviceConfig().deviceName = deviceName;
+    }
+    config.getDeviceConfig().audioEnabled = audioEnabled;
+    
+    if (config.save()) {
+        Serial.printf("WebServer: Updated device config - Name: %s, Audio: %s\n", 
+                     deviceName.c_str(), audioEnabled ? "enabled" : "disabled");
+        
+        JsonDocument responseDoc;
+        responseDoc["success"] = true;
+        responseDoc["message"] = "Device configuration saved successfully";
+        
+        String response;
+        serializeJson(responseDoc, response);
+        sendJSONResponse(request, 200, response);
+    } else {
+        sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to save device configuration"})");
+    }
+}
+
+void WebServer::handleSystemRestart(AsyncWebServerRequest* request) {
+    JsonDocument responseDoc;
+    responseDoc["success"] = true;
+    responseDoc["message"] = "Device is restarting...";
+    
+    String response;
+    serializeJson(responseDoc, response);
+    sendJSONResponse(request, 200, response);
+    
+    Serial.println("WebServer: System restart requested");
+    
+    // Delay restart to allow response to be sent
+    delay(1000);
+    ESP.restart();
+}
+
+void WebServer::handleFactoryReset(AsyncWebServerRequest* request) {
+    if (config.factoryReset()) {
+        Serial.println("WebServer: Factory reset completed");
+        
+        JsonDocument responseDoc;
+        responseDoc["success"] = true;
+        responseDoc["message"] = "Factory reset completed. Device is restarting...";
+        
+        String response;
+        serializeJson(responseDoc, response);
+        sendJSONResponse(request, 200, response);
+        
+        // Delay restart to allow response to be sent
+        delay(1000);
+        ESP.restart();
+    } else {
+        sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to perform factory reset"})");
+    }
+}
+
+void WebServer::handleStopAllEffects(AsyncWebServerRequest* request) {
+    Serial.println("WebServer: Stopping all effects");
+    
+    // Stop all effects via the effect manager
+    effectManager.stopAllEffects();
+    
+    JsonDocument responseDoc;
+    responseDoc["success"] = true;
+    responseDoc["message"] = "All effects stopped";
+    
+    String response;
+    serializeJson(responseDoc, response);
+    sendJSONResponse(request, 200, response);
 }
 
 } // namespace BattleAura

@@ -218,66 +218,57 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             Loading system...
         </div>
         
-        <!-- System Status Section -->
-        <div class="section">
-            <h2>System Status</h2>
-            <div class="zone-card">
-                <div class="zone-name">Device Information</div>
-                <div class="zone-info">
-                    WiFi: <span id="wifi-status">Checking...</span> | 
-                    Network: <span id="wifi-ssid">None</span> |
-                    IP: <span id="wifi-ip">Unknown</span> |
-                    Hostname: <span id="device-hostname">Unknown</span>
-                </div>
-                <div style="margin-top: 10px;">
-                    <button onclick="refreshWiFiStatus()" class="btn">Refresh Status</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Current Zones Section -->
-        <div class="section">
-            <h2>Zone Control</h2>
-            <div id="zones-container">
-                <!-- Zones will be populated here -->
-            </div>
-        </div>
-        
-        <!-- Effect Control Section -->
+        <!-- Effect Control Section - Primary Use Case -->
         <div class="section">
             <h2>Effect Controls</h2>
+            <p>Quick access to trigger effects on your configured zones</p>
             <div id="effects-container">
                 <!-- Effects will be populated here -->
             </div>
         </div>
         
-        <!-- Audio Control Section -->
+        <!-- Global Controls -->
         <div class="section">
-            <h2>Audio Controls</h2>
+            <h2>Global Controls</h2>
             <div class="zone-card">
-                <div class="zone-name">Audio Player</div>
+                <div class="zone-name">Master Controls</div>
+                <div style="margin-top: 15px;">
+                    <div class="form-row">
+                        <label for="global-brightness">Global Brightness (0-255):</label>
+                        <input type="range" id="global-brightness" min="0" max="255" value="255" oninput="setGlobalBrightness(this.value)">
+                        <span id="global-brightness-value">255</span>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <button onclick="stopAllEffects()" class="btn btn-danger" style="margin-right: 10px;">Stop All Effects</button>
+                        <button onclick="setAllZonesBrightness(0)" class="btn" style="margin-right: 10px; background: #666;">Lights Off</button>
+                        <button onclick="setAllZonesBrightness(255)" class="btn" style="background: #ff9800;">Lights On</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Audio Controls -->
+        <div class="section">
+            <h2>Audio Player</h2>
+            <div class="zone-card">
+                <div class="zone-name">Manual Audio Control</div>
                 <div class="zone-info">
                     Status: <span id="audio-status">Unknown</span> | 
-                    Track: <span id="current-track">None</span> |
-                    Available: <span id="audio-available">Checking...</span>
+                    Track: <span id="current-track">None</span>
                 </div>
                 <div style="margin-top: 15px;">
                     <div class="form-row">
-                        <label for="track-number">Track Number (1-9):</label>
-                        <input type="number" id="track-number" min="1" max="9" value="1">
+                        <label for="track-number">Track (1-9):</label>
+                        <input type="number" id="track-number" min="1" max="9" value="1" style="width: 60px;">
                         <input type="checkbox" id="loop-audio" style="margin-left: 10px;">
                         <label for="loop-audio" style="margin-left: 5px;">Loop</label>
+                        <button onclick="playAudio()" class="btn btn-success" style="margin-left: 10px;">Play</button>
+                        <button onclick="stopAudio()" class="btn btn-danger">Stop</button>
                     </div>
                     <div class="form-row">
-                        <label for="audio-volume">Volume (0-30):</label>
+                        <label for="audio-volume">Volume:</label>
                         <input type="range" id="audio-volume" min="0" max="30" value="15" oninput="setVolume(this.value)">
                         <span id="volume-value">15</span>
-                    </div>
-                    <div style="margin-top: 10px;">
-                        <button onclick="playAudio()" class="btn btn-success" style="margin-right: 10px;">Play</button>
-                        <button onclick="stopAudio()" class="btn btn-danger" style="margin-right: 10px;">Stop</button>
-                        <button onclick="retryAudio()" class="btn" style="margin-right: 10px; background: #ff9800; color: white;">Retry Connection</button>
-                        <button onclick="refreshAudioStatus()" class="btn">Refresh Status</button>
                     </div>
                 </div>
             </div>
@@ -364,6 +355,20 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             
             <!-- Device Config Tab -->
             <div id="config-device" class="config-tab">
+                <h3>Device Information</h3>
+                <div class="zone-card" style="margin-bottom: 20px;">
+                    <div class="zone-name">Current Status</div>
+                    <div class="zone-info">
+                        WiFi: <span id="wifi-status">Checking...</span> | 
+                        Network: <span id="wifi-ssid">None</span> |
+                        IP: <span id="wifi-ip">Unknown</span> |
+                        Hostname: <span id="device-hostname">Unknown</span>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <button onclick="refreshWiFiStatus()" class="btn">Refresh Status</button>
+                    </div>
+                </div>
+                
                 <h3>WiFi Configuration</h3>
                 <div class="form-row">
                     <label for="deviceName">Device Name:</label>
@@ -377,7 +382,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 <form>
                     <div class="form-row">
                         <label for="wifiPassword">Password:</label>
-                        <input type="password" id="wifiPassword" placeholder="WiFi Password" maxlength="64">
+                        <input type="password" id="wifiPassword" placeholder="WiFi Password" maxlength="64" autocomplete="new-password">
                         <input type="checkbox" id="showPassword" style="margin-left: 10px;">
                         <label for="showPassword" style="margin-left: 5px;">Show</label>
                     </div>
@@ -776,7 +781,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             container.innerHTML = zones.map(zone => `
                 <div style="padding: 10px; background: #333; margin: 5px 0; border-radius: 3px; border: 1px solid #555;">
                     <strong>${zone.name}</strong> - GPIO ${zone.gpio} (${zone.type})
-                    <br><small>Group: ${zone.groupName} | Max Brightness: ${zone.brightness} | ${zone.type === 'WS2812B' ? zone.ledCount + ' LEDs' : 'Single LED'}</small>
+                    <br><small>Group: ${zone.groupName} | Max Brightness: ${zone.brightness} | ${zone.type === 'WS2812B' ? (zone.ledCount || 1) + ' LEDs' : 'Single LED'}</small>
                     <div style="margin-top: 5px;">
                         <button onclick="removeZone(${zone.id})" class="btn btn-danger" style="padding: 5px 10px;">Remove</button>
                     </div>
@@ -818,36 +823,54 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             }
         }
         
-        // Render zones in UI
+        // Render zones in UI - simplified for main page (no individual brightness controls)
         function renderZones() {
-            const container = document.getElementById('zones-container');
+            // Main page no longer shows individual zone controls
+            // Zone control is moved to configuration section
+        }
+        
+        // Global control functions
+        function setGlobalBrightness(brightness) {
+            document.getElementById('global-brightness-value').textContent = brightness;
             
-            if (zones.length === 0) {
-                container.innerHTML = '<div class="status">No zones configured</div>';
-                return;
+            // Set brightness for all zones
+            zones.forEach(zone => {
+                setBrightness(zone.id, brightness);
+            });
+        }
+        
+        function setAllZonesBrightness(brightness) {
+            zones.forEach(zone => {
+                setBrightness(zone.id, brightness);
+            });
+            
+            // Update global slider
+            document.getElementById('global-brightness').value = brightness;
+            document.getElementById('global-brightness-value').textContent = brightness;
+        }
+        
+        async function stopAllEffects() {
+            try {
+                updateStatus('loading', 'Stopping all effects...');
+                
+                const response = await fetch('/api/effects/stop-all', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('success', 'All effects stopped');
+                    setTimeout(() => loadEffects(), 500);
+                } else {
+                    updateStatus('error', result.error || 'Failed to stop effects');
+                }
+                
+            } catch (error) {
+                console.error('Error stopping effects:', error);
+                updateStatus('error', 'Failed to stop effects: ' + error.message);
             }
-            
-            container.innerHTML = zones.map(zone => `
-                <div class="zone-card">
-                    <div class="zone-name">${zone.name}</div>
-                    <div class="zone-info">
-                        GPIO ${zone.gpio} | ${zone.type} | Group: ${zone.groupName} | Max: ${zone.brightness}
-                    </div>
-                    <div class="brightness-control">
-                        <span>Brightness:</span>
-                        <input type="range" 
-                               class="brightness-slider" 
-                               min="0" 
-                               max="${zone.brightness}" 
-                               value="${zone.currentBrightness || 0}"
-                               onchange="setBrightness(${zone.id}, this.value)"
-                               oninput="updateBrightnessDisplay(${zone.id}, this.value)">
-                        <span class="brightness-value" id="brightness-${zone.id}">
-                            ${zone.currentBrightness || 0}
-                        </span>
-                    </div>
-                </div>
-            `).join('');
         }
         
         // Update brightness display
