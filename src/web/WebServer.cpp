@@ -649,30 +649,38 @@ void WebServer::handlePlayAudioBody(AsyncWebServerRequest* request, uint8_t *dat
         uint16_t trackNumber = doc["trackNumber"];
         bool loop = doc["loop"] | false;
         
-        if (audioController.play(trackNumber, loop)) {
-            Serial.printf("WebServer: Playing audio track %d (loop: %s)\n", trackNumber, loop ? "yes" : "no");
-            
-            JsonDocument responseDoc;
-            responseDoc["success"] = true;
-            responseDoc["message"] = String("Playing track ") + trackNumber;
-            responseDoc["track"] = trackNumber;
-            responseDoc["loop"] = loop;
-            
-            String response;
-            serializeJson(responseDoc, response);
-            sendJSONResponse(request, 200, response);
+        if (audioController.isAvailable()) {
+            if (audioController.play(trackNumber, loop)) {
+                Serial.printf("WebServer: Playing audio track %d (loop: %s)\n", trackNumber, loop ? "yes" : "no");
+                
+                JsonDocument responseDoc;
+                responseDoc["success"] = true;
+                responseDoc["message"] = String("Playing track ") + trackNumber;
+                responseDoc["track"] = trackNumber;
+                responseDoc["loop"] = loop;
+                
+                String response;
+                serializeJson(responseDoc, response);
+                sendJSONResponse(request, 200, response);
+            } else {
+                sendJSONResponse(request, 400, R"({"success":false,"error":"Failed to play audio track"})");
+            }
         } else {
-            sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to play audio track"})");
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Audio hardware not available"})");
         }
     }
 }
 
 void WebServer::handleStopAudio(AsyncWebServerRequest* request) {
-    if (audioController.stop()) {
-        Serial.println("WebServer: Stopped audio playback");
-        sendJSONResponse(request, 200, R"({"success":true,"message":"Audio stopped"})");
+    if (audioController.isAvailable()) {
+        if (audioController.stop()) {
+            Serial.println("WebServer: Stopped audio playback");
+            sendJSONResponse(request, 200, R"({"success":true,"message":"Audio stopped"})");
+        } else {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Failed to stop audio"})");
+        }
     } else {
-        sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to stop audio"})");
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Audio hardware not available"})");
     }
 }
 
@@ -704,19 +712,23 @@ void WebServer::handleSetVolumeBody(AsyncWebServerRequest* request, uint8_t *dat
             return;
         }
         
-        if (audioController.setVolume(volume)) {
-            Serial.printf("WebServer: Set audio volume to %d\n", volume);
-            
-            JsonDocument responseDoc;
-            responseDoc["success"] = true;
-            responseDoc["message"] = String("Volume set to ") + volume;
-            responseDoc["volume"] = volume;
-            
-            String response;
-            serializeJson(responseDoc, response);
-            sendJSONResponse(request, 200, response);
+        if (audioController.isAvailable()) {
+            if (audioController.setVolume(volume)) {
+                Serial.printf("WebServer: Set audio volume to %d\n", volume);
+                
+                JsonDocument responseDoc;
+                responseDoc["success"] = true;
+                responseDoc["message"] = String("Volume set to ") + volume;
+                responseDoc["volume"] = volume;
+                
+                String response;
+                serializeJson(responseDoc, response);
+                sendJSONResponse(request, 200, response);
+            } else {
+                sendJSONResponse(request, 400, R"({"success":false,"error":"Failed to set volume"})");
+            }
         } else {
-            sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to set volume"})");
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Audio hardware not available"})");
         }
     }
 }
