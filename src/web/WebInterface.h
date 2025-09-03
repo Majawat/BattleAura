@@ -683,11 +683,6 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             }
         }
         
-        async function setVolume() {
-            const volume = parseInt(document.getElementById('audio-volume').value);
-            await setVolumeInstant(volume);
-        }
-        
         async function setVolumeInstant(volume) {
             // Update display immediately
             document.getElementById('volume-value').textContent = volume;
