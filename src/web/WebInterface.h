@@ -247,13 +247,12 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                     </div>
                     <div class="form-row">
                         <label>Volume (0-30):</label>
-                        <input type="range" id="audio-volume" min="0" max="30" value="15">
+                        <input type="range" id="audio-volume" min="0" max="30" value="15" oninput="setVolumeInstant(this.value)">
                         <span id="volume-value">15</span>
                     </div>
                     <div style="margin-top: 10px;">
                         <button onclick="playAudio()" class="btn btn-success" style="margin-right: 10px;">Play</button>
                         <button onclick="stopAudio()" class="btn btn-danger" style="margin-right: 10px;">Stop</button>
-                        <button onclick="setVolume()" class="btn" style="margin-right: 10px;">Set Volume</button>
                         <button onclick="retryAudio()" class="btn" style="margin-right: 10px; background: #ff9800; color: white;">Retry Connection</button>
                         <button onclick="refreshAudioStatus()" class="btn">Refresh Status</button>
                     </div>
@@ -686,22 +685,27 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         
         async function setVolume() {
             const volume = parseInt(document.getElementById('audio-volume').value);
+            await setVolumeInstant(volume);
+        }
+        
+        async function setVolumeInstant(volume) {
+            // Update display immediately
+            document.getElementById('volume-value').textContent = volume;
             
             try {
-                updateStatus('loading', `Setting volume to ${volume}...`);
-                
                 const response = await fetch('/api/audio/volume', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ volume })
+                    body: JSON.stringify({ volume: parseInt(volume) })
                 });
                 
                 const result = await response.json();
                 
                 if (response.ok) {
-                    updateStatus('success', result.message);
-                    setTimeout(() => refreshAudioStatus(), 500);
+                    // Success - no need to show status for every slider movement
+                    console.log('Volume set to', volume);
                 } else {
+                    console.error('Failed to set volume:', result.error);
                     updateStatus('error', result.error || 'Failed to set volume');
                 }
                 
