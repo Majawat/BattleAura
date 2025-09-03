@@ -173,10 +173,21 @@ void LedController::printStatus() const {
     Serial.printf("Configured zones: %d\n", zones.size());
     
     for (const ZoneState& zoneState : zones) {
-        Serial.printf("  Zone %d: GPIO %d (CH%d), Current: %d, Target: %d, Max: %d\n",
-                     zoneState.zone.id,
-                     zoneState.zone.gpio,
-                     zoneState.pwmChannel,
+        const char* typeStr = (zoneState.zone.type == ZoneType::PWM) ? "PWM" : "WS2812B";
+        Serial.printf("  Zone %d: GPIO %d, Type: %s", 
+                     zoneState.zone.id, zoneState.zone.gpio, typeStr);
+        
+        if (zoneState.zone.type == ZoneType::PWM) {
+            Serial.printf(", PWM Ch: %d", zoneState.pwmChannel);
+        } else {
+            Serial.printf(", LEDs: %d, Color: R%d G%d B%d", 
+                         zoneState.zone.ledCount, 
+                         zoneState.currentColor.r, 
+                         zoneState.currentColor.g, 
+                         zoneState.currentColor.b);
+        }
+        
+        Serial.printf(", Brightness: %d/%d/%d (current/target/max)\n",
                      zoneState.currentBrightness,
                      zoneState.targetBrightness,
                      zoneState.zone.brightness);
@@ -253,7 +264,7 @@ bool LedController::setupWS2812B(ZoneState& zoneState) {
             return false;
     }
     
-    Serial.printf("LedController: WS2812B setup on GPIO %d, %d LEDs\n", 
+    Serial.printf("LedController: WS2812B setup SUCCESS on GPIO %d, %d LEDs\n", 
                  zoneState.zone.gpio, zoneState.zone.ledCount);
     return true;
 }
@@ -269,6 +280,10 @@ void LedController::updateWS2812B(ZoneState& zoneState) {
     if (scaledBrightness > 255) scaledBrightness = 255;
     
     color.nscale8(scaledBrightness);  // Apply brightness scaling to color
+    
+    // Debug output
+    Serial.printf("LedController: Updating WS2812B Zone %d: R=%d G=%d B=%d brightness=%d->%d\n", 
+                 zoneState.zone.id, color.r, color.g, color.b, zoneState.currentBrightness, scaledBrightness);
     
     // Set all LEDs in this zone to the same color/brightness
     for (uint8_t i = 0; i < zoneState.zone.ledCount; i++) {
