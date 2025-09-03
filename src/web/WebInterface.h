@@ -93,6 +93,77 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             color: #666; 
             font-size: 12px; 
         }
+        .btn {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .btn:hover { 
+            background: #45a049; 
+        }
+        .btn:disabled { 
+            background: #666; 
+            cursor: not-allowed; 
+        }
+        .btn-success {
+            background: #4CAF50;
+        }
+        .btn-danger {
+            background: #f44336;
+        }
+        .btn-danger:hover {
+            background: #da190b;
+        }
+        .section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #2d2d2d;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        .section h2 {
+            color: #4CAF50;
+            margin-top: 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+        }
+        .zone-form {
+            margin-bottom: 20px;
+        }
+        .form-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+        .form-row label {
+            min-width: 120px;
+            color: #ccc;
+        }
+        .form-row input, .form-row select {
+            flex: 1;
+            padding: 8px;
+            background: #1a1a1a;
+            border: 1px solid #555;
+            color: #fff;
+            border-radius: 4px;
+        }
+        .form-row input:focus, .form-row select:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+        #brightnessValue {
+            min-width: 40px;
+            text-align: center;
+            color: #4CAF50;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -100,11 +171,61 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         <h1>BattleAura Controller</h1>
         
         <div id="status" class="status loading">
-            Loading zones...
+            Loading system...
         </div>
         
-        <div id="zones-container">
-            <!-- Zones will be populated here -->
+        <!-- Zone Configuration Section -->
+        <div class="section">
+            <h2>Zone Configuration</h2>
+            <div class="zone-form">
+                <h3>Add New Zone</h3>
+                <div class="form-row">
+                    <label>Name:</label>
+                    <input type="text" id="zoneName" placeholder="e.g., Engine LED">
+                </div>
+                <div class="form-row">
+                    <label>GPIO Pin:</label>
+                    <input type="number" id="zoneGpio" min="2" max="21" placeholder="2-10, 20-21">
+                </div>
+                <div class="form-row">
+                    <label>Type:</label>
+                    <select id="zoneType">
+                        <option value="PWM">PWM (Single LED)</option>
+                        <option value="WS2812B">WS2812B (RGB Strip)</option>
+                    </select>
+                </div>
+                <div class="form-row" id="ledCountRow" style="display:none;">
+                    <label>LED Count:</label>
+                    <input type="number" id="ledCount" min="1" max="100" value="5">
+                </div>
+                <div class="form-row">
+                    <label>Group:</label>
+                    <input type="text" id="zoneGroup" placeholder="e.g., Engines, Weapons" value="Default">
+                </div>
+                <div class="form-row">
+                    <label>Max Brightness:</label>
+                    <input type="range" id="zoneBrightness" min="1" max="255" value="255">
+                    <span id="brightnessValue">255</span>
+                </div>
+                <button onclick="addZone()" class="btn btn-success">Add Zone</button>
+                <button onclick="clearAllZones()" class="btn btn-danger">Clear All Zones</button>
+            </div>
+        </div>
+        
+        <!-- Current Zones Section -->
+        <div class="section">
+            <h2>Current Zones</h2>
+            <div id="zones-container">
+                <!-- Zones will be populated here -->
+            </div>
+        </div>
+        
+        <!-- Effect Control Section -->
+        <div class="section">
+            <h2>Effect Controls</h2>
+            <div id="effects-container">
+                <!-- Effects will be populated here -->
+            </div>
         </div>
         
         <div class="zone-card">
@@ -137,6 +258,8 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         document.addEventListener('DOMContentLoaded', function() {
             loadZones();
             loadStatus();
+            loadEffects();
+            setupZoneForm();
         });
         
         // Load zones from server
@@ -306,6 +429,172 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 console.error('Upload error:', error);
                 updateStatus('error', 'Upload failed: ' + error.message);
                 progressDiv.style.display = 'none';
+            }
+        }
+        
+        // Zone configuration functions
+        function setupZoneForm() {
+            // Setup zone type change handler
+            document.getElementById('zoneType').addEventListener('change', function() {
+                const ledCountRow = document.getElementById('ledCountRow');
+                ledCountRow.style.display = this.value === 'WS2812B' ? 'flex' : 'none';
+            });
+            
+            // Setup brightness slider
+            document.getElementById('zoneBrightness').addEventListener('input', function() {
+                document.getElementById('brightnessValue').textContent = this.value;
+            });
+        }
+        
+        async function addZone() {
+            const name = document.getElementById('zoneName').value.trim();
+            const gpio = parseInt(document.getElementById('zoneGpio').value);
+            const type = document.getElementById('zoneType').value;
+            const ledCount = parseInt(document.getElementById('ledCount').value) || 1;
+            const groupName = document.getElementById('zoneGroup').value.trim() || 'Default';
+            const brightness = parseInt(document.getElementById('zoneBrightness').value);
+            
+            // Validate inputs
+            if (!name) {
+                updateStatus('error', 'Zone name is required');
+                return;
+            }
+            
+            if (!gpio || gpio < 2 || gpio > 21) {
+                updateStatus('error', 'Valid GPIO pin (2-21) is required');
+                return;
+            }
+            
+            try {
+                updateStatus('loading', 'Adding zone...');
+                
+                const response = await fetch('/api/zones', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name, gpio, type, ledCount, groupName, brightness
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('success', result.message);
+                    clearZoneForm();
+                    loadZones(); // Reload zones
+                    loadEffects(); // Reload effects (might have changed)
+                } else {
+                    updateStatus('error', result.error || 'Failed to add zone');
+                }
+                
+            } catch (error) {
+                console.error('Error adding zone:', error);
+                updateStatus('error', 'Failed to add zone: ' + error.message);
+            }
+        }
+        
+        function clearZoneForm() {
+            document.getElementById('zoneName').value = '';
+            document.getElementById('zoneGpio').value = '';
+            document.getElementById('zoneType').value = 'PWM';
+            document.getElementById('ledCount').value = '5';
+            document.getElementById('zoneGroup').value = 'Default';
+            document.getElementById('zoneBrightness').value = '255';
+            document.getElementById('brightnessValue').textContent = '255';
+            document.getElementById('ledCountRow').style.display = 'none';
+        }
+        
+        async function clearAllZones() {
+            if (!confirm('Are you sure you want to remove all zones? This cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                updateStatus('loading', 'Clearing all zones...');
+                
+                const response = await fetch('/api/zones/clear', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('success', result.message);
+                    loadZones(); // Reload zones
+                    loadEffects(); // Reload effects
+                } else {
+                    updateStatus('error', result.error || 'Failed to clear zones');
+                }
+                
+            } catch (error) {
+                console.error('Error clearing zones:', error);
+                updateStatus('error', 'Failed to clear zones: ' + error.message);
+            }
+        }
+        
+        // Effect management functions
+        async function loadEffects() {
+            try {
+                const response = await fetch('/api/effects');
+                if (!response.ok) throw new Error('Failed to load effects');
+                
+                const data = await response.json();
+                renderEffects(data.effects || []);
+            } catch (error) {
+                console.error('Error loading effects:', error);
+            }
+        }
+        
+        function renderEffects(effects) {
+            const container = document.getElementById('effects-container');
+            
+            if (effects.length === 0) {
+                container.innerHTML = '<div class="status">No effects available</div>';
+                return;
+            }
+            
+            container.innerHTML = effects.map(effect => `
+                <div class="zone-card">
+                    <div class="zone-name">${effect.name}</div>
+                    <div class="zone-info">
+                        Status: ${effect.enabled ? 'Running' : 'Stopped'}
+                    </div>
+                    <button onclick="triggerEffect('${effect.name}', 0)" class="btn">
+                        ${effect.enabled ? 'Restart' : 'Start'} Continuous
+                    </button>
+                    <button onclick="triggerEffect('${effect.name}', 2000)" class="btn">
+                        Trigger 2s
+                    </button>
+                    <button onclick="triggerEffect('${effect.name}', 5000)" class="btn">
+                        Trigger 5s
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        async function triggerEffect(effectName, duration) {
+            try {
+                updateStatus('loading', `Triggering ${effectName}...`);
+                
+                const response = await fetch('/api/effects/trigger', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ effectName, duration })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('success', result.message);
+                    setTimeout(() => loadEffects(), 500); // Reload effects after delay
+                } else {
+                    updateStatus('error', result.error || 'Failed to trigger effect');
+                }
+                
+            } catch (error) {
+                console.error('Error triggering effect:', error);
+                updateStatus('error', 'Failed to trigger effect: ' + error.message);
             }
         }
     </script>

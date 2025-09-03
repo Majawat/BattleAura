@@ -7,12 +7,13 @@
 #include <Update.h>
 #include "../config/Configuration.h"
 #include "../hardware/LedController.h"
+#include "../effects/EffectManager.h"
 
 namespace BattleAura {
 
 class WebServer {
 public:
-    WebServer(Configuration& config, LedController& ledController);
+    WebServer(Configuration& config, LedController& ledController, EffectManager& effectManager);
     ~WebServer();
     
     // Initialization
@@ -31,6 +32,7 @@ public:
 private:
     Configuration& config;
     LedController& ledController;
+    EffectManager& effectManager;
     AsyncWebServer server;
     bool wifiConnected;
     bool apMode;
@@ -45,6 +47,11 @@ private:
     void handleGetZones(AsyncWebServerRequest* request);
     void handleSetBrightness(AsyncWebServerRequest* request);
     void handleGetStatus(AsyncWebServerRequest* request);
+    void handleAddZone(AsyncWebServerRequest* request);
+    void handleDeleteZone(AsyncWebServerRequest* request);
+    void handleClearZones(AsyncWebServerRequest* request);
+    void handleGetEffects(AsyncWebServerRequest* request);
+    void handleTriggerEffect(AsyncWebServerRequest* request);
     void handleOTAUpload(AsyncWebServerRequest* request);
     void handleOTAUploadFile(AsyncWebServerRequest* request, String filename, size_t index, uint8_t *data, size_t len, bool final);
     

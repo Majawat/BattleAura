@@ -338,15 +338,9 @@ void Configuration::createDefaultConfiguration() {
     deviceConfig.otaPassword = "battlesync";
     deviceConfig.apPassword = "battlesync";
     
-    // Create default zones for testing - mixed PWM and WS2812B
-    addZone(Zone(1, "PWM LED 1", 2, ZoneType::PWM, 1, "Test"));
-    addZone(Zone(2, "RGB Strip 1", 3, ZoneType::WS2812B, 5, "Test")); // 5 RGB LEDs
-    addZone(Zone(3, "PWM LED 2", 4, ZoneType::PWM, 1, "Test"));
-    
-    // Create default effects
-    EffectConfig candleEffect("CandleFlicker", EffectType::AMBIENT);
-    candleEffect.addTargetGroup("Test");
-    addEffectConfig(candleEffect);
+    // Start with no zones - user will configure via web interface
+    // This allows testing with any hardware setup
+    // Effects will be enabled automatically when zones are added
     
     Serial.println("Configuration: Default configuration created");
 }

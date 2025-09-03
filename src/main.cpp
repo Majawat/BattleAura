@@ -9,8 +9,8 @@ using namespace BattleAura;
 // Global instances
 Configuration BattleAura::config;
 LedController ledController;
-WebServer webServer(config, ledController);
 EffectManager effectManager(ledController, config);
+WebServer webServer(config, ledController, effectManager);
 
 void setup() {
     Serial.begin(115200);

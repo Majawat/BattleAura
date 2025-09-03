@@ -4,8 +4,8 @@
 
 namespace BattleAura {
 
-WebServer::WebServer(Configuration& config, LedController& ledController) 
-    : config(config), ledController(ledController), server(80), 
+WebServer::WebServer(Configuration& config, LedController& ledController, EffectManager& effectManager) 
+    : config(config), ledController(ledController), effectManager(effectManager), server(80), 
       wifiConnected(false), apMode(false) {
 }
 
@@ -149,6 +149,28 @@ void WebServer::setupRoutes() {
         handleGetStatus(request);
     });
     
+    // Zone management endpoints
+    server.on("/api/zones", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        handleAddZone(request);
+    });
+    
+    server.on("/api/zones", HTTP_DELETE, [this](AsyncWebServerRequest* request) {
+        handleDeleteZone(request);
+    });
+    
+    server.on("/api/zones/clear", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        handleClearZones(request);
+    });
+    
+    // Effect control endpoints
+    server.on("/api/effects", HTTP_GET, [this](AsyncWebServerRequest* request) {
+        handleGetEffects(request);
+    });
+    
+    server.on("/api/effects/trigger", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        handleTriggerEffect(request);
+    });
+    
     // OTA firmware update endpoint
     server.on("/update", HTTP_POST, [this](AsyncWebServerRequest* request) {
         handleOTAUpload(request);
@@ -158,6 +180,16 @@ void WebServer::setupRoutes() {
     
     // Handle CORS preflight
     server.on("/api/brightness", HTTP_OPTIONS, [this](AsyncWebServerRequest* request) {
+        sendCORSHeaders(request);
+        request->send(200);
+    });
+    
+    server.on("/api/zones", HTTP_OPTIONS, [this](AsyncWebServerRequest* request) {
+        sendCORSHeaders(request);
+        request->send(200);
+    });
+    
+    server.on("/api/effects/trigger", HTTP_OPTIONS, [this](AsyncWebServerRequest* request) {
         sendCORSHeaders(request);
         request->send(200);
     });
@@ -329,6 +361,190 @@ void WebServer::handleOTAUploadFile(AsyncWebServerRequest* request, String filen
         } else {
             Update.printError(Serial);
         }
+    }
+}
+
+// Zone management handlers
+void WebServer::handleAddZone(AsyncWebServerRequest* request) {
+    JsonDocument doc;
+    
+    if (request->hasParam("body", true)) {
+        String body = request->getParam("body", true)->value();
+        DeserializationError error = deserializeJson(doc, body);
+        
+        if (error) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid JSON"})");
+            return;
+        }
+    } else {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Missing request body"})");
+        return;
+    }
+    
+    // Validate required fields
+    if (!doc["name"] || !doc["gpio"] || !doc["type"]) {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Missing required fields: name, gpio, type"})");
+        return;
+    }
+    
+    // Parse zone data
+    String name = doc["name"];
+    uint8_t gpio = doc["gpio"];
+    String typeStr = doc["type"];
+    uint8_t ledCount = doc["ledCount"] | 1;
+    String groupName = doc["groupName"] | "Default";
+    uint8_t brightness = doc["brightness"] | 255;
+    
+    // Validate GPIO
+    if (!config.isValidGPIO(gpio)) {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid GPIO pin"})");
+        return;
+    }
+    
+    if (config.isGPIOInUse(gpio)) {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"GPIO pin already in use"})");
+        return;
+    }
+    
+    // Parse zone type
+    ZoneType zoneType;
+    if (typeStr == "PWM") {
+        zoneType = ZoneType::PWM;
+        ledCount = 1; // PWM zones always have 1 LED
+    } else if (typeStr == "WS2812B") {
+        zoneType = ZoneType::WS2812B;
+        if (ledCount < 1 || ledCount > 100) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"LED count must be 1-100 for RGB zones"})");
+            return;
+        }
+    } else {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid zone type. Use PWM or WS2812B"})");
+        return;
+    }
+    
+    // Create zone
+    uint8_t zoneId = config.getNextZoneId();
+    Zone zone(zoneId, name, gpio, zoneType, ledCount, groupName, brightness);
+    
+    if (config.addZone(zone)) {
+        // Add zone to LED controller
+        ledController.addZone(zone);
+        
+        // Save configuration
+        config.save();
+        
+        Serial.printf("WebServer: Added zone %d '%s' on GPIO %d\n", zoneId, name.c_str(), gpio);
+        
+        JsonDocument responseDoc;
+        responseDoc["success"] = true;
+        responseDoc["zoneId"] = zoneId;
+        responseDoc["message"] = "Zone added successfully";
+        
+        String response;
+        serializeJson(responseDoc, response);
+        sendJSONResponse(request, 201, response);
+    } else {
+        sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to add zone"})");
+    }
+}
+
+void WebServer::handleDeleteZone(AsyncWebServerRequest* request) {
+    if (!request->hasParam("zoneId")) {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Missing zoneId parameter"})");
+        return;
+    }
+    
+    uint8_t zoneId = request->getParam("zoneId")->value().toInt();
+    
+    if (config.removeZone(zoneId)) {
+        // Remove from LED controller
+        ledController.removeZone(zoneId);
+        
+        // Save configuration
+        config.save();
+        
+        Serial.printf("WebServer: Removed zone %d\n", zoneId);
+        sendJSONResponse(request, 200, R"({"success":true,"message":"Zone removed successfully"})");
+    } else {
+        sendJSONResponse(request, 404, R"({"success":false,"error":"Zone not found"})");
+    }
+}
+
+void WebServer::handleClearZones(AsyncWebServerRequest* request) {
+    // Get all zones and remove them
+    auto zones = config.getAllZones();
+    for (Zone* zone : zones) {
+        ledController.removeZone(zone->id);
+        config.removeZone(zone->id);
+    }
+    
+    // Save configuration
+    config.save();
+    
+    Serial.printf("WebServer: Cleared all zones (%d removed)\n", zones.size());
+    
+    JsonDocument responseDoc;
+    responseDoc["success"] = true;
+    responseDoc["message"] = String("Cleared ") + String(zones.size()) + String(" zones");
+    
+    String response;
+    serializeJson(responseDoc, response);
+    sendJSONResponse(request, 200, response);
+}
+
+// Effect management handlers
+void WebServer::handleGetEffects(AsyncWebServerRequest* request) {
+    JsonDocument doc;
+    JsonArray effectsArray = doc["effects"].to<JsonArray>();
+    
+    auto effectNames = effectManager.getEffectNames();
+    for (const String& name : effectNames) {
+        JsonObject effectObj = effectsArray.add<JsonObject>();
+        effectObj["name"] = name;
+        effectObj["enabled"] = effectManager.isEffectEnabled(name);
+    }
+    
+    String response;
+    serializeJson(doc, response);
+    sendJSONResponse(request, 200, response);
+}
+
+void WebServer::handleTriggerEffect(AsyncWebServerRequest* request) {
+    JsonDocument doc;
+    
+    if (request->hasParam("body", true)) {
+        String body = request->getParam("body", true)->value();
+        DeserializationError error = deserializeJson(doc, body);
+        
+        if (error) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid JSON"})");
+            return;
+        }
+    } else {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Missing request body"})");
+        return;
+    }
+    
+    if (!doc["effectName"]) {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Missing effectName"})");
+        return;
+    }
+    
+    String effectName = doc["effectName"];
+    uint32_t duration = doc["duration"] | 0; // Default to continuous
+    
+    if (effectManager.triggerEffect(effectName, duration)) {
+        Serial.printf("WebServer: Triggered effect '%s' for %dms\n", effectName.c_str(), duration);
+        
+        JsonDocument responseDoc;
+        responseDoc["success"] = true;
+        responseDoc["message"] = String("Triggered effect: ") + effectName;
+        
+        String response;
+        serializeJson(responseDoc, response);
+        sendJSONResponse(request, 200, response);
+    } else {
+        sendJSONResponse(request, 404, R"({"success":false,"error":"Effect not found"})");
     }
 }
 
