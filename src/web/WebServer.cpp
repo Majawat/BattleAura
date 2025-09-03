@@ -19,13 +19,16 @@ bool WebServer::begin() {
     // Try to connect to WiFi first
     if (connectToWiFi()) {
         Serial.printf("WebServer: Connected to WiFi, IP: %s\n", currentIP.c_str());
+        
+        // Setup mDNS only in Station mode (connected to WiFi)
+        // mDNS doesn't work in AP mode
+        delay(500); // Small delay to ensure WiFi is fully established
+        setupmDNS();
     } else {
         Serial.println("WebServer: WiFi failed, starting AP mode");
         startAccessPoint();
+        Serial.println("WebServer: mDNS not available in AP mode");
     }
-    
-    // Setup mDNS
-    setupmDNS();
     
     // Setup web routes
     setupRoutes();
@@ -299,12 +302,21 @@ void WebServer::setupmDNS() {
     if (MDNS.begin(hostname.c_str())) {
         Serial.printf("WebServer: mDNS responder started at %s.local\n", hostname.c_str());
         
-        // Add HTTP service
+        // Add HTTP web service
         MDNS.addService("http", "tcp", 80);
         MDNS.addServiceTxt("http", "tcp", "device", "BattleAura");
         MDNS.addServiceTxt("http", "tcp", "version", deviceConfig.firmwareVersion.c_str());
+        MDNS.addServiceTxt("http", "tcp", "model", "ESP32-C3");
+        MDNS.addServiceTxt("http", "tcp", "path", "/");
+        
+        // Add BattleAura-specific service for discovery
+        MDNS.addService("battleaura", "tcp", 80);
+        MDNS.addServiceTxt("battleaura", "tcp", "version", deviceConfig.firmwareVersion.c_str());
+        MDNS.addServiceTxt("battleaura", "tcp", "name", deviceConfig.deviceName.c_str());
+        
+        Serial.printf("WebServer: mDNS services registered for discovery\n");
     } else {
-        Serial.println("WebServer: Failed to start mDNS responder");
+        Serial.println("WebServer: Failed to start mDNS responder - check WiFi connection");
     }
 }
 
@@ -880,15 +892,32 @@ void WebServer::processWiFiConfig(AsyncWebServerRequest* request, JsonDocument& 
         }
         deviceConfig.deviceName = deviceName;
         
-        // Update hostname and mDNS with new device name
-        String cleanHostname = generateHostname(deviceName);
-        
-        WiFi.setHostname(cleanHostname.c_str());
-        MDNS.end();
-        if (MDNS.begin(cleanHostname.c_str())) {
-            Serial.printf("WebServer: mDNS updated to %s.local\n", cleanHostname.c_str());
+        // Update hostname and mDNS with new device name (only works in Station mode)
+        if (wifiConnected && !apMode) {
+            String cleanHostname = generateHostname(deviceName);
+            
+            WiFi.setHostname(cleanHostname.c_str());
+            MDNS.end();
+            delay(100); // Small delay before restarting mDNS
+            
+            if (MDNS.begin(cleanHostname.c_str())) {
+                Serial.printf("WebServer: mDNS updated to %s.local\n", cleanHostname.c_str());
+                
+                // Re-register services with new hostname
+                MDNS.addService("http", "tcp", 80);
+                MDNS.addServiceTxt("http", "tcp", "device", "BattleAura");
+                MDNS.addServiceTxt("http", "tcp", "version", config.getDeviceConfig().firmwareVersion.c_str());
+                MDNS.addServiceTxt("http", "tcp", "model", "ESP32-C3");
+                MDNS.addServiceTxt("http", "tcp", "path", "/");
+                
+                MDNS.addService("battleaura", "tcp", 80);
+                MDNS.addServiceTxt("battleaura", "tcp", "version", config.getDeviceConfig().firmwareVersion.c_str());
+                MDNS.addServiceTxt("battleaura", "tcp", "name", deviceName.c_str());
+            } else {
+                Serial.println("WebServer: Failed to restart mDNS with new hostname");
+            }
         } else {
-            Serial.println("WebServer: Failed to restart mDNS with new hostname");
+            Serial.println("WebServer: mDNS hostname update skipped (not in Station mode)");
         }
     }
     
