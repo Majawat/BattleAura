@@ -97,8 +97,8 @@ private:
     void updateCurrentStatus();
     
     // Constants
-    static const uint8_t AUDIO_RX_PIN = 21;  // ESP32 TX -> DFPlayer RX
-    static const uint8_t AUDIO_TX_PIN = 20;  // ESP32 RX -> DFPlayer TX  
+    static const uint8_t AUDIO_RX_PIN = 20;  // ESP32 RX <- DFPlayer TX
+    static const uint8_t AUDIO_TX_PIN = 21;  // ESP32 TX -> DFPlayer RX  
     static const uint32_t AUDIO_BAUD = 9600;
     static const uint32_t STATUS_CHECK_INTERVAL = 500; // Check every 500ms
 };
