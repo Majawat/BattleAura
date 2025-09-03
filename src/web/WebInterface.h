@@ -247,7 +247,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                     </div>
                     <div class="form-row">
                         <label>Volume (0-30):</label>
-                        <input type="range" id="audio-volume" min="0" max="30" value="15" oninput="setVolumeInstant(this.value)">
+                        <input type="range" id="audio-volume" min="0" max="30" value="15" oninput="setVolume(this.value)">
                         <span id="volume-value">15</span>
                     </div>
                     <div style="margin-top: 10px;">
@@ -683,7 +683,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             }
         }
         
-        async function setVolumeInstant(volume) {
+        async function setVolume(volume) {
             // Update display immediately
             document.getElementById('volume-value').textContent = volume;
             
