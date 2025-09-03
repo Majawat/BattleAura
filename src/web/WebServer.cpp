@@ -147,6 +147,11 @@ void WebServer::setupRoutes() {
         handleRoot(request);
     });
     
+    // Configuration pages
+    server.on("/config/effects", HTTP_GET, [this](AsyncWebServerRequest* request) {
+        handleEffectsConfig(request);
+    });
+    
     // API routes
     server.on("/api/zones", HTTP_GET, [this](AsyncWebServerRequest* request) {
         handleGetZones(request);
@@ -211,6 +216,21 @@ void WebServer::setupRoutes() {
     
     server.on("/api/audio/retry", HTTP_POST, [this](AsyncWebServerRequest* request) {
         handleRetryAudio(request);
+    });
+    
+    // Audio tracks management endpoints
+    server.on("/api/audio/tracks", HTTP_GET, [this](AsyncWebServerRequest* request) {
+        handleGetAudioTracks(request);
+    });
+    
+    server.on("/api/audio/tracks", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        // Response will be sent after body is processed
+    }, NULL, [this](AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+        handleAddAudioTrackBody(request, data, len, index, total);
+    });
+    
+    server.on("/api/audio/tracks/(\\d+)", HTTP_DELETE, [this](AsyncWebServerRequest* request) {
+        handleDeleteAudioTrack(request);
     });
     
     // WiFi configuration endpoints
@@ -324,6 +344,10 @@ void WebServer::setupmDNS() {
 
 void WebServer::handleRoot(AsyncWebServerRequest* request) {
     request->send(200, "text/html", MAIN_HTML);
+}
+
+void WebServer::handleEffectsConfig(AsyncWebServerRequest* request) {
+    request->send(200, "text/html", EFFECTS_CONFIG_HTML);
 }
 
 void WebServer::handleGetZones(AsyncWebServerRequest* request) {
@@ -976,6 +1000,99 @@ void WebServer::processSetVolume(AsyncWebServerRequest* request, JsonDocument& d
         }
     } else {
         sendJSONResponse(request, 400, R"({"success":false,"error":"Audio hardware not available"})");
+    }
+}
+
+void WebServer::handleGetAudioTracks(AsyncWebServerRequest* request) {
+    JsonDocument doc;
+    JsonArray tracksArray = doc["tracks"].to<JsonArray>();
+    
+    auto tracks = config.getAllAudioTracks();
+    for (AudioTrack* track : tracks) {
+        JsonObject trackObj = tracksArray.add<JsonObject>();
+        trackObj["fileNumber"] = track->fileNumber;
+        trackObj["description"] = track->description;
+        trackObj["isLoop"] = track->isLoop;
+        trackObj["duration"] = track->duration;
+    }
+    
+    String response;
+    serializeJson(doc, response);
+    sendJSONResponse(request, 200, response);
+}
+
+void WebServer::handleAddAudioTrack(AsyncWebServerRequest* request) {
+    // This method is no longer used - body handler does the work
+}
+
+static String addAudioTrackBody = "";
+
+void WebServer::handleAddAudioTrackBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+    parseJSONBody(request, data, len, index, total, &WebServer::processAddAudioTrack);
+}
+
+void WebServer::processAddAudioTrack(AsyncWebServerRequest* request, JsonDocument& doc) {
+    if (!doc["fileNumber"] || !doc["description"]) {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Missing required fields: fileNumber, description"})");
+        return;
+    }
+    
+    AudioTrack track;
+    track.fileNumber = doc["fileNumber"];
+    track.description = doc["description"].as<String>();
+    track.isLoop = doc["isLoop"] | false;
+    track.duration = doc["duration"] | 0;
+    
+    if (config.addAudioTrack(track)) {
+        if (config.save()) {
+            Serial.printf("WebServer: Added audio track %d: %s\n", track.fileNumber, track.description.c_str());
+            
+            JsonDocument responseDoc;
+            responseDoc["success"] = true;
+            responseDoc["message"] = "Audio track added successfully";
+            
+            String response;
+            serializeJson(responseDoc, response);
+            sendJSONResponse(request, 200, response);
+        } else {
+            sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to save configuration"})");
+        }
+    } else {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Failed to add audio track"})");
+    }
+}
+
+void WebServer::handleDeleteAudioTrack(AsyncWebServerRequest* request) {
+    // Extract fileNumber from URL path - it's the parameter after /api/audio/tracks/
+    String path = request->url();
+    int lastSlash = path.lastIndexOf('/');
+    if (lastSlash == -1) {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid URL format"})");
+        return;
+    }
+    
+    uint16_t fileNumber = path.substring(lastSlash + 1).toInt();
+    if (fileNumber == 0) {
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid file number"})");
+        return;
+    }
+    
+    if (config.removeAudioTrack(fileNumber)) {
+        if (config.save()) {
+            Serial.printf("WebServer: Removed audio track %d\n", fileNumber);
+            
+            JsonDocument responseDoc;
+            responseDoc["success"] = true;
+            responseDoc["message"] = "Audio track removed successfully";
+            
+            String response;
+            serializeJson(responseDoc, response);
+            sendJSONResponse(request, 200, response);
+        } else {
+            sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to save configuration"})");
+        }
+    } else {
+        sendJSONResponse(request, 404, R"({"success":false,"error":"Audio track not found"})");
     }
 }
 

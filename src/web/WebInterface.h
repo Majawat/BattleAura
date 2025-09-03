@@ -932,4 +932,431 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
+// Effects Configuration Page
+const char EFFECTS_CONFIG_HTML[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Effects Configuration - BattleAura</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: #1a1a1a; 
+            color: #fff; 
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+        }
+        h1 { 
+            text-align: center; 
+            color: #4CAF50; 
+            margin-bottom: 30px; 
+        }
+        .nav-links {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 15px;
+            background: #2d2d2d;
+            border-radius: 8px;
+        }
+        .nav-links a {
+            color: #4CAF50;
+            text-decoration: none;
+            margin: 0 15px;
+            padding: 8px 15px;
+            border-radius: 4px;
+            background: #333;
+        }
+        .nav-links a:hover {
+            background: #4CAF50;
+            color: white;
+        }
+        .section {
+            background: #2d2d2d;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #444;
+        }
+        h2 {
+            color: #4CAF50;
+            margin-top: 0;
+        }
+        .form-row {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            gap: 15px;
+        }
+        .form-row label {
+            min-width: 120px;
+            color: #ccc;
+        }
+        .form-row input, .form-row select {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #333;
+            color: white;
+        }
+        .btn {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn-danger { background: #f44336; }
+        .btn-warning { background: #ff9800; }
+        .btn:hover {
+            opacity: 0.8;
+        }
+        .effect-card {
+            background: #333;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #555;
+        }
+        .effect-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 8px;
+        }
+        .effect-info {
+            color: #aaa;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .status {
+            text-align: center;
+            padding: 10px;
+            margin: 20px 0;
+            border-radius: 4px;
+            background: #333;
+        }
+        .error { color: #f44336; background: #2d1b1b; }
+        .success { color: #4CAF50; background: #1b2d1b; }
+        .loading { color: #ff9800; }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Effects Configuration</h1>
+        
+        <div class="nav-links">
+            <a href="/">Main Control</a>
+            <a href="/config/zones">Zones</a>
+            <a href="/config/effects">Effects</a>
+            <a href="/config/device">Device</a>
+            <a href="/config/system">System</a>
+        </div>
+        
+        <div id="status" class="status" style="display: none;"></div>
+        
+        <!-- Audio Tracks Configuration -->
+        <div class="section">
+            <h2>Audio Tracks</h2>
+            <p>Configure audio files for effects. Files must be named 0001.mp3, 0002.mp3, etc. on SD card.</p>
+            
+            <div class="form-row">
+                <label>File Number:</label>
+                <input type="number" id="trackFileNumber" min="1" max="999" value="1">
+                <label>Description:</label>
+                <input type="text" id="trackDescription" placeholder="e.g., Machine Gun Fire">
+                <input type="checkbox" id="trackIsLoop">
+                <label for="trackIsLoop">Loop</label>
+                <button onclick="addAudioTrack()" class="btn">Add Track</button>
+            </div>
+            
+            <div id="audio-tracks-container">
+                <!-- Audio tracks will be populated here -->
+            </div>
+        </div>
+        
+        <!-- Effect Configurations -->
+        <div class="section">
+            <h2>Effect Configurations</h2>
+            <p>Configure which effects apply to which groups and their audio associations.</p>
+            
+            <div class="form-row">
+                <label>Effect:</label>
+                <select id="effectName">
+                    <!-- Will be populated from available effects -->
+                </select>
+                <label>Group:</label>
+                <input type="text" id="effectGroup" placeholder="e.g., Weapons, Engines">
+                <label>Audio Track:</label>
+                <select id="effectAudio">
+                    <option value="0">None</option>
+                    <!-- Will be populated from audio tracks -->
+                </select>
+                <button onclick="addEffectConfig()" class="btn">Add Configuration</button>
+            </div>
+            
+            <div id="effect-configs-container">
+                <!-- Effect configs will be populated here -->
+            </div>
+        </div>
+        
+        <!-- Effect Testing -->
+        <div class="section">
+            <h2>Effect Testing</h2>
+            <p>Test effects to verify configuration.</p>
+            
+            <div class="form-row">
+                <label>Effect:</label>
+                <select id="testEffect">
+                    <!-- Will be populated from configured effects -->
+                </select>
+                <label>Group:</label>
+                <select id="testGroup">
+                    <!-- Will be populated from configured groups -->
+                </select>
+                <button onclick="testEffect()" class="btn btn-warning">Test Effect</button>
+                <button onclick="stopAllEffects()" class="btn btn-danger">Stop All</button>
+            </div>
+        </div>
+        
+        <div class="footer">
+            BattleAura Effects Configuration
+        </div>
+    </div>
+
+    <script>
+        let audioTracks = [];
+        let effectConfigs = [];
+        let availableEffects = [];
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAudioTracks();
+            loadEffectConfigs();
+            loadAvailableEffects();
+        });
+        
+        function updateStatus(type, message) {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.textContent = message;
+            status.style.display = 'block';
+            
+            if (type === 'success') {
+                setTimeout(() => status.style.display = 'none', 3000);
+            }
+        }
+        
+        async function loadAudioTracks() {
+            try {
+                const response = await fetch('/api/audio/tracks');
+                if (!response.ok) throw new Error('Failed to load audio tracks');
+                
+                const data = await response.json();
+                audioTracks = data.tracks || [];
+                renderAudioTracks();
+                populateAudioSelects();
+            } catch (error) {
+                console.error('Error loading audio tracks:', error);
+                updateStatus('error', 'Failed to load audio tracks: ' + error.message);
+            }
+        }
+        
+        async function loadEffectConfigs() {
+            try {
+                const response = await fetch('/api/effects/config');
+                if (!response.ok) throw new Error('Failed to load effect configs');
+                
+                const data = await response.json();
+                effectConfigs = data.configs || [];
+                renderEffectConfigs();
+            } catch (error) {
+                console.error('Error loading effect configs:', error);
+                updateStatus('error', 'Failed to load effect configs: ' + error.message);
+            }
+        }
+        
+        async function loadAvailableEffects() {
+            try {
+                const response = await fetch('/api/effects');
+                if (!response.ok) throw new Error('Failed to load effects');
+                
+                const data = await response.json();
+                availableEffects = data.effects || [];
+                populateEffectSelects();
+            } catch (error) {
+                console.error('Error loading effects:', error);
+                updateStatus('error', 'Failed to load effects: ' + error.message);
+            }
+        }
+        
+        function renderAudioTracks() {
+            const container = document.getElementById('audio-tracks-container');
+            
+            if (audioTracks.length === 0) {
+                container.innerHTML = '<div class="effect-info">No audio tracks configured</div>';
+                return;
+            }
+            
+            container.innerHTML = audioTracks.map(track => `
+                <div class="effect-card">
+                    <div class="effect-name">Track ${track.fileNumber}: ${track.description}</div>
+                    <div class="effect-info">
+                        ${track.isLoop ? 'Loop' : 'One-shot'} | Duration: ${track.duration || 'Unknown'}ms
+                    </div>
+                    <button onclick="testAudioTrack(${track.fileNumber})" class="btn btn-warning">Test</button>
+                    <button onclick="removeAudioTrack(${track.fileNumber})" class="btn btn-danger">Remove</button>
+                </div>
+            `).join('');
+        }
+        
+        function renderEffectConfigs() {
+            const container = document.getElementById('effect-configs-container');
+            
+            if (effectConfigs.length === 0) {
+                container.innerHTML = '<div class="effect-info">No effect configurations</div>';
+                return;
+            }
+            
+            container.innerHTML = effectConfigs.map(config => `
+                <div class="effect-card">
+                    <div class="effect-name">${config.name}</div>
+                    <div class="effect-info">
+                        Type: ${config.type} | Groups: ${config.groups.join(', ') || 'None'} | 
+                        Audio: ${config.audioFile || 'None'}
+                    </div>
+                    <button onclick="removeEffectConfig('${config.name}')" class="btn btn-danger">Remove</button>
+                </div>
+            `).join('');
+        }
+        
+        function populateEffectSelects() {
+            const selects = ['effectName', 'testEffect'];
+            selects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                select.innerHTML = availableEffects.map(effect => 
+                    `<option value="${effect.name}">${effect.name}</option>`
+                ).join('');
+            });
+        }
+        
+        function populateAudioSelects() {
+            const select = document.getElementById('effectAudio');
+            select.innerHTML = '<option value="0">None</option>' + 
+                audioTracks.map(track => 
+                    `<option value="${track.fileNumber}">Track ${track.fileNumber}: ${track.description}</option>`
+                ).join('');
+        }
+        
+        async function addAudioTrack() {
+            const fileNumber = parseInt(document.getElementById('trackFileNumber').value);
+            const description = document.getElementById('trackDescription').value.trim();
+            const isLoop = document.getElementById('trackIsLoop').checked;
+            
+            if (!description) {
+                updateStatus('error', 'Please enter a track description');
+                return;
+            }
+            
+            try {
+                updateStatus('loading', 'Adding audio track...');
+                
+                const response = await fetch('/api/audio/tracks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fileNumber: fileNumber,
+                        description: description,
+                        isLoop: isLoop,
+                        duration: 0
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('success', 'Audio track added successfully');
+                    document.getElementById('trackDescription').value = '';
+                    document.getElementById('trackIsLoop').checked = false;
+                    document.getElementById('trackFileNumber').value = fileNumber + 1;
+                    loadAudioTracks();
+                } else {
+                    updateStatus('error', result.error || 'Failed to add audio track');
+                }
+                
+            } catch (error) {
+                console.error('Error adding audio track:', error);
+                updateStatus('error', 'Failed to add audio track: ' + error.message);
+            }
+        }
+        
+        async function removeAudioTrack(fileNumber) {
+            if (!confirm(`Remove track ${fileNumber}?`)) return;
+            
+            try {
+                updateStatus('loading', 'Removing audio track...');
+                
+                const response = await fetch(`/api/audio/tracks/${fileNumber}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('success', 'Audio track removed');
+                    loadAudioTracks();
+                } else {
+                    updateStatus('error', result.error || 'Failed to remove audio track');
+                }
+                
+            } catch (error) {
+                console.error('Error removing audio track:', error);
+                updateStatus('error', 'Failed to remove audio track: ' + error.message);
+            }
+        }
+        
+        async function testAudioTrack(fileNumber) {
+            try {
+                updateStatus('loading', 'Testing audio track...');
+                
+                const response = await fetch('/api/audio/play', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fileNumber: fileNumber,
+                        loop: false
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('success', 'Playing audio track');
+                } else {
+                    updateStatus('error', result.error || 'Failed to play audio track');
+                }
+                
+            } catch (error) {
+                console.error('Error testing audio track:', error);
+                updateStatus('error', 'Failed to test audio track: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
+)rawliteral";
+
 } // namespace BattleAura
