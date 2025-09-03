@@ -254,6 +254,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                         <button onclick="playAudio()" class="btn btn-success" style="margin-right: 10px;">Play</button>
                         <button onclick="stopAudio()" class="btn btn-danger" style="margin-right: 10px;">Stop</button>
                         <button onclick="setVolume()" class="btn" style="margin-right: 10px;">Set Volume</button>
+                        <button onclick="retryAudio()" class="btn" style="margin-right: 10px; background: #ff9800; color: white;">Retry Connection</button>
                         <button onclick="refreshAudioStatus()" class="btn">Refresh Status</button>
                     </div>
                 </div>
@@ -731,6 +732,30 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 console.error('Error getting audio status:', error);
                 document.getElementById('audio-status').textContent = 'Error';
                 document.getElementById('audio-available').textContent = 'Error';
+            }
+        }
+        
+        async function retryAudio() {
+            try {
+                updateStatus('loading', 'Retrying audio connection...');
+                
+                const response = await fetch('/api/audio/retry', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('success', result.message);
+                    setTimeout(() => refreshAudioStatus(), 1000);
+                } else {
+                    updateStatus('error', result.error || 'Failed to retry audio connection');
+                }
+                
+            } catch (error) {
+                console.error('Error retrying audio connection:', error);
+                updateStatus('error', 'Failed to retry audio connection: ' + error.message);
             }
         }
         

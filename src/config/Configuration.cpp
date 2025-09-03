@@ -445,7 +445,7 @@ void Configuration::createDefaultConfiguration() {
     
     // Set device defaults
     deviceConfig.deviceName = "BattleAura";
-    deviceConfig.firmwareVersion = "2.2.2-config-and-audio-fix";
+    deviceConfig.firmwareVersion = "2.3.0-audio-retry-system";
     deviceConfig.audioEnabled = true;
     deviceConfig.audioVolume = 20;
     deviceConfig.otaPassword = "battlesync";

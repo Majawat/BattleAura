@@ -198,6 +198,10 @@ void WebServer::setupRoutes() {
         handleGetAudioStatus(request);
     });
     
+    server.on("/api/audio/retry", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        handleRetryAudio(request);
+    });
+    
     // OTA firmware update endpoint
     server.on("/update", HTTP_POST, [this](AsyncWebServerRequest* request) {
         handleOTAUpload(request);
@@ -764,6 +768,18 @@ void WebServer::handleGetAudioStatus(AsyncWebServerRequest* request) {
     String response;
     serializeJson(doc, response);
     sendJSONResponse(request, 200, response);
+}
+
+void WebServer::handleRetryAudio(AsyncWebServerRequest* request) {
+    Serial.println("WebServer: Manual audio retry requested");
+    
+    if (audioController.retryInitialization()) {
+        Serial.println("WebServer: Audio retry successful");
+        sendJSONResponse(request, 200, R"({"success":true,"message":"Audio hardware initialized successfully"})");
+    } else {
+        Serial.println("WebServer: Audio retry failed");
+        sendJSONResponse(request, 400, R"({"success":false,"error":"Audio hardware initialization failed - check connections"})");
+    }
 }
 
 } // namespace BattleAura

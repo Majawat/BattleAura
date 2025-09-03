@@ -66,6 +66,10 @@ public:
     void printStatus() const;
     uint16_t getAvailableTrackCount() const;
     
+    // Reconnection
+    bool retryInitialization();
+    void enablePeriodicRetries(bool enable = true);
+    
     // Update loop (check status, handle timeouts)
     void update();
     
@@ -81,6 +85,8 @@ private:
     uint32_t playStartTime;
     bool audioAvailable;
     uint32_t lastStatusCheck;
+    uint32_t lastRetryAttempt;
+    bool enableRetries;
     
     // Track database
     std::vector<AudioTrack> tracks;

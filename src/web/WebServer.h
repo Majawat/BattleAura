@@ -63,6 +63,7 @@ private:
     void handleSetVolume(AsyncWebServerRequest* request);
     void handleSetVolumeBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
     void handleGetAudioStatus(AsyncWebServerRequest* request);
+    void handleRetryAudio(AsyncWebServerRequest* request);
     void handleOTAUpload(AsyncWebServerRequest* request);
     void handleOTAUploadFile(AsyncWebServerRequest* request, String filename, size_t index, uint8_t *data, size_t len, bool final);
     

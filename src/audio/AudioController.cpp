@@ -5,7 +5,7 @@ namespace BattleAura {
 AudioController::AudioController(Configuration& config) 
     : config(config), audioSerial(nullptr), currentStatus(AudioStatus::STOPPED),
       currentTrack(0), currentVolume(15), playStartTime(0), audioAvailable(false),
-      lastStatusCheck(0) {
+      lastStatusCheck(0), lastRetryAttempt(0), enableRetries(true) {
 }
 
 bool AudioController::begin() {
@@ -17,46 +17,11 @@ bool AudioController::begin() {
     if (!deviceConfig.audioEnabled) {
         Serial.println("AudioController: Audio disabled in configuration");
         audioAvailable = false;
+        enableRetries = false;  // Don't retry if disabled in config
         return true; // Return success but mark as unavailable
     }
     
-    // Initialize Hardware Serial for DFPlayer
-    audioSerial = &Serial1;  // Use Hardware Serial 1
-    Serial.printf("AudioController: Initializing UART on RX=%d, TX=%d at %d baud\n", 
-                 AUDIO_RX_PIN, AUDIO_TX_PIN, AUDIO_BAUD);
-    audioSerial->begin(AUDIO_BAUD, SERIAL_8N1, AUDIO_RX_PIN, AUDIO_TX_PIN);
-    
-    // Give DFPlayer time to initialize
-    Serial.println("AudioController: Waiting 1000ms for DFPlayer startup...");
-    delay(1000);
-    
-    // Initialize DFPlayer
-    Serial.println("AudioController: Calling dfPlayer.begin()...");
-    if (!dfPlayer.begin(*audioSerial)) {
-        Serial.println("AudioController: dfPlayer.begin() failed");
-        Serial.println("AudioController: Check DFPlayer connections and SD card");
-        audioAvailable = false;
-        return false;
-    }
-    Serial.println("AudioController: dfPlayer.begin() succeeded");
-    
-    // Give DFPlayer additional time to stabilize
-    Serial.println("AudioController: Waiting additional 500ms for DFPlayer stabilization...");
-    delay(500);
-    
-    audioAvailable = true;
-    
-    // Set initial volume from config
-    currentVolume = deviceConfig.audioVolume;
-    if (currentVolume > 30) currentVolume = 30;
-    dfPlayer.volume(currentVolume);
-    
-    // Initialize default tracks
-    initializeDefaultTracks();
-    
-    Serial.printf("AudioController: Ready (Volume: %d, Tracks: %d)\n", 
-                 currentVolume, tracks.size());
-    return true;
+    return retryInitialization();
 }
 
 bool AudioController::play(uint16_t fileNumber, bool loop) {
@@ -291,12 +256,21 @@ uint16_t AudioController::getAvailableTrackCount() const {
 }
 
 void AudioController::update() {
-    if (!audioAvailable) return;
-    
     uint32_t currentTime = millis();
     
-    // Periodically check DFPlayer status
-    if (currentTime - lastStatusCheck >= STATUS_CHECK_INTERVAL) {
+    // If audio is not available but retries are enabled, attempt periodic reconnection
+    if (!audioAvailable && enableRetries) {
+        // Retry every 30 seconds
+        if (currentTime - lastRetryAttempt >= 30000) {
+            Serial.println("AudioController: Attempting periodic retry...");
+            retryInitialization();
+            lastRetryAttempt = currentTime;
+        }
+        return;
+    }
+    
+    // If audio is available, periodically check DFPlayer status
+    if (audioAvailable && currentTime - lastStatusCheck >= STATUS_CHECK_INTERVAL) {
         checkPlayerStatus();
         lastStatusCheck = currentTime;
     }
@@ -392,6 +366,63 @@ void AudioController::initializeDefaultTracks() {
     addTrack(AudioTrack(7, "Explosion", false, 2500));
     addTrack(AudioTrack(8, "Rocket Launcher", false, 3000));
     addTrack(AudioTrack(9, "Kill Confirmed", false, 1000));
+}
+
+bool AudioController::retryInitialization() {
+    const auto& deviceConfig = config.getDeviceConfig();
+    
+    Serial.println("AudioController: Attempting hardware initialization...");
+    
+    // Initialize Hardware Serial for DFPlayer
+    if (!audioSerial) {
+        audioSerial = &Serial1;  // Use Hardware Serial 1
+        Serial.printf("AudioController: Initializing UART on RX=%d, TX=%d at %d baud\n", 
+                     AUDIO_RX_PIN, AUDIO_TX_PIN, AUDIO_BAUD);
+        audioSerial->begin(AUDIO_BAUD, SERIAL_8N1, AUDIO_RX_PIN, AUDIO_TX_PIN);
+    }
+    
+    // Give DFPlayer time to initialize
+    Serial.println("AudioController: Waiting 1000ms for DFPlayer startup...");
+    delay(1000);
+    
+    // Initialize DFPlayer
+    Serial.println("AudioController: Calling dfPlayer.begin()...");
+    if (!dfPlayer.begin(*audioSerial)) {
+        Serial.println("AudioController: dfPlayer.begin() failed - will retry periodically");
+        audioAvailable = false;
+        lastRetryAttempt = millis();
+        return false;
+    }
+    Serial.println("AudioController: dfPlayer.begin() succeeded");
+    
+    // Give DFPlayer additional time to stabilize
+    Serial.println("AudioController: Waiting additional 500ms for DFPlayer stabilization...");
+    delay(500);
+    
+    audioAvailable = true;
+    
+    // Set initial volume from config
+    currentVolume = deviceConfig.audioVolume;
+    if (currentVolume > 30) currentVolume = 30;
+    dfPlayer.volume(currentVolume);
+    
+    // Initialize default tracks if not already done
+    if (tracks.empty()) {
+        initializeDefaultTracks();
+    }
+    
+    Serial.printf("AudioController: Hardware initialized successfully (Volume: %d, Tracks: %d)\n", 
+                 currentVolume, tracks.size());
+    return true;
+}
+
+void AudioController::enablePeriodicRetries(bool enable) {
+    enableRetries = enable;
+    if (enable) {
+        Serial.println("AudioController: Periodic retries enabled");
+    } else {
+        Serial.println("AudioController: Periodic retries disabled");
+    }
 }
 
 } // namespace BattleAura
