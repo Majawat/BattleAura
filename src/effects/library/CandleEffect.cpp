@@ -4,7 +4,7 @@
 namespace BattleAura {
 
 CandleEffect::CandleEffect(LedController& ledController, Configuration& config) 
-    : ledController(ledController), config(config), enabled(false) {
+    : BaseEffect(ledController, config, "CandleFlicker", EffectPriority::AMBIENT) {
 }
 
 void CandleEffect::begin() {
@@ -47,7 +47,7 @@ void CandleEffect::update() {
 
 void CandleEffect::setEnabled(bool enabled) {
     if (this->enabled != enabled) {
-        this->enabled = enabled;
+        BaseEffect::setEnabled(enabled);
         Serial.printf("CandleFlicker: %s\n", enabled ? "Enabled" : "Disabled");
         
         if (enabled) {

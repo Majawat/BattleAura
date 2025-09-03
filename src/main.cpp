@@ -2,7 +2,7 @@
 #include "config/Configuration.h"
 #include "hardware/LedController.h"
 #include "web/WebServer.h"
-#include "effects/library/CandleEffect.h"
+#include "effects/EffectManager.h"
 
 using namespace BattleAura;
 
@@ -10,12 +10,12 @@ using namespace BattleAura;
 Configuration BattleAura::config;
 LedController ledController;
 WebServer webServer(config, ledController);
-CandleEffect candleEffect(ledController, config);
+EffectManager effectManager(ledController, config);
 
 void setup() {
     Serial.begin(115200);
     delay(6000);
-    Serial.println("\n=== BattleAura v2.0.1 - Phase 1 Complete ===");
+    Serial.println("\n=== BattleAura v2.1.0-rgb-support - Phase 2 Effects ===");
     
     // Initialize configuration
     Serial.println("Initializing configuration...");
@@ -45,18 +45,23 @@ void setup() {
         return;
     }
     
-    // Initialize CandleEffect
-    Serial.println("Initializing CandleEffect...");
-    candleEffect.begin();
-    candleEffect.setEnabled(true);
+    // Initialize EffectManager
+    Serial.println("Initializing EffectManager...");
+    if (!effectManager.begin()) {
+        Serial.println("ERROR: EffectManager failed to initialize!");
+        return;
+    }
     
     // Print status
     config.printStatus();
     ledController.printStatus();
     webServer.printStatus();
+    effectManager.printStatus();
     
-    Serial.println("\n=== Phase 1 System Ready ===");
-    Serial.println("- LEDs will flicker like candles automatically");
+    Serial.println("\n=== Phase 2 System Ready ===");
+    Serial.println("- Full effect library with priority system active");
+    Serial.println("- Mixed PWM and RGB LED support via FastLED");
+    Serial.println("- Ambient effects running automatically");
     Serial.println("- Web interface available for remote control");
     Serial.println("- OTA firmware updates available via web interface");
     Serial.printf("- Access at: http://%s\n", webServer.getIPAddress().c_str());
@@ -66,19 +71,19 @@ void loop() {
     // Handle web server and OTA
     webServer.handle();
     
-    // Update CandleEffect
-    candleEffect.update();
+    // Update all effects via EffectManager
+    effectManager.update();
     
     // Apply LED changes to hardware
     ledController.update();
     
-    // Print status every 10 seconds
+    // Print status every 15 seconds
     static uint32_t lastPrint = 0;
-    if (millis() - lastPrint >= 10000) {
+    if (millis() - lastPrint >= 15000) {
         lastPrint = millis();
-        Serial.printf("Status: CandleEffect %s | WiFi: %s | IP: %s\n", 
-                     candleEffect.isEnabled() ? "ON" : "OFF",
+        Serial.printf("Status: Effects Active | WiFi: %s | IP: %s\n",
                      webServer.isWiFiConnected() ? "Connected" : "AP Mode",
                      webServer.getIPAddress().c_str());
+        effectManager.printStatus();
     }
 }

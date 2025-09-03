@@ -1,25 +1,20 @@
 #pragma once
 
 #include <Arduino.h>
-#include "../../hardware/LedController.h"
-#include "../../config/Configuration.h"
+#include "../BaseEffect.h"
 
 namespace BattleAura {
 
-class CandleEffect {
+class CandleEffect : public BaseEffect {
 public:
     CandleEffect(LedController& ledController, Configuration& config);
     
-    // Effect control
-    void begin();
-    void update();
-    void setEnabled(bool enabled);
-    bool isEnabled() const { return enabled; }
+    // BaseEffect implementation
+    void begin() override;
+    void update() override;
+    void setEnabled(bool enabled) override;
     
 private:
-    LedController& ledController;
-    Configuration& config;
-    bool enabled;
     
     // Per-zone flicker state
     struct FlickerState {
