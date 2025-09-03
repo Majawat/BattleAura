@@ -8,12 +8,13 @@
 #include "../config/Configuration.h"
 #include "../hardware/LedController.h"
 #include "../effects/EffectManager.h"
+#include "../audio/AudioController.h"
 
 namespace BattleAura {
 
 class WebServer {
 public:
-    WebServer(Configuration& config, LedController& ledController, EffectManager& effectManager);
+    WebServer(Configuration& config, LedController& ledController, EffectManager& effectManager, AudioController& audioController);
     ~WebServer();
     
     // Initialization
@@ -33,6 +34,7 @@ private:
     Configuration& config;
     LedController& ledController;
     EffectManager& effectManager;
+    AudioController& audioController;
     AsyncWebServer server;
     bool wifiConnected;
     bool apMode;
@@ -55,6 +57,12 @@ private:
     void handleGetEffects(AsyncWebServerRequest* request);
     void handleTriggerEffect(AsyncWebServerRequest* request);
     void handleTriggerEffectBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
+    void handlePlayAudio(AsyncWebServerRequest* request);
+    void handlePlayAudioBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
+    void handleStopAudio(AsyncWebServerRequest* request);
+    void handleSetVolume(AsyncWebServerRequest* request);
+    void handleSetVolumeBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
+    void handleGetAudioStatus(AsyncWebServerRequest* request);
     void handleOTAUpload(AsyncWebServerRequest* request);
     void handleOTAUploadFile(AsyncWebServerRequest* request, String filename, size_t index, uint8_t *data, size_t len, bool final);
     

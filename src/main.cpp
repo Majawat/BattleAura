@@ -3,19 +3,21 @@
 #include "hardware/LedController.h"
 #include "web/WebServer.h"
 #include "effects/EffectManager.h"
+#include "audio/AudioController.h"
 
 using namespace BattleAura;
 
 // Global instances
 Configuration BattleAura::config;
 LedController ledController;
+AudioController audioController(config);
 EffectManager effectManager(ledController, config);
-WebServer webServer(config, ledController, effectManager);
+WebServer webServer(config, ledController, effectManager, audioController);
 
 void setup() {
     Serial.begin(115200);
     delay(6000);
-    Serial.println("\n=== BattleAura v2.1.0-rgb-support - Phase 2 Effects ===");
+    Serial.println("\n=== BattleAura v2.2.0-audio-integration - Complete System ===");
     
     // Initialize configuration
     Serial.println("Initializing configuration...");
@@ -52,6 +54,12 @@ void setup() {
         return;
     }
     
+    // Initialize AudioController
+    Serial.println("Initializing AudioController...");
+    if (!audioController.begin()) {
+        Serial.println("WARNING: AudioController failed to initialize (audio will be disabled)");
+    }
+    
     // Print status
     config.printStatus();
     ledController.printStatus();
@@ -76,6 +84,9 @@ void loop() {
     
     // Apply LED changes to hardware
     ledController.update();
+    
+    // Update audio controller
+    audioController.update();
     
     // Print status every 15 seconds
     static uint32_t lastPrint = 0;

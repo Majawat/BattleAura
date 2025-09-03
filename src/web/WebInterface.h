@@ -228,6 +228,38 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             </div>
         </div>
         
+        <!-- Audio Control Section -->
+        <div class="section">
+            <h2>Audio Controls</h2>
+            <div class="zone-card">
+                <div class="zone-name">Audio Player</div>
+                <div class="zone-info">
+                    Status: <span id="audio-status">Unknown</span> | 
+                    Track: <span id="current-track">None</span> |
+                    Available: <span id="audio-available">Checking...</span>
+                </div>
+                <div style="margin-top: 15px;">
+                    <div class="form-row">
+                        <label>Track Number (1-9):</label>
+                        <input type="number" id="track-number" min="1" max="9" value="1">
+                        <input type="checkbox" id="loop-audio" style="margin-left: 10px;">
+                        <label for="loop-audio" style="margin-left: 5px;">Loop</label>
+                    </div>
+                    <div class="form-row">
+                        <label>Volume (0-30):</label>
+                        <input type="range" id="audio-volume" min="0" max="30" value="15">
+                        <span id="volume-value">15</span>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <button onclick="playAudio()" class="btn btn-success" style="margin-right: 10px;">Play</button>
+                        <button onclick="stopAudio()" class="btn btn-danger" style="margin-right: 10px;">Stop</button>
+                        <button onclick="setVolume()" class="btn" style="margin-right: 10px;">Set Volume</button>
+                        <button onclick="refreshAudioStatus()" class="btn">Refresh Status</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <div class="zone-card">
             <div class="zone-name">Firmware Update</div>
             <div class="zone-info">Upload new firmware via OTA</div>
@@ -597,6 +629,123 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 updateStatus('error', 'Failed to trigger effect: ' + error.message);
             }
         }
+        
+        // Audio control functions
+        async function playAudio() {
+            const trackNumber = parseInt(document.getElementById('track-number').value);
+            const loop = document.getElementById('loop-audio').checked;
+            
+            try {
+                updateStatus('loading', `Playing track ${trackNumber}...`);
+                
+                const response = await fetch('/api/audio/play', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ trackNumber, loop })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('success', result.message);
+                    setTimeout(() => refreshAudioStatus(), 500);
+                } else {
+                    updateStatus('error', result.error || 'Failed to play audio');
+                }
+                
+            } catch (error) {
+                console.error('Error playing audio:', error);
+                updateStatus('error', 'Failed to play audio: ' + error.message);
+            }
+        }
+        
+        async function stopAudio() {
+            try {
+                updateStatus('loading', 'Stopping audio...');
+                
+                const response = await fetch('/api/audio/stop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('success', result.message);
+                    setTimeout(() => refreshAudioStatus(), 500);
+                } else {
+                    updateStatus('error', result.error || 'Failed to stop audio');
+                }
+                
+            } catch (error) {
+                console.error('Error stopping audio:', error);
+                updateStatus('error', 'Failed to stop audio: ' + error.message);
+            }
+        }
+        
+        async function setVolume() {
+            const volume = parseInt(document.getElementById('audio-volume').value);
+            
+            try {
+                updateStatus('loading', `Setting volume to ${volume}...`);
+                
+                const response = await fetch('/api/audio/volume', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ volume })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('success', result.message);
+                    setTimeout(() => refreshAudioStatus(), 500);
+                } else {
+                    updateStatus('error', result.error || 'Failed to set volume');
+                }
+                
+            } catch (error) {
+                console.error('Error setting volume:', error);
+                updateStatus('error', 'Failed to set volume: ' + error.message);
+            }
+        }
+        
+        async function refreshAudioStatus() {
+            try {
+                const response = await fetch('/api/audio/status');
+                if (!response.ok) throw new Error('Failed to get audio status');
+                
+                const data = await response.json();
+                
+                document.getElementById('audio-status').textContent = data.status || 'Unknown';
+                document.getElementById('current-track').textContent = 
+                    data.currentTrack > 0 ? data.currentTrack : 'None';
+                document.getElementById('audio-available').textContent = 
+                    data.available ? 'Yes' : 'No';
+                
+                // Update volume slider
+                document.getElementById('audio-volume').value = data.volume || 15;
+                document.getElementById('volume-value').textContent = data.volume || 15;
+                
+            } catch (error) {
+                console.error('Error getting audio status:', error);
+                document.getElementById('audio-status').textContent = 'Error';
+                document.getElementById('audio-available').textContent = 'Error';
+            }
+        }
+        
+        // Update volume display when slider changes
+        document.addEventListener('DOMContentLoaded', function() {
+            const volumeSlider = document.getElementById('audio-volume');
+            if (volumeSlider) {
+                volumeSlider.addEventListener('input', function() {
+                    document.getElementById('volume-value').textContent = this.value;
+                });
+            }
+            
+            // Load initial audio status
+            refreshAudioStatus();
+        });
     </script>
 </body>
 </html>

@@ -4,8 +4,8 @@
 
 namespace BattleAura {
 
-WebServer::WebServer(Configuration& config, LedController& ledController, EffectManager& effectManager) 
-    : config(config), ledController(ledController), effectManager(effectManager), server(80), 
+WebServer::WebServer(Configuration& config, LedController& ledController, EffectManager& effectManager, AudioController& audioController) 
+    : config(config), ledController(ledController), effectManager(effectManager), audioController(audioController), server(80), 
       wifiConnected(false), apMode(false) {
 }
 
@@ -177,6 +177,27 @@ void WebServer::setupRoutes() {
         handleTriggerEffectBody(request, data, len, index, total);
     });
     
+    // Audio control endpoints
+    server.on("/api/audio/play", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        // Response will be sent after body is processed
+    }, NULL, [this](AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+        handlePlayAudioBody(request, data, len, index, total);
+    });
+    
+    server.on("/api/audio/stop", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        handleStopAudio(request);
+    });
+    
+    server.on("/api/audio/volume", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        // Response will be sent after body is processed
+    }, NULL, [this](AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+        handleSetVolumeBody(request, data, len, index, total);
+    });
+    
+    server.on("/api/audio/status", HTTP_GET, [this](AsyncWebServerRequest* request) {
+        handleGetAudioStatus(request);
+    });
+    
     // OTA firmware update endpoint
     server.on("/update", HTTP_POST, [this](AsyncWebServerRequest* request) {
         handleOTAUpload(request);
@@ -196,6 +217,16 @@ void WebServer::setupRoutes() {
     });
     
     server.on("/api/effects/trigger", HTTP_OPTIONS, [this](AsyncWebServerRequest* request) {
+        sendCORSHeaders(request);
+        request->send(200);
+    });
+    
+    server.on("/api/audio/play", HTTP_OPTIONS, [this](AsyncWebServerRequest* request) {
+        sendCORSHeaders(request);
+        request->send(200);
+    });
+    
+    server.on("/api/audio/volume", HTTP_OPTIONS, [this](AsyncWebServerRequest* request) {
         sendCORSHeaders(request);
         request->send(200);
     });
@@ -590,6 +621,137 @@ void WebServer::handleTriggerEffectBody(AsyncWebServerRequest* request, uint8_t 
             sendJSONResponse(request, 404, R"({"success":false,"error":"Effect not found"})");
         }
     }
+}
+
+// Audio handler methods
+void WebServer::handlePlayAudio(AsyncWebServerRequest* request) {
+    // This is handled by the body handler
+    request->send(400, "application/json", R"({"success":false,"error":"Missing request body"})");
+}
+
+void WebServer::handlePlayAudioBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+    // Only process when we have the complete body
+    if (index + len == total) {
+        String body = String((char*)data, len);
+        JsonDocument doc;
+        
+        DeserializationError error = deserializeJson(doc, body);
+        if (error) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid JSON"})");
+            return;
+        }
+        
+        if (!doc["trackNumber"]) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Missing trackNumber"})");
+            return;
+        }
+        
+        uint16_t trackNumber = doc["trackNumber"];
+        bool loop = doc["loop"] | false;
+        
+        if (audioController.play(trackNumber, loop)) {
+            Serial.printf("WebServer: Playing audio track %d (loop: %s)\n", trackNumber, loop ? "yes" : "no");
+            
+            JsonDocument responseDoc;
+            responseDoc["success"] = true;
+            responseDoc["message"] = String("Playing track ") + trackNumber;
+            responseDoc["track"] = trackNumber;
+            responseDoc["loop"] = loop;
+            
+            String response;
+            serializeJson(responseDoc, response);
+            sendJSONResponse(request, 200, response);
+        } else {
+            sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to play audio track"})");
+        }
+    }
+}
+
+void WebServer::handleStopAudio(AsyncWebServerRequest* request) {
+    if (audioController.stop()) {
+        Serial.println("WebServer: Stopped audio playback");
+        sendJSONResponse(request, 200, R"({"success":true,"message":"Audio stopped"})");
+    } else {
+        sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to stop audio"})");
+    }
+}
+
+void WebServer::handleSetVolume(AsyncWebServerRequest* request) {
+    // This is handled by the body handler
+    request->send(400, "application/json", R"({"success":false,"error":"Missing request body"})");
+}
+
+void WebServer::handleSetVolumeBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+    // Only process when we have the complete body
+    if (index + len == total) {
+        String body = String((char*)data, len);
+        JsonDocument doc;
+        
+        DeserializationError error = deserializeJson(doc, body);
+        if (error) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid JSON"})");
+            return;
+        }
+        
+        if (!doc["volume"].is<uint8_t>()) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Missing volume"})");
+            return;
+        }
+        
+        uint8_t volume = doc["volume"];
+        if (volume > 30) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Volume must be 0-30"})");
+            return;
+        }
+        
+        if (audioController.setVolume(volume)) {
+            Serial.printf("WebServer: Set audio volume to %d\n", volume);
+            
+            JsonDocument responseDoc;
+            responseDoc["success"] = true;
+            responseDoc["message"] = String("Volume set to ") + volume;
+            responseDoc["volume"] = volume;
+            
+            String response;
+            serializeJson(responseDoc, response);
+            sendJSONResponse(request, 200, response);
+        } else {
+            sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to set volume"})");
+        }
+    }
+}
+
+void WebServer::handleGetAudioStatus(AsyncWebServerRequest* request) {
+    JsonDocument doc;
+    
+    doc["success"] = true;
+    doc["available"] = audioController.isAvailable();
+    doc["playing"] = audioController.isPlaying();
+    doc["currentTrack"] = audioController.getCurrentTrack();
+    doc["volume"] = audioController.getVolume();
+    
+    // Status string for UI
+    switch (audioController.getStatus()) {
+        case AudioStatus::STOPPED:
+            doc["status"] = "stopped";
+            break;
+        case AudioStatus::PLAYING:
+            doc["status"] = "playing";
+            break;
+        case AudioStatus::PAUSED:
+            doc["status"] = "paused";
+            break;
+        case AudioStatus::ERROR:
+            doc["status"] = "error";
+            break;
+        default:
+            doc["status"] = "unknown";
+            break;
+    }
+    
+    String response;
+    serializeJson(doc, response);
+    sendJSONResponse(request, 200, response);
 }
 
 } // namespace BattleAura
