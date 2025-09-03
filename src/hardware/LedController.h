@@ -24,6 +24,10 @@ public:
     uint8_t getZoneBrightness(uint8_t zoneId) const;
     CRGB getZoneColor(uint8_t zoneId) const;
     
+    // User brightness control (separate from effect brightness)
+    void setUserBrightness(uint8_t zoneId, uint8_t brightness);
+    uint8_t getUserBrightness(uint8_t zoneId) const;
+    
     // Update hardware (apply changes)
     void update();
     
@@ -36,6 +40,7 @@ private:
         Zone zone;
         uint8_t currentBrightness;
         uint8_t targetBrightness;
+        uint8_t userBrightness;      // User-controlled brightness level (0-255)
         CRGB currentColor;
         CRGB targetColor;
         bool needsUpdate;
@@ -43,8 +48,9 @@ private:
         CRGB* leds;                  // FastLED array for WS2812B zones
         
         ZoneState(const Zone& z) : zone(z), currentBrightness(0), targetBrightness(0), 
-                                   currentColor(CRGB::Black), targetColor(CRGB::White),
-                                   needsUpdate(false), pwmChannel(255), leds(nullptr) {}
+                                   userBrightness(z.brightness), currentColor(CRGB::Black), 
+                                   targetColor(CRGB::White), needsUpdate(false), 
+                                   pwmChannel(255), leds(nullptr) {}
         
         ~ZoneState() {
             if (leds) {

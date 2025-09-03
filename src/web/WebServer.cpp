@@ -253,7 +253,7 @@ void WebServer::handleGetZones(AsyncWebServerRequest* request) {
         zoneObj["type"] = (zone->type == ZoneType::PWM) ? "PWM" : "WS2812B";
         zoneObj["groupName"] = zone->groupName;
         zoneObj["brightness"] = zone->brightness;
-        zoneObj["currentBrightness"] = ledController.getZoneBrightness(zone->id);
+        zoneObj["currentBrightness"] = ledController.getUserBrightness(zone->id);
     }
     
     String response;
@@ -287,7 +287,7 @@ void WebServer::handleSetBrightness(AsyncWebServerRequest* request) {
             return;
         }
         
-        ledController.setZoneBrightness(zoneId, brightness);
+        ledController.setUserBrightness(zoneId, brightness);
         ledController.update();
         
         sendJSONResponse(request, 200, R"({"success":true})");
