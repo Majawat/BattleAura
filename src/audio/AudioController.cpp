@@ -22,25 +22,32 @@ bool AudioController::begin() {
     
     // Initialize Hardware Serial for DFPlayer
     audioSerial = &Serial1;  // Use Hardware Serial 1
+    Serial.printf("AudioController: Initializing UART on RX=%d, TX=%d at %d baud\n", 
+                 AUDIO_RX_PIN, AUDIO_TX_PIN, AUDIO_BAUD);
     audioSerial->begin(AUDIO_BAUD, SERIAL_8N1, AUDIO_RX_PIN, AUDIO_TX_PIN);
     
     // Give DFPlayer time to initialize
+    Serial.println("AudioController: Waiting 1000ms for DFPlayer startup...");
     delay(1000);
     
     // Initialize DFPlayer
+    Serial.println("AudioController: Calling dfPlayer.begin()...");
     if (!dfPlayer.begin(*audioSerial)) {
-        Serial.println("AudioController: Failed to initialize DFPlayer Mini");
-        Serial.println("AudioController: Check connections and SD card");
+        Serial.println("AudioController: dfPlayer.begin() failed");
+        Serial.println("AudioController: Check DFPlayer connections and SD card");
         audioAvailable = false;
         return false;
     }
+    Serial.println("AudioController: dfPlayer.begin() succeeded");
     
     // Wait for DFPlayer to be ready
+    Serial.println("AudioController: Waiting for DFPlayer to respond...");
     if (!waitForReady(3000)) {
-        Serial.println("AudioController: DFPlayer not responding");
+        Serial.println("AudioController: DFPlayer not responding within 3000ms");
         audioAvailable = false;
         return false;
     }
+    Serial.println("AudioController: DFPlayer responded successfully");
     
     audioAvailable = true;
     
