@@ -14,16 +14,6 @@ enum class AudioStatus {
     ERROR
 };
 
-struct AudioTrack {
-    uint16_t fileNumber;
-    String description;
-    bool isLoop;            // Ambient track that loops
-    uint32_t duration;      // Duration in ms (0 = unknown/loop)
-    
-    AudioTrack() : fileNumber(0), isLoop(false), duration(0) {}
-    AudioTrack(uint16_t num, const String& desc, bool loop = false, uint32_t dur = 0) 
-        : fileNumber(num), description(desc), isLoop(loop), duration(dur) {}
-};
 
 class AudioController {
 public:
@@ -54,7 +44,7 @@ public:
     bool isPlaying() const;
     bool isAvailable() const;
     
-    // Track management
+    // Track management (delegated to Configuration)
     bool addTrack(const AudioTrack& track);
     bool removeTrack(uint16_t fileNumber);
     AudioTrack* getTrack(uint16_t fileNumber);
@@ -88,18 +78,12 @@ private:
     uint32_t lastRetryAttempt;
     bool enableRetries;
     
-    // Track database
-    std::vector<AudioTrack> tracks;
-    
     // Hardware management
     bool initializeHardware();
     void checkPlayerStatus();
     bool waitForReady(uint32_t timeout = 1000);
-    void initializeDefaultTracks();
     
     // Utilities
-    AudioTrack* findTrack(uint16_t fileNumber);
-    AudioTrack* findTrack(const String& trackName);
     void updateCurrentStatus();
     
     // Constants

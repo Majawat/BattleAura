@@ -51,7 +51,7 @@ bool AudioController::play(uint16_t fileNumber, bool loop) {
 }
 
 bool AudioController::playTrack(const String& trackName) {
-    AudioTrack* track = findTrack(trackName);
+    const AudioTrack* track = config.getAudioTrack(trackName);
     if (!track) {
         Serial.printf("AudioController: Track '%s' not found\n", trackName.c_str());
         return false;
@@ -159,52 +159,23 @@ bool AudioController::isAvailable() const {
 }
 
 bool AudioController::addTrack(const AudioTrack& track) {
-    // Check if track already exists
-    AudioTrack* existing = findTrack(track.fileNumber);
-    if (existing) {
-        // Update existing track
-        *existing = track;
-        Serial.printf("AudioController: Updated track %d: '%s'\n", 
-                     track.fileNumber, track.description.c_str());
-    } else {
-        // Add new track
-        tracks.push_back(track);
-        Serial.printf("AudioController: Added track %d: '%s'\n", 
-                     track.fileNumber, track.description.c_str());
-    }
-    
-    return true;
+    return config.addAudioTrack(track);
 }
 
 bool AudioController::removeTrack(uint16_t fileNumber) {
-    auto it = std::remove_if(tracks.begin(), tracks.end(),
-        [fileNumber](const AudioTrack& track) { 
-            return track.fileNumber == fileNumber; 
-        });
-    
-    if (it != tracks.end()) {
-        tracks.erase(it, tracks.end());
-        Serial.printf("AudioController: Removed track %d\n", fileNumber);
-        return true;
-    }
-    
-    return false;
+    return config.removeAudioTrack(fileNumber);
 }
 
 AudioTrack* AudioController::getTrack(uint16_t fileNumber) {
-    return findTrack(fileNumber);
+    return config.getAudioTrack(fileNumber);
 }
 
 AudioTrack* AudioController::getTrack(const String& trackName) {
-    return findTrack(trackName);
+    return config.getAudioTrack(trackName);
 }
 
 std::vector<AudioTrack*> AudioController::getAllTracks() {
-    std::vector<AudioTrack*> result;
-    for (AudioTrack& track : tracks) {
-        result.push_back(&track);
-    }
-    return result;
+    return config.getAllAudioTracks();
 }
 
 bool AudioController::testTrack(uint16_t fileNumber) {
@@ -240,19 +211,21 @@ void AudioController::printStatus() const {
     
     Serial.printf("Current Track: %d\n", currentTrack);
     Serial.printf("Volume: %d/30\n", currentVolume);
+    
+    auto tracks = config.getAllAudioTracks();
     Serial.printf("Available Tracks: %d\n", tracks.size());
     
     if (!tracks.empty()) {
         Serial.println("Track List:");
-        for (const AudioTrack& track : tracks) {
-            Serial.printf("  %d: %s %s\n", track.fileNumber, track.description.c_str(),
-                         track.isLoop ? "(loop)" : "");
+        for (const AudioTrack* track : tracks) {
+            Serial.printf("  %d: %s %s\n", track->fileNumber, track->description.c_str(),
+                         track->isLoop ? "(loop)" : "");
         }
     }
 }
 
 uint16_t AudioController::getAvailableTrackCount() const {
-    return tracks.size();
+    return config.getAllAudioTracks().size();
 }
 
 void AudioController::update() {
@@ -333,40 +306,11 @@ bool AudioController::waitForReady(uint32_t timeout) {
     return false;
 }
 
-AudioTrack* AudioController::findTrack(uint16_t fileNumber) {
-    for (AudioTrack& track : tracks) {
-        if (track.fileNumber == fileNumber) {
-            return &track;
-        }
-    }
-    return nullptr;
-}
-
-AudioTrack* AudioController::findTrack(const String& trackName) {
-    for (AudioTrack& track : tracks) {
-        if (track.description == trackName) {
-            return &track;
-        }
-    }
-    return nullptr;
-}
 
 void AudioController::updateCurrentStatus() {
     checkPlayerStatus();
 }
 
-void AudioController::initializeDefaultTracks() {
-    // Add default tracks based on project documentation
-    addTrack(AudioTrack(1, "Tank Idle", true, 0));
-    addTrack(AudioTrack(2, "Tank Idle 2", true, 0));
-    addTrack(AudioTrack(3, "Machine Gun", false, 2000));
-    addTrack(AudioTrack(4, "Flamethrower", false, 3000));
-    addTrack(AudioTrack(5, "Taking Hits", false, 1500));
-    addTrack(AudioTrack(6, "Engine Revving", false, 4000));
-    addTrack(AudioTrack(7, "Explosion", false, 2500));
-    addTrack(AudioTrack(8, "Rocket Launcher", false, 3000));
-    addTrack(AudioTrack(9, "Kill Confirmed", false, 1000));
-}
 
 bool AudioController::retryInitialization() {
     const auto& deviceConfig = config.getDeviceConfig();
@@ -406,11 +350,7 @@ bool AudioController::retryInitialization() {
     if (currentVolume > 30) currentVolume = 30;
     dfPlayer.volume(currentVolume);
     
-    // Initialize default tracks if not already done
-    if (tracks.empty()) {
-        initializeDefaultTracks();
-    }
-    
+    auto tracks = config.getAllAudioTracks();
     Serial.printf("AudioController: Hardware initialized successfully (Volume: %d, Tracks: %d)\n", 
                  currentVolume, tracks.size());
     return true;

@@ -230,6 +230,64 @@ const std::vector<EffectConfig*> Configuration::getAllEffectConfigs() const {
     return result;
 }
 
+// Audio track management
+bool Configuration::addAudioTrack(const AudioTrack& track) {
+    audioTracks[track.fileNumber] = track;
+    return true;
+}
+
+bool Configuration::removeAudioTrack(uint16_t fileNumber) {
+    return audioTracks.erase(fileNumber) > 0;
+}
+
+AudioTrack* Configuration::getAudioTrack(uint16_t fileNumber) {
+    auto it = audioTracks.find(fileNumber);
+    return (it != audioTracks.end()) ? &it->second : nullptr;
+}
+
+const AudioTrack* Configuration::getAudioTrack(uint16_t fileNumber) const {
+    auto it = audioTracks.find(fileNumber);
+    return (it != audioTracks.end()) ? &it->second : nullptr;
+}
+
+AudioTrack* Configuration::getAudioTrack(const String& description) {
+    for (auto& pair : audioTracks) {
+        if (pair.second.description == description) {
+            return &pair.second;
+        }
+    }
+    return nullptr;
+}
+
+const AudioTrack* Configuration::getAudioTrack(const String& description) const {
+    for (const auto& pair : audioTracks) {
+        if (pair.second.description == description) {
+            return &pair.second;
+        }
+    }
+    return nullptr;
+}
+
+std::vector<AudioTrack*> Configuration::getAllAudioTracks() {
+    std::vector<AudioTrack*> result;
+    for (auto& pair : audioTracks) {
+        result.push_back(&pair.second);
+    }
+    return result;
+}
+
+const std::vector<AudioTrack*> Configuration::getAllAudioTracks() const {
+    std::vector<AudioTrack*> result;
+    for (const auto& pair : audioTracks) {
+        result.push_back(const_cast<AudioTrack*>(&pair.second));
+    }
+    return result;
+}
+
+void Configuration::clearAllAudioTracks() {
+    audioTracks.clear();
+}
+
 // Validation
 bool Configuration::isValidGPIO(uint8_t gpio) const {
     // Valid GPIO pins for ESP32-C3: 2-10, 20-21 (if audio disabled)
@@ -378,9 +436,27 @@ bool Configuration::loadFromLittleFS() {
         }
     }
     
+    // Load audio tracks
+    if (doc["audioTracks"]) {
+        audioTracks.clear();
+        for (JsonPair trackPair : doc["audioTracks"].as<JsonObject>()) {
+            uint16_t fileNumber = atoi(trackPair.key().c_str());
+            JsonObject trackObj = trackPair.value();
+            
+            AudioTrack track;
+            track.fileNumber = fileNumber;
+            track.description = trackObj["description"] | "";
+            track.isLoop = trackObj["isLoop"] | false;
+            track.duration = trackObj["duration"] | 0;
+            
+            audioTracks[fileNumber] = track;
+        }
+    }
+    
     updateGroupMembership();
     
-    Serial.printf("Configuration: Loaded %d zones from LittleFS\n", zones.size());
+    Serial.printf("Configuration: Loaded %d zones, %d audio tracks from LittleFS\n", 
+                 zones.size(), audioTracks.size());
     return true;
 }
 
@@ -415,6 +491,17 @@ bool Configuration::saveToLittleFS() {
         zoneObj["enabled"] = zone.enabled;
     }
     
+    // Save audio tracks
+    JsonObject audioTracksObj = doc["audioTracks"].to<JsonObject>();
+    for (const auto& pair : audioTracks) {
+        const AudioTrack& track = pair.second;
+        JsonObject trackObj = audioTracksObj[String(track.fileNumber)].to<JsonObject>();
+        
+        trackObj["description"] = track.description;
+        trackObj["isLoop"] = track.isLoop;
+        trackObj["duration"] = track.duration;
+    }
+    
     // Open file for writing
     File file = LittleFS.open("/config.json", "w");
     if (!file) {
@@ -442,6 +529,7 @@ void Configuration::createDefaultConfiguration() {
     zones.clear();
     groups.clear();
     effectConfigs.clear();
+    audioTracks.clear();
     
     // Set device defaults
     deviceConfig.deviceName = "BattleAura";
@@ -451,11 +539,22 @@ void Configuration::createDefaultConfiguration() {
     deviceConfig.otaPassword = "battlesync";
     deviceConfig.apPassword = "battlesync";
     
+    // Initialize default audio tracks (moved from AudioController hardcoded values)
+    addAudioTrack(AudioTrack(1, "Tank Idle", true, 0));
+    addAudioTrack(AudioTrack(2, "Tank Idle 2", true, 0));
+    addAudioTrack(AudioTrack(3, "Machine Gun", false, 2000));
+    addAudioTrack(AudioTrack(4, "Flamethrower", false, 3000));
+    addAudioTrack(AudioTrack(5, "Taking Hits", false, 1500));
+    addAudioTrack(AudioTrack(6, "Engine Revving", false, 4000));
+    addAudioTrack(AudioTrack(7, "Explosion", false, 2500));
+    addAudioTrack(AudioTrack(8, "Rocket Launcher", false, 3000));
+    addAudioTrack(AudioTrack(9, "Kill Confirmed", false, 1000));
+    
     // Start with no zones - user will configure via web interface
     // This allows testing with any hardware setup
     // Effects will be enabled automatically when zones are added
     
-    Serial.println("Configuration: Default configuration created");
+    Serial.printf("Configuration: Default configuration created with %d audio tracks\n", audioTracks.size());
 }
 
 } // namespace BattleAura

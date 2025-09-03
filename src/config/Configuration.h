@@ -7,6 +7,18 @@
 
 namespace BattleAura {
 
+// Audio track configuration structure
+struct AudioTrack {
+    uint16_t fileNumber;
+    String description;
+    bool isLoop;            // Ambient track that loops
+    uint32_t duration;      // Duration in ms (0 = unknown/loop)
+    
+    AudioTrack() : fileNumber(0), isLoop(false), duration(0) {}
+    AudioTrack(uint16_t num, const String& desc, bool loop = false, uint32_t dur = 0) 
+        : fileNumber(num), description(desc), isLoop(loop), duration(dur) {}
+};
+
 struct DeviceConfig {
     String deviceName;
     String wifiSSID;
@@ -61,6 +73,17 @@ public:
     std::vector<EffectConfig*> getAllEffectConfigs();
     const std::vector<EffectConfig*> getAllEffectConfigs() const;
     
+    // Audio track management
+    bool addAudioTrack(const AudioTrack& track);
+    bool removeAudioTrack(uint16_t fileNumber);
+    AudioTrack* getAudioTrack(uint16_t fileNumber);
+    const AudioTrack* getAudioTrack(uint16_t fileNumber) const;
+    AudioTrack* getAudioTrack(const String& description);
+    const AudioTrack* getAudioTrack(const String& description) const;
+    std::vector<AudioTrack*> getAllAudioTracks();
+    const std::vector<AudioTrack*> getAllAudioTracks() const;
+    void clearAllAudioTracks();
+    
     // Device configuration
     DeviceConfig& getDeviceConfig() { return deviceConfig; }
     const DeviceConfig& getDeviceConfig() const { return deviceConfig; }
@@ -78,6 +101,7 @@ private:
     std::map<uint8_t, Zone> zones;              // zoneId -> Zone
     std::map<String, Group> groups;             // groupName -> Group  
     std::map<String, EffectConfig> effectConfigs; // effectName -> EffectConfig
+    std::map<uint16_t, AudioTrack> audioTracks; // fileNumber -> AudioTrack
     DeviceConfig deviceConfig;
     
     bool loadFromLittleFS();
@@ -86,10 +110,12 @@ private:
     JsonDocument serializeZones() const;
     JsonDocument serializeGroups() const;
     JsonDocument serializeEffectConfigs() const;
+    JsonDocument serializeAudioTracks() const;
     JsonDocument serializeDeviceConfig() const;
     bool deserializeZones(const JsonDocument& doc);
     bool deserializeGroups(const JsonDocument& doc);
     bool deserializeEffectConfigs(const JsonDocument& doc);
+    bool deserializeAudioTracks(const JsonDocument& doc);
     bool deserializeDeviceConfig(const JsonDocument& doc);
 };
 
