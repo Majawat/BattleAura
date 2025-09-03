@@ -52,6 +52,36 @@ private:
                                    targetColor(CRGB::White), needsUpdate(false), 
                                    pwmChannel(255), leds(nullptr) {}
         
+        // Copy constructor
+        ZoneState(const ZoneState& other) : zone(other.zone), 
+                                          currentBrightness(other.currentBrightness),
+                                          targetBrightness(other.targetBrightness),
+                                          userBrightness(other.userBrightness),
+                                          currentColor(other.currentColor),
+                                          targetColor(other.targetColor),
+                                          needsUpdate(other.needsUpdate),
+                                          pwmChannel(other.pwmChannel),
+                                          leds(nullptr) {
+            // Don't copy leds pointer - each instance manages its own memory
+        }
+        
+        // Copy assignment
+        ZoneState& operator=(const ZoneState& other) {
+            if (this != &other) {
+                zone = other.zone;
+                currentBrightness = other.currentBrightness;
+                targetBrightness = other.targetBrightness;
+                userBrightness = other.userBrightness;
+                currentColor = other.currentColor;
+                targetColor = other.targetColor;
+                needsUpdate = other.needsUpdate;
+                pwmChannel = other.pwmChannel;
+                // Don't copy leds pointer - each instance manages its own memory
+                leds = nullptr;
+            }
+            return *this;
+        }
+        
         ~ZoneState() {
             if (leds) {
                 delete[] leds;
