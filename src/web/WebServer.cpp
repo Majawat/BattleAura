@@ -310,6 +310,17 @@ void WebServer::setupRoutes() {
         handleFactoryReset(request);
     });
     
+    // Global brightness settings
+    server.on("/api/global/brightness", HTTP_GET, [this](AsyncWebServerRequest* request) {
+        handleGetGlobalBrightness(request);
+    });
+    
+    server.on("/api/global/brightness", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        // Will be handled by body handler
+    }, NULL, [this](AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+        handleSetGlobalBrightnessBody(request, data, len, index, total);
+    });
+    
     // 404 handler
     server.onNotFound([](AsyncWebServerRequest* request) {
         request->send(404, "text/plain", "Not found");
@@ -1131,10 +1142,26 @@ void WebServer::handleGetEffectConfigs(AsyncWebServerRequest* request) {
         if (effectConfig) {
             JsonObject configObj = configsArray.add<JsonObject>();
             configObj["name"] = effectConfig->name;
-            configObj["type"] = static_cast<int>(effectConfig->type);
             configObj["audioFile"] = effectConfig->audioFile;
+            configObj["duration"] = effectConfig->duration;
+            configObj["enabled"] = effectConfig->enabled;
             
-            JsonArray groupsArray = configObj["groups"].to<JsonArray>();
+            // Convert type enum to string
+            switch (effectConfig->type) {
+                case EffectType::AMBIENT:
+                    configObj["type"] = "AMBIENT";
+                    break;
+                case EffectType::ACTIVE:
+                    configObj["type"] = "ACTIVE";
+                    break;
+                case EffectType::GLOBAL:
+                    configObj["type"] = "GLOBAL";
+                    break;
+                default:
+                    configObj["type"] = "AMBIENT";
+            }
+            
+            JsonArray groupsArray = configObj["targetGroups"].to<JsonArray>();
             for (const String& group : effectConfig->targetGroups) {
                 groupsArray.add(group);
             }
@@ -1152,8 +1179,11 @@ void WebServer::handleAddEffectConfigBody(AsyncWebServerRequest* request, uint8_
 
 void WebServer::processAddEffectConfig(AsyncWebServerRequest* request, JsonDocument& doc) {
     String effectName = doc["name"] | "";
-    JsonArray groupsArray = doc["groups"];
+    String effectType = doc["type"] | "AMBIENT";
+    JsonArray groupsArray = doc["targetGroups"];
     uint16_t audioFile = doc["audioFile"] | 0;
+    uint32_t duration = doc["duration"] | 0;
+    bool enabled = doc["enabled"] | true;
     
     if (effectName.isEmpty()) {
         sendJSONResponse(request, 400, R"({"success":false,"error":"Effect name is required"})");
@@ -1162,10 +1192,22 @@ void WebServer::processAddEffectConfig(AsyncWebServerRequest* request, JsonDocum
     
     EffectConfig effectConfig;
     effectConfig.name = effectName;
-    effectConfig.type = EffectType::ACTIVE; // Default type
     effectConfig.audioFile = audioFile;
+    effectConfig.duration = duration;
+    effectConfig.enabled = enabled;
     
-    // Add groups
+    // Set effect type
+    if (effectType == "AMBIENT") {
+        effectConfig.type = EffectType::AMBIENT;
+    } else if (effectType == "ACTIVE") {
+        effectConfig.type = EffectType::ACTIVE;
+    } else if (effectType == "GLOBAL") {
+        effectConfig.type = EffectType::GLOBAL;
+    } else {
+        effectConfig.type = EffectType::AMBIENT; // Default
+    }
+    
+    // Add target groups
     for (JsonVariant group : groupsArray) {
         String groupName = group.as<String>();
         if (!groupName.isEmpty()) {
@@ -1175,11 +1217,12 @@ void WebServer::processAddEffectConfig(AsyncWebServerRequest* request, JsonDocum
     
     if (config.addEffectConfig(effectConfig)) {
         if (config.save()) {
-            Serial.printf("WebServer: Added effect config '%s'\n", effectName.c_str());
+            Serial.printf("WebServer: Added effect config '%s' with %d groups\n", 
+                         effectName.c_str(), effectConfig.targetGroups.size());
             
             JsonDocument responseDoc;
             responseDoc["success"] = true;
-            responseDoc["message"] = "Effect configuration added successfully";
+            responseDoc["message"] = "Effect configuration saved successfully";
             
             String response;
             serializeJson(responseDoc, response);
@@ -1297,6 +1340,44 @@ void WebServer::handleStopAllEffects(AsyncWebServerRequest* request) {
     JsonDocument responseDoc;
     responseDoc["success"] = true;
     responseDoc["message"] = "All effects stopped";
+    
+    String response;
+    serializeJson(responseDoc, response);
+    sendJSONResponse(request, 200, response);
+}
+
+void WebServer::handleGetGlobalBrightness(AsyncWebServerRequest* request) {
+    JsonDocument responseDoc;
+    responseDoc["brightness"] = config.getDeviceConfig().audioVolume > 0 ? 255 : 128; // Placeholder logic
+    
+    String response;
+    serializeJson(responseDoc, response);
+    sendJSONResponse(request, 200, response);
+}
+
+void WebServer::handleSetGlobalBrightnessBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+    parseJSONBody(request, data, len, index, total, &WebServer::processSetGlobalBrightness);
+}
+
+void WebServer::processSetGlobalBrightness(AsyncWebServerRequest* request, JsonDocument& doc) {
+    uint8_t brightness = doc["brightness"] | 255;
+    
+    Serial.printf("WebServer: Setting global brightness to %d\n", brightness);
+    
+    // Apply global brightness to all zones
+    auto zones = config.getAllZones();
+    for (Zone* zone : zones) {
+        if (zone) {
+            // Calculate proportional brightness based on zone's max brightness
+            uint8_t zoneBrightness = (brightness * zone->brightness) / 255;
+            ledController.setZoneBrightness(zone->id, zoneBrightness);
+        }
+    }
+    
+    JsonDocument responseDoc;
+    responseDoc["success"] = true;
+    responseDoc["message"] = "Global brightness applied to all zones";
+    responseDoc["brightness"] = brightness;
     
     String response;
     serializeJson(responseDoc, response);

@@ -77,6 +77,8 @@ private:
     void handleDeviceConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
     void handleSystemRestart(AsyncWebServerRequest* request);
     void handleFactoryReset(AsyncWebServerRequest* request);
+    void handleGetGlobalBrightness(AsyncWebServerRequest* request);
+    void handleSetGlobalBrightnessBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
     void handleWiFiConfig(AsyncWebServerRequest* request);
     void handleWiFiConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
     void handleClearWiFi(AsyncWebServerRequest* request);
@@ -94,6 +96,7 @@ private:
     void processAddEffectConfig(AsyncWebServerRequest* request, JsonDocument& doc);
     void processDeleteEffectConfig(AsyncWebServerRequest* request, JsonDocument& doc);
     void processDeviceConfig(AsyncWebServerRequest* request, JsonDocument& doc);
+    void processSetGlobalBrightness(AsyncWebServerRequest* request, JsonDocument& doc);
     
     // JSON business logic handlers
     void processWiFiConfig(AsyncWebServerRequest* request, JsonDocument& doc);

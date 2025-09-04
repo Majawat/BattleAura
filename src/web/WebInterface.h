@@ -93,6 +93,91 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             color: #666; 
             font-size: 12px; 
         }
+        
+        .zone-card {
+            background: #2d2d2d;
+            border: 1px solid #555;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .zone-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 5px;
+        }
+        
+        .zone-info {
+            color: #aaa;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        
+        .effect-controls {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .effect-column {
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        .effect-column label {
+            display: block;
+            font-weight: bold;
+            color: #ccc;
+            margin-bottom: 8px;
+            text-align: center;
+            border-bottom: 1px solid #555;
+            padding-bottom: 5px;
+        }
+        
+        .effect-button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px 12px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .effect-button:hover {
+            background: #45a049;
+        }
+        
+        .effect-button.ambient {
+            background: #2196F3;
+        }
+        
+        .effect-button.ambient:hover {
+            background: #1976D2;
+        }
+        
+        .effect-button.global {
+            background: #f44336;
+        }
+        
+        .effect-button.global:hover {
+            background: #d32f2f;
+        }
+        
+        .manual-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .manual-controls .btn {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
         .nav-tabs {
             display: flex;
             margin-bottom: 20px;
@@ -125,6 +210,8 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             align-items: center;
             margin: 10px 0;
             gap: 10px;
+            max-width: 100%;
+            overflow: hidden;
         }
         .form-row label {
             min-width: 100px;
@@ -136,6 +223,8 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             background: #333;
             color: white;
             border-radius: 3px;
+            min-width: 0;
+            max-width: 200px;
         }
         .btn {
             padding: 10px 20px;
@@ -218,12 +307,30 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             Loading system...
         </div>
         
-        <!-- Effect Control Section - Primary Use Case -->
+        <!-- Zone Effect Cards - Primary Use Case -->
         <div class="section">
-            <h2>Effect Controls</h2>
-            <p>Quick access to trigger effects on your configured zones</p>
-            <div id="effects-container">
-                <!-- Effects will be populated here -->
+            <h2>Zone Controls</h2>
+            <p>Quick access to trigger effects and control zones</p>
+            <div id="zone-cards-container">
+                <!-- Zone cards will be populated here -->
+            </div>
+            
+            <!-- Global Effects -->
+            <div id="global-effects-card" style="display: none;">
+                <div class="zone-card" style="border: 2px solid #f44336;">
+                    <div class="zone-name">Global Effects</div>
+                    <div class="zone-info">Effects that apply to all zones</div>
+                    <div class="effect-controls">
+                        <div class="effect-column">
+                            <label>Ambient</label>
+                            <div id="global-ambient-effects"></div>
+                        </div>
+                        <div class="effect-column">
+                            <label>Active</label>
+                            <div id="global-active-effects"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -311,6 +418,11 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                         <label for="newZoneGroup">Group:</label>
                         <input type="text" id="newZoneGroup" placeholder="e.g., Engines, Weapons" value="Default">
                     </div>
+                    <div class="form-row">
+                        <label for="newZoneBrightness">Max Brightness:</label>
+                        <input type="range" id="newZoneBrightness" min="1" max="255" value="255">
+                        <span id="newBrightnessValue">255</span>
+                    </div>
                     <button onclick="addNewZone()" class="btn btn-success">Add Zone</button>
                     <button onclick="clearAllZones()" class="btn btn-danger">Clear All Zones</button>
                 </div>
@@ -335,21 +447,61 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 <div id="audio-tracks-list"></div>
                 
                 <h3 style="margin-top: 30px;">Effect Configuration</h3>
-                <p>Configure which effects apply to which groups and their audio associations.</p>
-                <div class="form-row">
-                    <label>Effect:</label>
-                    <select id="effectName">
-                        <!-- Will be populated from available effects -->
-                    </select>
-                    <label>Group:</label>
-                    <input type="text" id="effectGroup" placeholder="e.g., Weapons, Engines">
-                    <label>Audio Track:</label>
-                    <select id="effectAudio">
-                        <option value="0">None</option>
-                        <!-- Will be populated from audio tracks -->
-                    </select>
-                    <button onclick="addEffectConfig()" class="btn">Configure Effect</button>
+                <p>Configure effects by selecting the effect, then choosing which groups it applies to and optional audio.</p>
+                
+                <div style="background: #2d2d2d; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                    <div class="form-row">
+                        <label>Effect:</label>
+                        <select id="effectName" style="flex: 2;">
+                            <option value="">Select Effect...</option>
+                            <!-- Will be populated from available effects -->
+                        </select>
+                    </div>
+                    
+                    <div class="form-row">
+                        <label>Groups:</label>
+                        <select id="effectGroups" multiple style="flex: 2; height: 80px;">
+                            <!-- Will be populated from configured zones -->
+                        </select>
+                        <small style="color: #666; margin-left: 10px;">Hold Ctrl to select multiple</small>
+                    </div>
+                    
+                    <div class="form-row">
+                        <label>Type:</label>
+                        <select id="effectType" style="flex: 1;">
+                            <option value="AMBIENT">Ambient (always on)</option>
+                            <option value="ACTIVE">Active (triggered)</option>
+                            <option value="GLOBAL">Global (affects all)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-row">
+                        <label>Duration:</label>
+                        <select id="effectDuration" style="flex: 1;">
+                            <option value="0">Ambient (loop continuously)</option>
+                            <option value="audio">Audio file length</option>
+                            <option value="30000">30 seconds</option>
+                            <option value="60000">1 minute</option>
+                            <option value="custom">Custom...</option>
+                        </select>
+                        <input type="number" id="customDuration" placeholder="milliseconds" style="display: none; width: 120px;">
+                    </div>
+                    
+                    <div class="form-row">
+                        <label>Audio Track:</label>
+                        <select id="effectAudio" style="flex: 2;">
+                            <option value="0">None</option>
+                            <!-- Will be populated from audio tracks -->
+                        </select>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <button onclick="saveEffectConfig()" class="btn btn-success">Save Effect Configuration</button>
+                        <button onclick="clearEffectForm()" class="btn">Clear Form</button>
+                    </div>
                 </div>
+                
+                <h4>Configured Effects</h4>
                 <div id="effect-configs-list"></div>
             </div>
             
@@ -380,6 +532,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                     <input type="text" id="wifiNetwork" placeholder="e.g., MyWiFi" maxlength="32">
                 </div>
                 <form>
+                    <input type="text" id="wifiUsername" autocomplete="username" style="display: none;">
                     <div class="form-row">
                         <label for="wifiPassword">Password:</label>
                         <input type="password" id="wifiPassword" placeholder="WiFi Password" maxlength="64" autocomplete="new-password">
@@ -448,6 +601,9 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 loadAudioTracks();
                 loadEffectConfigs();
                 loadAvailableEffects();
+                loadAvailableGroups();
+                setupEffectForm();
+                loadGlobalBrightness();
             }, 1000);
         });
         
@@ -489,6 +645,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             const gpio = parseInt(document.getElementById('newZoneGpio')?.value);
             const type = document.getElementById('newZoneType')?.value;
             const group = document.getElementById('newZoneGroup')?.value.trim();
+            const brightness = parseInt(document.getElementById('newZoneBrightness')?.value) || 255;
             
             if (!name || !group || !gpio) {
                 updateStatus('error', 'Please fill all zone fields');
@@ -504,7 +661,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                         gpio: gpio,
                         type: type,
                         groupName: group,
-                        brightness: 255,
+                        brightness: brightness,
                         ledCount: type === 'WS2812B' ? parseInt(document.getElementById('newLedCount')?.value) || 5 : 1,
                         enabled: true
                     })
@@ -513,10 +670,15 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 const result = await response.json();
                 if (response.ok) {
                     updateStatus('success', 'Zone added successfully');
+                    // Clear form
                     const nameField = document.getElementById('newZoneName');
                     const groupField = document.getElementById('newZoneGroup');
+                    const brightnessField = document.getElementById('newZoneBrightness');
+                    const brightnessValue = document.getElementById('newBrightnessValue');
                     if (nameField) nameField.value = '';
                     if (groupField) groupField.value = 'Default';
+                    if (brightnessField) brightnessField.value = '255';
+                    if (brightnessValue) brightnessValue.textContent = '255';
                     loadZones();
                 } else {
                     updateStatus('error', result.error || 'Failed to add zone');
@@ -631,42 +793,118 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 ).join('');
         }
         
-        async function addEffectConfig() {
+        async function saveEffectConfig() {
             const effectName = document.getElementById('effectName')?.value;
-            const group = document.getElementById('effectGroup')?.value.trim();
+            const groupsSelect = document.getElementById('effectGroups');
+            const effectType = document.getElementById('effectType')?.value;
+            const durationSelect = document.getElementById('effectDuration')?.value;
             const audioFile = document.getElementById('effectAudio')?.value;
             
-            if (!effectName || !group) {
-                updateStatus('error', 'Please select effect and enter group name');
+            if (!effectName) {
+                updateStatus('error', 'Please select an effect');
                 return;
             }
             
+            // Get selected groups
+            const selectedGroups = [];
+            if (groupsSelect) {
+                for (let option of groupsSelect.selectedOptions) {
+                    selectedGroups.push(option.value);
+                }
+            }
+            
+            if (selectedGroups.length === 0) {
+                updateStatus('error', 'Please select at least one group');
+                return;
+            }
+            
+            // Calculate duration
+            let duration = 0;
+            if (durationSelect === 'audio') {
+                duration = -1; // Special value for audio length
+            } else if (durationSelect === 'custom') {
+                duration = parseInt(document.getElementById('customDuration')?.value) || 0;
+            } else {
+                duration = parseInt(durationSelect) || 0;
+            }
+            
             try {
-                updateStatus('loading', 'Configuring effect...');
+                updateStatus('loading', 'Saving effect configuration...');
                 
                 const response = await fetch('/api/effects/config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         name: effectName,
-                        groups: [group],
-                        audioFile: parseInt(audioFile) || 0
+                        type: effectType,
+                        targetGroups: selectedGroups,
+                        audioFile: parseInt(audioFile) || 0,
+                        duration: duration,
+                        enabled: true
                     })
                 });
                 
                 const result = await response.json();
                 
                 if (response.ok) {
-                    updateStatus('success', 'Effect configured successfully');
-                    document.getElementById('effectGroup').value = '';
+                    updateStatus('success', 'Effect configuration saved successfully');
+                    clearEffectForm();
                     loadEffectConfigs();
                 } else {
-                    updateStatus('error', result.error || 'Failed to configure effect');
+                    updateStatus('error', result.error || 'Failed to save effect configuration');
                 }
                 
             } catch (error) {
-                console.error('Error configuring effect:', error);
-                updateStatus('error', 'Failed to configure effect: ' + error.message);
+                console.error('Error saving effect config:', error);
+                updateStatus('error', 'Failed to save effect configuration: ' + error.message);
+            }
+        }
+        
+        function clearEffectForm() {
+            document.getElementById('effectName').value = '';
+            document.getElementById('effectGroups').selectedIndex = -1;
+            document.getElementById('effectType').value = 'AMBIENT';
+            document.getElementById('effectDuration').value = '0';
+            document.getElementById('effectAudio').value = '0';
+            document.getElementById('customDuration').style.display = 'none';
+        }
+        
+        function setupEffectForm() {
+            // Handle duration dropdown change
+            const durationSelect = document.getElementById('effectDuration');
+            const customDurationInput = document.getElementById('customDuration');
+            
+            if (durationSelect) {
+                durationSelect.addEventListener('change', function() {
+                    if (customDurationInput) {
+                        customDurationInput.style.display = this.value === 'custom' ? 'inline' : 'none';
+                    }
+                });
+            }
+        }
+        
+        async function loadAvailableGroups() {
+            try {
+                const response = await fetch('/api/zones');
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                const groupsSelect = document.getElementById('effectGroups');
+                
+                if (!groupsSelect) return;
+                
+                // Get unique group names from zones
+                const uniqueGroups = [...new Set((data.zones || []).map(zone => zone.groupName))];
+                
+                groupsSelect.innerHTML = uniqueGroups.map(group => 
+                    `<option value="${group}">${group}</option>`
+                ).join('');
+                
+                // Add special "All" option
+                groupsSelect.innerHTML = '<option value="[ALL]">All Groups</option>' + groupsSelect.innerHTML;
+                
+            } catch (error) {
+                console.error('Error loading groups:', error);
             }
         }
         
@@ -685,14 +923,24 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                     return;
                 }
                 
-                container.innerHTML = data.configs.map(config => 
-                    `<div style="padding: 10px; background: #333; margin: 5px 0; border-radius: 3px; border: 1px solid #555;">
-                        <strong>${config.name}</strong> → Groups: ${config.groups.join(', ')} | Audio: ${config.audioFile ? 'Track ' + config.audioFile : 'None'}
-                        <div style="margin-top: 5px;">
-                            <button onclick="removeEffectConfig('${config.name}')" class="btn btn-danger" style="padding: 5px 10px;">Remove</button>
+                container.innerHTML = data.configs.map(config => {
+                    const groups = config.targetGroups || config.groups || [];
+                    const typeText = config.type || 'AMBIENT';
+                    const durationText = config.duration === 0 ? 'Ambient' : 
+                                       config.duration === -1 ? 'Audio length' :
+                                       config.duration + 'ms';
+                    
+                    return `<div style="padding: 12px; background: #333; margin: 8px 0; border-radius: 5px; border: 1px solid #555;">
+                        <div style="font-size: 16px; font-weight: bold; color: #4CAF50; margin-bottom: 5px;">${config.name}</div>
+                        <div style="color: #ccc; font-size: 14px; margin-bottom: 8px;">
+                            <strong>Groups:</strong> ${groups.join(', ') || 'None'} | 
+                            <strong>Type:</strong> ${typeText} | 
+                            <strong>Duration:</strong> ${durationText} | 
+                            <strong>Audio:</strong> ${config.audioFile ? 'Track ' + config.audioFile : 'None'}
                         </div>
-                    </div>`
-                ).join('');
+                        <button onclick="removeEffectConfig('${config.name}')" class="btn btn-danger" style="padding: 5px 10px;">Remove</button>
+                    </div>`;
+                }).join('');
             } catch (error) {
                 console.error('Error loading effect configs:', error);
             }
@@ -781,7 +1029,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             container.innerHTML = zones.map(zone => `
                 <div style="padding: 10px; background: #333; margin: 5px 0; border-radius: 3px; border: 1px solid #555;">
                     <strong>${zone.name}</strong> - GPIO ${zone.gpio} (${zone.type})
-                    <br><small>Group: ${zone.groupName} | Max Brightness: ${zone.brightness} | ${zone.type === 'WS2812B' ? (zone.ledCount || 1) + ' LEDs' : 'Single LED'}</small>
+                    <br><small>Group: ${zone.groupName} | Max Brightness: ${zone.brightness}${zone.type === 'WS2812B' ? ' | ' + (zone.ledCount || 1) + ' LEDs' : ''}</small>
                     <div style="margin-top: 5px;">
                         <button onclick="removeZone(${zone.id})" class="btn btn-danger" style="padding: 5px 10px;">Remove</button>
                     </div>
@@ -791,7 +1039,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         
         async function removeZone(zoneId) {
             try {
-                const response = await fetch('/api/zones/' + zoneId, {
+                const response = await fetch('/api/zones?zoneId=' + zoneId, {
                     method: 'DELETE'
                 });
                 
@@ -800,7 +1048,8 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                     loadZones();
                     loadEffects(); // Effects may have changed
                 } else {
-                    updateStatus('error', 'Failed to remove zone');
+                    const result = await response.json();
+                    updateStatus('error', result.error || 'Failed to remove zone');
                 }
             } catch (error) {
                 updateStatus('error', 'Failed to remove zone: ' + error.message);
@@ -830,13 +1079,43 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         }
         
         // Global control functions
-        function setGlobalBrightness(brightness) {
+        async function setGlobalBrightness(brightness) {
             document.getElementById('global-brightness-value').textContent = brightness;
             
-            // Set brightness for all zones
-            zones.forEach(zone => {
-                setBrightness(zone.id, brightness);
-            });
+            try {
+                // Save global brightness setting
+                const response = await fetch('/api/global/brightness', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ brightness: parseInt(brightness) })
+                });
+                
+                if (response.ok) {
+                    // Apply to all zones
+                    zones.forEach(zone => {
+                        setBrightness(zone.id, brightness);
+                    });
+                } else {
+                    updateStatus('error', 'Failed to save global brightness');
+                }
+            } catch (error) {
+                updateStatus('error', 'Failed to set global brightness: ' + error.message);
+            }
+        }
+        
+        async function loadGlobalBrightness() {
+            try {
+                const response = await fetch('/api/global/brightness');
+                if (response.ok) {
+                    const data = await response.json();
+                    const brightness = data.brightness || 255;
+                    
+                    document.getElementById('global-brightness').value = brightness;
+                    document.getElementById('global-brightness-value').textContent = brightness;
+                }
+            } catch (error) {
+                console.error('Failed to load global brightness:', error);
+            }
         }
         
         function setAllZonesBrightness(brightness) {
@@ -991,6 +1270,17 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                     }
                 });
             }
+            
+            // Setup brightness slider
+            const brightnessSlider = document.getElementById('newZoneBrightness');
+            if (brightnessSlider) {
+                brightnessSlider.addEventListener('input', function() {
+                    const valueSpan = document.getElementById('newBrightnessValue');
+                    if (valueSpan) {
+                        valueSpan.textContent = this.value;
+                    }
+                });
+            }
         }
         
         async function clearAllZones() {
@@ -1023,43 +1313,158 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         }
         
         // Effect management functions
-        async function loadEffects() {
+        // Load configured effects for zone cards
+        async function loadZoneCards() {
             try {
-                const response = await fetch('/api/effects');
-                if (!response.ok) throw new Error('Failed to load effects');
+                // Load both zones and effect configurations
+                const [zonesResponse, effectsResponse] = await Promise.all([
+                    fetch('/api/zones'),
+                    fetch('/api/effects/config')
+                ]);
                 
-                const data = await response.json();
-                renderEffects(data.effects || []);
+                if (!zonesResponse.ok || !effectsResponse.ok) {
+                    throw new Error('Failed to load zone or effect data');
+                }
+                
+                const zonesData = await zonesResponse.json();
+                const effectsData = await effectsResponse.json();
+                
+                zones = zonesData.zones || [];
+                const effectConfigs = effectsData.configs || [];
+                
+                renderZoneCards(effectConfigs);
+                
             } catch (error) {
-                console.error('Error loading effects:', error);
+                console.error('Error loading zone cards:', error);
+                updateStatus('error', 'Failed to load zone data: ' + error.message);
             }
         }
         
-        function renderEffects(effects) {
-            const container = document.getElementById('effects-container');
+        // Render zone cards with available effects
+        function renderZoneCards(effectConfigs) {
+            const container = document.getElementById('zone-cards-container');
             
-            if (effects.length === 0) {
-                container.innerHTML = '<div class="status">No effects available</div>';
+            if (!container) return;
+            
+            // Group zones by group name
+            const groupedZones = {};
+            zones.forEach(zone => {
+                const groupName = zone.groupName || 'Default';
+                if (!groupedZones[groupName]) {
+                    groupedZones[groupName] = [];
+                }
+                groupedZones[groupName].push(zone);
+            });
+            
+            if (Object.keys(groupedZones).length === 0) {
+                container.innerHTML = '<div class="status">No zones configured. Go to Configuration > Zones to add zones.</div>';
                 return;
             }
             
-            container.innerHTML = effects.map(effect => `
-                <div class="zone-card">
-                    <div class="zone-name">${effect.name}</div>
-                    <div class="zone-info">
-                        Status: ${effect.enabled ? 'Running' : 'Stopped'}
+            // Build zone cards
+            let cardsHTML = '';
+            
+            for (const [groupName, groupZones] of Object.entries(groupedZones)) {
+                const groupEffects = { ambient: [], active: [] };
+                
+                // Find effects that apply to this group
+                effectConfigs.forEach(effect => {
+                    const targetGroups = effect.targetGroups || [];
+                    const appliesToGroup = targetGroups.includes(groupName) || targetGroups.includes('[ALL]');
+                    
+                    if (appliesToGroup && effect.type !== 'GLOBAL') {
+                        if (effect.type === 'AMBIENT') {
+                            groupEffects.ambient.push(effect);
+                        } else {
+                            groupEffects.active.push(effect);
+                        }
+                    }
+                });
+                
+                // Create zone card HTML
+                const zoneCount = groupZones.length;
+                const pinList = groupZones.map(z => `GPIO ${z.gpio}`).join(', ');
+                
+                cardsHTML += `
+                    <div class="zone-card">
+                        <div class="zone-name">${groupName} (${zoneCount} zone${zoneCount > 1 ? 's' : ''})</div>
+                        <div class="zone-info">${pinList}</div>
+                        <div class="effect-controls">
+                            <div class="effect-column">
+                                <label>Ambient</label>
+                                ${groupEffects.ambient.map(effect => 
+                                    `<button onclick="triggerEffect('${effect.name}', '${groupName}')" class="effect-button ambient">${effect.name}</button>`
+                                ).join('')}
+                                ${groupEffects.ambient.length === 0 ? '<div style="color: #666; font-style: italic; text-align: center; padding: 10px;">None</div>' : ''}
+                            </div>
+                            <div class="effect-column">
+                                <label>Active</label>
+                                ${groupEffects.active.map(effect => 
+                                    `<button onclick="triggerEffect('${effect.name}', '${groupName}')" class="effect-button">${effect.name}</button>`
+                                ).join('')}
+                                ${groupEffects.active.length === 0 ? '<div style="color: #666; font-style: italic; text-align: center; padding: 10px;">None</div>' : ''}
+                            </div>
+                            <div class="effect-column">
+                                <label>Manual</label>
+                                <div class="manual-controls">
+                                    <button onclick="setZoneGroupBrightness('${groupName}', 255)" class="btn">On</button>
+                                    <button onclick="setZoneGroupBrightness('${groupName}', 0)" class="btn">Off</button>
+                                    <button onclick="toggleZoneGroup('${groupName}')" class="btn">Toggle</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <button onclick="triggerEffect('${effect.name}', 0)" class="btn">
-                        ${effect.enabled ? 'Restart' : 'Start'} Continuous
-                    </button>
-                    <button onclick="triggerEffect('${effect.name}', 2000)" class="btn">
-                        Trigger 2s
-                    </button>
-                    <button onclick="triggerEffect('${effect.name}', 5000)" class="btn">
-                        Trigger 5s
-                    </button>
-                </div>
-            `).join('');
+                `;
+            }
+            
+            container.innerHTML = cardsHTML;
+            
+            // Show global effects if any exist
+            const globalEffectsCard = document.getElementById('global-effects-card');
+            const globalEffects = effectConfigs.filter(e => e.type === 'GLOBAL');
+            
+            if (globalEffects.length > 0 && globalEffectsCard) {
+                globalEffectsCard.style.display = 'block';
+                
+                const globalAmbient = document.getElementById('global-ambient-effects');
+                const globalActive = document.getElementById('global-active-effects');
+                
+                const ambientGlobals = globalEffects.filter(e => e.type === 'AMBIENT');
+                const activeGlobals = globalEffects.filter(e => e.type !== 'AMBIENT');
+                
+                if (globalAmbient) {
+                    globalAmbient.innerHTML = ambientGlobals.map(effect => 
+                        `<button onclick="triggerEffect('${effect.name}')" class="effect-button ambient">${effect.name}</button>`
+                    ).join('') || '<div style="color: #666; font-style: italic; text-align: center; padding: 10px;">None</div>';
+                }
+                
+                if (globalActive) {
+                    globalActive.innerHTML = activeGlobals.map(effect => 
+                        `<button onclick="triggerEffect('${effect.name}')" class="effect-button global">${effect.name}</button>`
+                    ).join('') || '<div style="color: #666; font-style: italic; text-align: center; padding: 10px;">None</div>';
+                }
+            } else if (globalEffectsCard) {
+                globalEffectsCard.style.display = 'none';
+            }
+        }
+        
+        // Manual zone control functions
+        async function setZoneGroupBrightness(groupName, brightness) {
+            const groupZones = zones.filter(zone => zone.groupName === groupName);
+            
+            for (const zone of groupZones) {
+                await setBrightness(zone.id, brightness);
+            }
+        }
+        
+        async function toggleZoneGroup(groupName) {
+            // This would need to track current state - for now just turn to medium brightness
+            await setZoneGroupBrightness(groupName, 128);
+        }
+        
+        // Keep a simple loadEffects function for compatibility
+        async function loadEffects() {
+            await loadZoneCards();
         }
         
         async function triggerEffect(effectName, duration) {
@@ -1174,20 +1579,30 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 
                 const data = await response.json();
                 
-                document.getElementById('audio-status').textContent = data.status || 'Unknown';
-                document.getElementById('current-track').textContent = 
-                    data.currentTrack > 0 ? data.currentTrack : 'None';
-                document.getElementById('audio-available').textContent = 
-                    data.available ? 'Yes' : 'No';
+                const audioStatusEl = document.getElementById('audio-status');
+                const currentTrackEl = document.getElementById('current-track');
+                const audioAvailableEl = document.getElementById('audio-available');
+                const audioVolumeEl = document.getElementById('audio-volume');
+                const volumeValueEl = document.getElementById('volume-value');
                 
-                // Update volume slider
-                document.getElementById('audio-volume').value = data.volume || 15;
-                document.getElementById('volume-value').textContent = data.volume || 15;
+                if (audioStatusEl) audioStatusEl.textContent = data.status || 'Unknown';
+                if (currentTrackEl) {
+                    currentTrackEl.textContent = data.currentTrack > 0 ? data.currentTrack : 'None';
+                }
+                if (audioAvailableEl) {
+                    audioAvailableEl.textContent = data.available ? 'Yes' : 'No';
+                }
+                
+                // Update volume slider if elements exist
+                if (audioVolumeEl) audioVolumeEl.value = data.volume || 15;
+                if (volumeValueEl) volumeValueEl.textContent = data.volume || 15;
                 
             } catch (error) {
                 console.error('Error getting audio status:', error);
-                document.getElementById('audio-status').textContent = 'Error';
-                document.getElementById('audio-available').textContent = 'Error';
+                const audioStatusEl = document.getElementById('audio-status');
+                const audioAvailableEl = document.getElementById('audio-available');
+                if (audioStatusEl) audioStatusEl.textContent = 'Error';
+                if (audioAvailableEl) audioAvailableEl.textContent = 'Error';
             }
         }
         
