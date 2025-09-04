@@ -344,13 +344,22 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                     <select id="effectName">
                         <!-- Will be populated from available effects -->
                     </select>
-                    <label>Group:</label>
-                    <input type="text" id="effectGroup" placeholder="e.g., Weapons, Engines">
+                </div>
+                <div class="form-row">
+                    <label>Groups:</label>
+                    <div id="effectGroups" style="flex: 1; max-width: 300px; background: #1a1a1a; border: 1px solid #555; border-radius: 4px; padding: 8px; max-height: 100px; overflow-y: auto;">
+                        <!-- Will be populated with checkboxes for each group -->
+                        <div style="color: #666; font-style: italic;">No zones configured</div>
+                    </div>
+                </div>
+                <div class="form-row">
                     <label>Audio Track:</label>
                     <select id="effectAudio">
                         <option value="0">None</option>
                         <!-- Will be populated from audio tracks -->
                     </select>
+                </div>
+                <div class="form-row">
                     <button onclick="addEffectConfig()" class="btn">Configure Effect</button>
                 </div>
                 <div id="effect-configs-list"></div>
@@ -453,6 +462,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 loadAudioTracks();
                 loadEffectConfigs();
                 loadAvailableEffects();
+                populateAvailableGroups();
             }, 1000);
         });
         
@@ -636,13 +646,40 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 ).join('');
         }
         
+        function populateAvailableGroups() {
+            const container = document.getElementById('effectGroups');
+            if (!container) return;
+            
+            // Get unique groups from zones
+            const uniqueGroups = [...new Set(zones.map(zone => zone.groupName).filter(group => group && group.trim() !== ''))];
+            
+            if (uniqueGroups.length === 0) {
+                container.innerHTML = '<div style="color: #666; font-style: italic;">No zones configured</div>';
+                return;
+            }
+            
+            // Create checkboxes for each group
+            container.innerHTML = uniqueGroups.map(group => `
+                <div style="margin-bottom: 5px;">
+                    <input type="checkbox" id="group-${group}" value="${group}" style="margin-right: 8px;">
+                    <label for="group-${group}" style="color: #ccc; cursor: pointer;">${group}</label>
+                </div>
+            `).join('');
+        }
+        
         async function addEffectConfig() {
             const effectName = document.getElementById('effectName')?.value;
-            const group = document.getElementById('effectGroup')?.value.trim();
             const audioFile = document.getElementById('effectAudio')?.value;
             
-            if (!effectName || !group) {
-                updateStatus('error', 'Please select effect and enter group name');
+            // Get selected groups from checkboxes
+            const selectedGroups = [];
+            const checkboxes = document.querySelectorAll('#effectGroups input[type="checkbox"]:checked');
+            checkboxes.forEach(checkbox => {
+                selectedGroups.push(checkbox.value);
+            });
+            
+            if (!effectName || selectedGroups.length === 0) {
+                updateStatus('error', 'Please select effect and at least one group');
                 return;
             }
             
@@ -654,7 +691,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         name: effectName,
-                        groups: [group],
+                        groups: selectedGroups,
                         audioFile: parseInt(audioFile) || 0
                     })
                 });
@@ -663,7 +700,10 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 
                 if (response.ok) {
                     updateStatus('success', 'Effect configured successfully');
-                    document.getElementById('effectGroup').value = '';
+                    // Clear selected checkboxes
+                    document.querySelectorAll('#effectGroups input[type="checkbox"]:checked').forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
                     loadEffectConfigs();
                 } else {
                     updateStatus('error', result.error || 'Failed to configure effect');
@@ -767,6 +807,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 zones = data.zones || [];
                 renderZones();
                 renderConfiguredZones();
+                populateAvailableGroups();
                 updateStatus('success', `Loaded ${zones.length} zones`);
             } catch (error) {
                 console.error('Error loading zones:', error);
