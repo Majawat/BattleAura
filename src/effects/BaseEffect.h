@@ -29,6 +29,11 @@ public:
     virtual void setEnabled(bool enabled) { this->enabled = enabled; }
     bool isEnabled() const { return enabled; }
     
+    // Target zone control
+    void setTargetZones(const std::vector<Zone*>& zones) { targetZones = zones; }
+    const std::vector<Zone*>& getTargetZones() const { return targetZones; }
+    bool hasTargetZones() const { return !targetZones.empty(); }
+    
     // Effect metadata
     const String& getName() const { return effectName; }
     EffectPriority getPriority() const { return priority; }
@@ -61,6 +66,9 @@ protected:
     String effectName;
     EffectPriority priority;
     bool enabled;
+    
+    // Target zones (empty = all zones, for backward compatibility)
+    std::vector<Zone*> targetZones;
     
     // Duration-based triggering
     uint32_t triggerTime = 0;

@@ -10,8 +10,8 @@ EngineIdleEffect::EngineIdleEffect(LedController& ledController, Configuration& 
 void EngineIdleEffect::begin() {
     Serial.println("EngineIdle: Initializing...");
     
-    // Initialize idle state for each zone
-    auto zones = config.getAllZones();
+    // Use target zones if set, otherwise fall back to all zones
+    std::vector<Zone*> zones = hasTargetZones() ? getTargetZones() : config.getAllZones();
     idleStates.clear();
     idleStates.resize(zones.size());
     
@@ -31,9 +31,10 @@ void EngineIdleEffect::begin() {
 void EngineIdleEffect::update() {
     if (!enabled) return;
     
-    auto zones = config.getAllZones();
+    // Use target zones if set, otherwise fall back to all zones  
+    std::vector<Zone*> zones = hasTargetZones() ? getTargetZones() : config.getAllZones();
     
-    // Ensure we have idle states for all zones
+    // Ensure we have idle states for current target zones
     if (idleStates.size() != zones.size()) {
         begin(); // Reinitialize if zone count changed
     }

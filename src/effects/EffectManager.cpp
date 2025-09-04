@@ -61,7 +61,27 @@ bool EffectManager::triggerEffect(const String& effectName, uint32_t duration) {
         return false;
     }
     
-    Serial.printf("EffectManager: Triggering effect '%s' for %dms\n", effectName.c_str(), duration);
+    // Get effect configuration to determine target groups
+    const EffectConfig* effectConfig = config.getEffectConfig(effectName);
+    if (!effectConfig) {
+        Serial.printf("EffectManager: No configuration found for effect '%s', applying to all zones\n", effectName.c_str());
+        effect->trigger(duration);
+        return true;
+    }
+    
+    // Get target zones based on configured groups
+    std::vector<Zone*> targetZones = getZonesForGroups(effectConfig->targetGroups);
+    
+    if (targetZones.empty()) {
+        Serial.printf("EffectManager: No zones found for effect '%s' target groups\n", effectName.c_str());
+        return false;
+    }
+    
+    Serial.printf("EffectManager: Triggering effect '%s' on %d zones for %dms\n", 
+                 effectName.c_str(), targetZones.size(), duration);
+    
+    // Set target zones for this effect
+    effect->setTargetZones(targetZones);
     effect->trigger(duration);
     return true;
 }
@@ -245,6 +265,29 @@ void EffectManager::initializeDefaultEffects() {
     if (effectConfigs.empty()) {
         enableEffect("CandleFlicker");
     }
+}
+
+std::vector<Zone*> EffectManager::getZonesForGroups(const std::vector<String>& groupNames) {
+    std::vector<Zone*> targetZones;
+    
+    for (const String& groupName : groupNames) {
+        auto groupZones = config.getZonesByGroup(groupName);
+        for (Zone* zone : groupZones) {
+            // Avoid duplicates if zone is in multiple target groups
+            bool alreadyAdded = false;
+            for (Zone* existing : targetZones) {
+                if (existing->id == zone->id) {
+                    alreadyAdded = true;
+                    break;
+                }
+            }
+            if (!alreadyAdded) {
+                targetZones.push_back(zone);
+            }
+        }
+    }
+    
+    return targetZones;
 }
 
 } // namespace BattleAura

@@ -61,6 +61,7 @@ private:
     // Helper methods
     BaseEffect* findEffect(const String& effectName);
     const BaseEffect* findEffect(const String& effectName) const;
+    std::vector<Zone*> getZonesForGroups(const std::vector<String>& groupNames);
     void handleGlobalEffectPriority();
     void restorePreGlobalEffects();
     void initializeDefaultEffects();

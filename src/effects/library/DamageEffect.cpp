@@ -10,7 +10,7 @@ DamageEffect::DamageEffect(LedController& ledController, Configuration& config)
 void DamageEffect::begin() {
     Serial.println("Damage: Initializing...");
     
-    auto zones = config.getAllZones();
+    std::vector<Zone*> zones = hasTargetZones() ? getTargetZones() : config.getAllZones();
     damageStates.clear();
     damageStates.resize(zones.size());
     
@@ -39,7 +39,7 @@ void DamageEffect::update() {
     // Check if timed effect should stop
     if (shouldStop()) {
         // Restore all zones before stopping
-        auto zones = config.getAllZones();
+        std::vector<Zone*> zones = hasTargetZones() ? getTargetZones() : config.getAllZones();
         for (size_t i = 0; i < zones.size(); i++) {
             if (i < damageStates.size()) {
                 restoreZone(i, zones[i]);
@@ -49,7 +49,7 @@ void DamageEffect::update() {
         return;
     }
     
-    auto zones = config.getAllZones();
+    std::vector<Zone*> zones = hasTargetZones() ? getTargetZones() : config.getAllZones();
     
     // Ensure we have damage states for all zones
     if (damageStates.size() != zones.size()) {
@@ -67,7 +67,7 @@ void DamageEffect::startDamage() {
     if (!enabled) return;
     
     uint32_t currentTime = millis();
-    auto zones = config.getAllZones();
+    std::vector<Zone*> zones = hasTargetZones() ? getTargetZones() : config.getAllZones();
     
     // Store original states and start damage effect
     for (size_t i = 0; i < damageStates.size() && i < zones.size(); i++) {

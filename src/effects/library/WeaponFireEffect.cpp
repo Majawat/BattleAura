@@ -10,7 +10,7 @@ WeaponFireEffect::WeaponFireEffect(LedController& ledController, Configuration& 
 void WeaponFireEffect::begin() {
     Serial.println("MachineGun: Initializing...");
     
-    auto zones = config.getAllZones();
+    std::vector<Zone*> zones = hasTargetZones() ? getTargetZones() : config.getAllZones();
     fireStates.clear();
     fireStates.resize(zones.size());
     
@@ -41,7 +41,7 @@ void WeaponFireEffect::update() {
         return;
     }
     
-    auto zones = config.getAllZones();
+    std::vector<Zone*> zones = hasTargetZones() ? getTargetZones() : config.getAllZones();
     
     // Ensure we have fire states for all zones
     if (fireStates.size() != zones.size()) {

@@ -10,8 +10,10 @@ CandleEffect::CandleEffect(LedController& ledController, Configuration& config)
 void CandleEffect::begin() {
     Serial.println("CandleFlicker: Initializing...");
     
-    // Initialize flicker state for each zone
-    auto zones = config.getAllZones();
+    // Use target zones if set, otherwise fall back to all zones
+    std::vector<Zone*> zones = hasTargetZones() ? getTargetZones() : config.getAllZones();
+    
+    // Initialize flicker state for each target zone
     flickerStates.clear();
     flickerStates.resize(zones.size());
     
@@ -25,15 +27,17 @@ void CandleEffect::begin() {
         state.nextChange = millis() + random(500, 2000); // Change pattern every 0.5-2s
     }
     
-    Serial.printf("CandleFlicker: Initialized for %d zones\n", zones.size());
+    Serial.printf("CandleFlicker: Initialized for %d zones (targeting: %s)\n", 
+                 zones.size(), hasTargetZones() ? "configured groups" : "all zones");
 }
 
 void CandleEffect::update() {
     if (!enabled) return;
     
-    auto zones = config.getAllZones();
+    // Use target zones if set, otherwise fall back to all zones
+    std::vector<Zone*> zones = hasTargetZones() ? getTargetZones() : config.getAllZones();
     
-    // Ensure we have flicker states for all zones
+    // Ensure we have flicker states for current target zones
     if (flickerStates.size() != zones.size()) {
         begin(); // Reinitialize if zone count changed
     }
