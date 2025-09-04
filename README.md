@@ -34,7 +34,7 @@
 
 ## Audio files assignments
 
-- 0002 - Tank engine idle 1
+- 0001 - Tank engine idle 1
 - 0002 - Tank engine idle 2
 - 0003 - Machine gun fire
 - 0004 - Flamethrower
