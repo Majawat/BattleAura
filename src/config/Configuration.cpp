@@ -454,10 +454,49 @@ bool Configuration::loadFromLittleFS() {
         }
     }
     
+    // Load effect configs
+    if (doc["effectConfigs"]) {
+        effectConfigs.clear();
+        for (JsonPair configPair : doc["effectConfigs"].as<JsonObject>()) {
+            String effectName = configPair.key().c_str();
+            JsonObject configObj = configPair.value();
+            
+            EffectConfig effectConfig;
+            effectConfig.name = effectName;
+            effectConfig.audioFile = configObj["audioFile"] | 0;
+            effectConfig.duration = configObj["duration"] | 0;
+            effectConfig.enabled = configObj["enabled"] | true;
+            
+            // Load type
+            String typeStr = configObj["type"] | "AMBIENT";
+            if (typeStr == "AMBIENT") {
+                effectConfig.type = EffectType::AMBIENT;
+            } else if (typeStr == "ACTIVE") {
+                effectConfig.type = EffectType::ACTIVE;
+            } else if (typeStr == "GLOBAL") {
+                effectConfig.type = EffectType::GLOBAL;
+            } else {
+                effectConfig.type = EffectType::AMBIENT; // Default
+            }
+            
+            // Load target groups
+            if (configObj["targetGroups"]) {
+                for (JsonVariant group : configObj["targetGroups"].as<JsonArray>()) {
+                    String groupName = group.as<String>();
+                    if (!groupName.isEmpty()) {
+                        effectConfig.addTargetGroup(groupName);
+                    }
+                }
+            }
+            
+            effectConfigs[effectName] = effectConfig;
+        }
+    }
+    
     updateGroupMembership();
     
-    Serial.printf("Configuration: Loaded %d zones, %d audio tracks from LittleFS\n", 
-                 zones.size(), audioTracks.size());
+    Serial.printf("Configuration: Loaded %d zones, %d audio tracks, %d effect configs from LittleFS\n", 
+                 zones.size(), audioTracks.size(), effectConfigs.size());
     return true;
 }
 
@@ -502,6 +541,27 @@ bool Configuration::saveToLittleFS() {
         trackObj["description"] = track.description;
         trackObj["isLoop"] = track.isLoop;
         trackObj["duration"] = track.duration;
+    }
+    
+    // Save effect configs
+    JsonObject effectConfigsObj = doc["effectConfigs"].to<JsonObject>();
+    for (const auto& pair : effectConfigs) {
+        const EffectConfig& effectConfig = pair.second;
+        JsonObject configObj = effectConfigsObj[effectConfig.name].to<JsonObject>();
+        
+        configObj["audioFile"] = effectConfig.audioFile;
+        configObj["duration"] = effectConfig.duration;
+        configObj["enabled"] = effectConfig.enabled;
+        
+        // Save type
+        configObj["type"] = (effectConfig.type == EffectType::AMBIENT) ? "AMBIENT" :
+                           (effectConfig.type == EffectType::ACTIVE) ? "ACTIVE" : "GLOBAL";
+        
+        // Save target groups
+        JsonArray groupsArray = configObj["targetGroups"].to<JsonArray>();
+        for (const String& group : effectConfig.targetGroups) {
+            groupsArray.add(group);
+        }
     }
     
     // Open file for writing
