@@ -185,15 +185,16 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             align-items: center;
             margin-bottom: 15px;
             gap: 10px;
+            max-width: 400px;
+            flex-wrap: wrap;
         }
         .form-row label {
             min-width: 120px;
             color: #ccc;
         }
         .form-row input, .form-row select {
-            flex: 1;
-            min-width: 120px;
-            max-width: 300px;
+            flex: none;
+            width: 180px;
             padding: 8px;
             background: #1a1a1a;
             border: 1px solid #555;

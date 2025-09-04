@@ -1180,7 +1180,7 @@ void WebServer::handleAddEffectConfigBody(AsyncWebServerRequest* request, uint8_
 void WebServer::processAddEffectConfig(AsyncWebServerRequest* request, JsonDocument& doc) {
     String effectName = doc["name"] | "";
     String effectType = doc["type"] | "AMBIENT";
-    JsonArray groupsArray = doc["targetGroups"];
+    JsonArray groupsArray = doc["groups"];
     uint16_t audioFile = doc["audioFile"] | 0;
     uint32_t duration = doc["duration"] | 0;
     bool enabled = doc["enabled"] | true;
