@@ -1348,7 +1348,7 @@ void WebServer::handleStopAllEffects(AsyncWebServerRequest* request) {
 
 void WebServer::handleGetGlobalBrightness(AsyncWebServerRequest* request) {
     JsonDocument responseDoc;
-    responseDoc["brightness"] = config.getDeviceConfig().audioVolume > 0 ? 255 : 128; // Placeholder logic
+    responseDoc["brightness"] = config.getDeviceConfig().globalBrightness;
     
     String response;
     serializeJson(responseDoc, response);
@@ -1363,6 +1363,11 @@ void WebServer::processSetGlobalBrightness(AsyncWebServerRequest* request, JsonD
     uint8_t brightness = doc["brightness"] | 255;
     
     Serial.printf("WebServer: Setting global brightness to %d\n", brightness);
+    
+    // Store global brightness in configuration
+    auto& deviceConfig = config.getDeviceConfig();
+    deviceConfig.globalBrightness = brightness;
+    config.save();
     
     // Apply global brightness to all zones
     auto zones = config.getAllZones();

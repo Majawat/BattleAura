@@ -27,11 +27,12 @@ struct DeviceConfig {
     String apPassword;
     uint8_t audioVolume;
     bool audioEnabled;
+    uint8_t globalBrightness;
     String firmwareVersion;
     
     DeviceConfig() : deviceName("BattleAura"), otaPassword("battlesync"), 
                     apPassword("battlesync"), audioVolume(20), audioEnabled(true),
-                    firmwareVersion("2.6.4-config-display-fix") {}
+                    globalBrightness(255), firmwareVersion("2.6.5-global-brightness") {}
 };
 
 class Configuration {

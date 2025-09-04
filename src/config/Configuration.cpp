@@ -411,6 +411,7 @@ bool Configuration::loadFromLittleFS() {
         deviceConfig.wifiPassword = deviceObj["wifiPassword"] | "";
         deviceConfig.audioEnabled = deviceObj["audioEnabled"] | true;
         deviceConfig.audioVolume = deviceObj["audioVolume"] | 20;
+        deviceConfig.globalBrightness = deviceObj["globalBrightness"] | 255;
         deviceConfig.otaPassword = deviceObj["otaPassword"] | "battlesync";
         deviceConfig.apPassword = deviceObj["apPassword"] | "battlesync";
     }
@@ -473,6 +474,7 @@ bool Configuration::saveToLittleFS() {
     deviceObj["wifiPassword"] = deviceConfig.wifiPassword;
     deviceObj["audioEnabled"] = deviceConfig.audioEnabled;
     deviceObj["audioVolume"] = deviceConfig.audioVolume;
+    deviceObj["globalBrightness"] = deviceConfig.globalBrightness;
     deviceObj["otaPassword"] = deviceConfig.otaPassword;
     deviceObj["apPassword"] = deviceConfig.apPassword;
     

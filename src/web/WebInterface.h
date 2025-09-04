@@ -660,10 +660,10 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             
             // Create checkboxes for each group
             container.innerHTML = uniqueGroups.map(group => `
-                <div style="margin-bottom: 8px; display: flex; align-items: center;">
+                <div style="margin: 3px 0; display: flex; align-items: center; line-height: 1.2;">
                     <input type="checkbox" id="group-${group}" value="${group}" 
-                           style="margin-right: 10px; transform: scale(1.2); accent-color: #4CAF50;">
-                    <label for="group-${group}" style="color: #ccc; cursor: pointer; font-size: 14px;">${group}</label>
+                           style="margin: 0 6px 0 0; transform: scale(1.1); accent-color: #4CAF50; flex: none;">
+                    <label for="group-${group}" style="color: #ccc; cursor: pointer; font-size: 14px; margin: 0; padding: 0; flex: none;">${group}</label>
                 </div>
             `).join('');
         }
@@ -726,14 +726,16 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 
                 if (!container) return;
                 
-                if (!data.effects || data.effects.length === 0) {
+                if (!data.configs || data.configs.length === 0) {
                     container.innerHTML = '<p>No effect configurations</p>';
                     return;
                 }
                 
-                container.innerHTML = data.effects.map(config => 
+                container.innerHTML = data.configs.map(config => 
                     `<div style="padding: 10px; background: #333; margin: 5px 0; border-radius: 3px; border: 1px solid #555;">
-                        <strong>${config.name}</strong> → Groups: ${config.groups.join(', ')} | Audio: ${config.audioFile ? 'Track ' + config.audioFile : 'None'}
+                        <strong>${config.name}</strong> → Status: ${config.enabled ? 'Enabled' : 'Disabled'}
+                        ${config.targetGroups ? ' | Groups: ' + (Array.isArray(config.targetGroups) ? config.targetGroups.join(', ') : config.targetGroups) : ''}
+                        ${config.audioFile ? ' | Audio: Track ' + config.audioFile : ''}
                         <div style="margin-top: 5px;">
                             <button onclick="removeEffectConfig('${config.name}')" class="btn btn-danger" style="padding: 5px 10px;">Remove</button>
                         </div>
