@@ -192,13 +192,13 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         }
         .form-row input, .form-row select {
             flex: 1;
-            max-width: 200px;
+            min-width: 120px;
+            max-width: 300px;
             padding: 8px;
             background: #1a1a1a;
             border: 1px solid #555;
             color: #fff;
             border-radius: 4px;
-            overflow: hidden;
         }
         .form-row input:focus, .form-row select:focus {
             border-color: #4CAF50;
@@ -261,9 +261,9 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 <div style="margin-top: 15px;">
                     <div class="form-row">
                         <label for="track-number">Track (1-9):</label>
-                        <input type="number" id="track-number" min="1" max="9" value="1" style="width: 60px;">
-                        <input type="checkbox" id="loop-audio" style="margin-left: 10px;">
-                        <label for="loop-audio" style="margin-left: 5px;">Loop</label>
+                        <input type="number" id="track-number" min="1" max="9" value="1" style="width: 60px; flex: none;">
+                        <input type="checkbox" id="loop-audio" style="margin-left: 15px; flex: none; width: auto;">
+                        <label for="loop-audio" style="margin-left: 8px; flex: none; min-width: auto;">Loop</label>
                         <button onclick="playAudio()" class="btn btn-success" style="margin-left: 10px;">Play</button>
                         <button onclick="stopAudio()" class="btn btn-danger">Stop</button>
                     </div>
@@ -446,6 +446,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             loadZones();
             loadStatus();
             loadEffects();
+            loadGlobalBrightness();
             setupNewZoneForm();
             setTimeout(() => {
                 loadAudioTracks();
@@ -784,7 +785,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             container.innerHTML = zones.map(zone => `
                 <div style="padding: 10px; background: #333; margin: 5px 0; border-radius: 3px; border: 1px solid #555;">
                     <strong>${zone.name}</strong> - GPIO ${zone.gpio} (${zone.type})
-                    <br><small>Group: ${zone.groupName} | Max Brightness: ${zone.brightness} | ${zone.type === 'WS2812B' ? (zone.ledCount || 1) + ' LEDs' : 'Single LED'}</small>
+                    <br><small>Group: ${zone.groupName} | Max Brightness: ${zone.brightness}</small>
                     <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
                         <label style="min-width: 80px;">Brightness:</label>
                         <input type="range" min="0" max="255" value="${zone.currentBrightness || zone.brightness}" 
@@ -801,7 +802,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         
         async function removeZone(zoneId) {
             try {
-                const response = await fetch('/api/zones/' + zoneId, {
+                const response = await fetch(`/api/zones?zoneId=${zoneId}`, {
                     method: 'DELETE'
                 });
                 
@@ -840,13 +841,50 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         }
         
         // Global control functions
-        function setGlobalBrightness(brightness) {
+        async function setGlobalBrightness(brightness) {
             document.getElementById('global-brightness-value').textContent = brightness;
             
-            // Set brightness for all zones
-            zones.forEach(zone => {
-                setBrightness(zone.id, brightness);
-            });
+            try {
+                const response = await fetch('/api/global/brightness', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ brightness: parseInt(brightness) })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Reload zones to reflect new brightness values
+                    loadZones();
+                    updateStatus('success', `Global brightness set to ${brightness}`);
+                } else {
+                    updateStatus('error', result.error || 'Failed to set global brightness');
+                }
+                
+            } catch (error) {
+                console.error('Error setting global brightness:', error);
+                updateStatus('error', 'Failed to set global brightness: ' + error.message);
+            }
+        }
+        
+        async function loadGlobalBrightness() {
+            try {
+                const response = await fetch('/api/global/brightness');
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                const globalSlider = document.getElementById('global-brightness');
+                const globalValue = document.getElementById('global-brightness-value');
+                
+                if (globalSlider && data.brightness !== undefined) {
+                    globalSlider.value = data.brightness;
+                }
+                if (globalValue && data.brightness !== undefined) {
+                    globalValue.textContent = data.brightness;
+                }
+            } catch (error) {
+                console.error('Error loading global brightness:', error);
+            }
         }
         
         function setAllZonesBrightness(brightness) {
