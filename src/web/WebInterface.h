@@ -660,9 +660,10 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             
             // Create checkboxes for each group
             container.innerHTML = uniqueGroups.map(group => `
-                <div style="margin-bottom: 5px;">
-                    <input type="checkbox" id="group-${group}" value="${group}" style="margin-right: 8px;">
-                    <label for="group-${group}" style="color: #ccc; cursor: pointer;">${group}</label>
+                <div style="margin-bottom: 8px; display: flex; align-items: center;">
+                    <input type="checkbox" id="group-${group}" value="${group}" 
+                           style="margin-right: 10px; transform: scale(1.2); accent-color: #4CAF50;">
+                    <label for="group-${group}" style="color: #ccc; cursor: pointer; font-size: 14px;">${group}</label>
                 </div>
             `).join('');
         }
@@ -725,12 +726,12 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 
                 if (!container) return;
                 
-                if (!data.configs || data.configs.length === 0) {
+                if (!data.effects || data.effects.length === 0) {
                     container.innerHTML = '<p>No effect configurations</p>';
                     return;
                 }
                 
-                container.innerHTML = data.configs.map(config => 
+                container.innerHTML = data.effects.map(config => 
                     `<div style="padding: 10px; background: #333; margin: 5px 0; border-radius: 3px; border: 1px solid #555;">
                         <strong>${config.name}</strong> → Groups: ${config.groups.join(', ')} | Audio: ${config.audioFile ? 'Track ' + config.audioFile : 'None'}
                         <div style="margin-top: 5px;">
