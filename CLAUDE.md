@@ -56,16 +56,22 @@ This project uses **PlatformIO** for building and uploading to the ESP32:
 
 ## New Architecture Overview
 
-### Modular Zone-Based Design
-The system is built around a modular, zone-based architecture:
+### Modular Zone-Based Design with VFX + Scenes Terminology
+The system is built around a modular, zone-based architecture with clear terminology separation:
 
 - **Zone**: Physical LED output (PWM or WS2812B) with configuration
 - **Group**: Logical collection of zones (e.g., "Engines", "Weapons")
-- **Effect**: Code that manipulates zones, targeting groups by name
-- **Priority System**: Global > Active > Ambient effects
+- **VFX**: Code classes that create visual effects (CandleVFX, WeaponFireVFX)
+- **Scene**: User configuration mapping VFX to groups with audio (e.g. "Candle Ambiance" scene)
+- **Priority System**: Global > Active > Ambient scenes
+
+### Terminology Clarification
+- **VFX** = Visual effects code (technical implementation in C++)
+- **Scene** = User-created mapping of VFX to groups with audio settings (configuration data)
+- This eliminates confusion between code classes and user configurations
 
 ### Core Components
-- **EffectManager**: Manages effect priorities, transitions, and lifecycle
+- **VFXManager**: Manages scene priorities, transitions, and VFX lifecycle
 - **LedController**: Abstracts PWM vs WS2812B hardware differences  
 - **AudioController**: Hardware Serial DFPlayer Mini integration
 - **ConfigManager**: LittleFS-based persistent configuration storage

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include "../BaseEffect.h"
+#include "../BaseVFX.h"
 
 namespace BattleAura {
 

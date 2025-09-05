@@ -1,4 +1,4 @@
-#include "EffectManager.h"
+#include "VFXManager.h"
 
 namespace BattleAura {
 

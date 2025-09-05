@@ -1,4 +1,4 @@
-#include "EngineIdleEffect.h"
+#include "EngineIdleVFX.h"
 #include <FastLED.h>
 
 namespace BattleAura {

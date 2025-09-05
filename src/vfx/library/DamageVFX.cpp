@@ -1,4 +1,4 @@
-#include "DamageEffect.h"
+#include "DamageVFX.h"
 #include <FastLED.h>
 
 namespace BattleAura {

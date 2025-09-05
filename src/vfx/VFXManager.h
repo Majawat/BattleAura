@@ -3,11 +3,11 @@
 #include <Arduino.h>
 #include <vector>
 #include <memory>
-#include "BaseEffect.h"
-#include "library/CandleEffect.h"
-#include "library/EngineIdleEffect.h"
-#include "library/WeaponFireEffect.h"
-#include "library/DamageEffect.h"
+#include "BaseVFX.h"
+#include "library/CandleVFX.h"
+#include "library/EngineIdleVFX.h"
+#include "library/WeaponFireVFX.h"
+#include "library/DamageVFX.h"
 #include "../hardware/LedController.h"
 #include "../config/Configuration.h"
 

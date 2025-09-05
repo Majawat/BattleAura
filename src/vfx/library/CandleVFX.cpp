@@ -1,4 +1,4 @@
-#include "CandleEffect.h"
+#include "CandleVFX.h"
 #include <FastLED.h>
 
 namespace BattleAura {

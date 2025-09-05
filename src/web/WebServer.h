@@ -8,7 +8,7 @@
 #include <ESPmDNS.h>
 #include "../config/Configuration.h"
 #include "../hardware/LedController.h"
-#include "../effects/EffectManager.h"
+#include "../vfx/VFXManager.h"
 #include "../audio/AudioController.h"
 
 namespace BattleAura {

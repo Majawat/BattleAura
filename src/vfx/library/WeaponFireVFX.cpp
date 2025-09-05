@@ -1,4 +1,4 @@
-#include "WeaponFireEffect.h"
+#include "WeaponFireVFX.h"
 #include <FastLED.h>
 
 namespace BattleAura {

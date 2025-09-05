@@ -2,7 +2,7 @@
 #include "config/Configuration.h"
 #include "hardware/LedController.h"
 #include "web/WebServer.h"
-#include "effects/EffectManager.h"
+#include "vfx/VFXManager.h"
 #include "audio/AudioController.h"
 
 using namespace BattleAura;
