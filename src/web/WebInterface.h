@@ -221,12 +221,12 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             Loading system...
         </div>
         
-        <!-- Effect Control Section - Primary Use Case -->
+        <!-- VFX Control Section - Primary Use Case -->
         <div class="section">
-            <h2>Effect Controls</h2>
-            <p>Quick access to trigger effects on your configured zones</p>
-            <div id="effects-container">
-                <!-- Effects will be populated here -->
+            <h2>VFX Controls</h2>
+            <p>Quick access to trigger VFX on your configured zones</p>
+            <div id="vfx-container">
+                <!-- VFX will be populated here -->
             </div>
         </div>
         
@@ -337,12 +337,12 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 </div>
                 <div id="audio-tracks-list"></div>
                 
-                <h3 style="margin-top: 30px;">Effect Configuration</h3>
-                <p>Configure which effects apply to which groups and their audio associations.</p>
+                <h3 style="margin-top: 30px;">VFX Scene Configuration</h3>
+                <p>Configure which VFX apply to which groups and their audio associations.</p>
                 <div class="form-row">
-                    <label>Effect:</label>
+                    <label>VFX:</label>
                     <select id="effectName">
-                        <!-- Will be populated from available effects -->
+                        <!-- Will be populated from available VFX -->
                     </select>
                 </div>
                 <div class="form-row">
@@ -360,9 +360,9 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                     </select>
                 </div>
                 <div class="form-row">
-                    <button onclick="addEffectConfig()" class="btn">Configure Effect</button>
+                    <button onclick="addSceneConfig()" class="btn">Configure Scene</button>
                 </div>
-                <div id="effect-configs-list"></div>
+                <div id="scene-configs-list"></div>
             </div>
             
             <!-- Device Config Tab -->
@@ -455,13 +455,13 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         document.addEventListener('DOMContentLoaded', function() {
             loadZones();
             loadStatus();
-            loadEffects();
+            loadVFX();
             loadGlobalBrightness();
             setupNewZoneForm();
             setTimeout(() => {
                 loadAudioTracks();
-                loadEffectConfigs();
-                loadAvailableEffects();
+                loadSceneConfigs();
+                loadAvailableVFX();
                 populateAvailableGroups();
             }, 1000);
         });
@@ -668,7 +668,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             `).join('');
         }
         
-        async function addEffectConfig() {
+        async function addSceneConfig() {
             const effectName = document.getElementById('effectName')?.value;
             const audioFile = document.getElementById('effectAudio')?.value;
             
@@ -680,12 +680,12 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             });
             
             if (!effectName || selectedGroups.length === 0) {
-                updateStatus('error', 'Please select effect and at least one group');
+                updateStatus('error', 'Please select VFX and at least one group');
                 return;
             }
             
             try {
-                updateStatus('loading', 'Configuring effect...');
+                updateStatus('loading', 'Configuring VFX Scene...');
                 
                 const response = await fetch('/api/effects/config', {
                     method: 'POST',
@@ -700,34 +700,34 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 const result = await response.json();
                 
                 if (response.ok) {
-                    updateStatus('success', 'Effect configured successfully');
+                    updateStatus('success', 'VFX Scene configured successfully');
                     // Clear selected checkboxes
                     document.querySelectorAll('#effectGroups input[type="checkbox"]:checked').forEach(checkbox => {
                         checkbox.checked = false;
                     });
-                    loadEffectConfigs();
+                    loadSceneConfigs();
                 } else {
-                    updateStatus('error', result.error || 'Failed to configure effect');
+                    updateStatus('error', result.error || 'Failed to configure VFX Scene');
                 }
                 
             } catch (error) {
-                console.error('Error configuring effect:', error);
-                updateStatus('error', 'Failed to configure effect: ' + error.message);
+                console.error('Error configuring VFX Scene:', error);
+                updateStatus('error', 'Failed to configure VFX Scene: ' + error.message);
             }
         }
         
-        async function loadEffectConfigs() {
+        async function loadSceneConfigs() {
             try {
                 const response = await fetch('/api/effects/config');
                 if (!response.ok) return;
                 
                 const data = await response.json();
-                const container = document.getElementById('effect-configs-list');
+                const container = document.getElementById('scene-configs-list');
                 
                 if (!container) return;
                 
                 if (!data.configs || data.configs.length === 0) {
-                    container.innerHTML = '<p>No effect configurations</p>';
+                    container.innerHTML = '<p>No scene configurations</p>';
                     return;
                 }
                 
@@ -737,16 +737,16 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                         ${config.targetGroups ? ' | Groups: ' + (Array.isArray(config.targetGroups) ? config.targetGroups.join(', ') : config.targetGroups) : ''}
                         ${config.audioFile ? ' | Audio: Track ' + config.audioFile : ''}
                         <div style="margin-top: 5px;">
-                            <button onclick="removeEffectConfig('${config.name}')" class="btn btn-danger" style="padding: 5px 10px;">Remove</button>
+                            <button onclick="removeSceneConfig('${config.name}')" class="btn btn-danger" style="padding: 5px 10px;">Remove</button>
                         </div>
                     </div>`
                 ).join('');
             } catch (error) {
-                console.error('Error loading effect configs:', error);
+                console.error('Error loading scene configs:', error);
             }
         }
         
-        async function removeEffectConfig(effectName) {
+        async function removeSceneConfig(effectName) {
             try {
                 const response = await fetch('/api/effects/config', {
                     method: 'DELETE',
@@ -755,17 +755,17 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 });
                 
                 if (response.ok) {
-                    updateStatus('success', 'Effect configuration removed');
-                    loadEffectConfigs();
+                    updateStatus('success', 'VFX Scene configuration removed');
+                    loadSceneConfigs();
                 } else {
-                    updateStatus('error', 'Failed to remove effect configuration');
+                    updateStatus('error', 'Failed to remove VFX Scene configuration');
                 }
             } catch (error) {
-                updateStatus('error', 'Failed to remove effect configuration: ' + error.message);
+                updateStatus('error', 'Failed to remove VFX Scene configuration: ' + error.message);
             }
         }
         
-        async function loadAvailableEffects() {
+        async function loadAvailableVFX() {
             try {
                 const response = await fetch('/api/effects');
                 if (!response.ok) return;
@@ -775,11 +775,11 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 
                 if (!select) return;
                 
-                select.innerHTML = (data.effects || []).map(effect => 
-                    `<option value="${effect.name}">${effect.name}</option>`
+                select.innerHTML = (data.effects || []).map(vfx => 
+                    `<option value="${vfx.name}">${vfx.name}</option>`
                 ).join('');
             } catch (error) {
-                console.error('Error loading available effects:', error);
+                console.error('Error loading available VFX:', error);
             }
         }
         
@@ -854,7 +854,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 if (response.ok) {
                     updateStatus('success', 'Zone removed');
                     loadZones();
-                    loadEffects(); // Effects may have changed
+                    loadVFX(); // Effects may have changed
                 } else {
                     updateStatus('error', 'Failed to remove zone');
                 }
@@ -955,7 +955,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 
                 if (response.ok) {
                     updateStatus('success', 'All effects stopped');
-                    setTimeout(() => loadEffects(), 500);
+                    setTimeout(() => loadVFX(), 500);
                 } else {
                     updateStatus('error', result.error || 'Failed to stop effects');
                 }
@@ -1104,7 +1104,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 if (response.ok) {
                     updateStatus('success', result.message);
                     loadZones(); // Reload zones
-                    loadEffects(); // Reload effects
+                    loadVFX(); // Reload effects
                 } else {
                     updateStatus('error', result.error || 'Failed to clear zones');
                 }
@@ -1115,68 +1115,68 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             }
         }
         
-        // Effect management functions
-        async function loadEffects() {
+        // VFX management functions
+        async function loadVFX() {
             try {
                 const response = await fetch('/api/effects');
-                if (!response.ok) throw new Error('Failed to load effects');
+                if (!response.ok) throw new Error('Failed to load VFX');
                 
                 const data = await response.json();
-                renderEffects(data.effects || []);
+                renderVFX(data.effects || []);
             } catch (error) {
-                console.error('Error loading effects:', error);
+                console.error('Error loading VFX:', error);
             }
         }
         
-        function renderEffects(effects) {
-            const container = document.getElementById('effects-container');
+        function renderVFX(vfxList) {
+            const container = document.getElementById('vfx-container');
             
-            if (effects.length === 0) {
-                container.innerHTML = '<div class="status">No effects available</div>';
+            if (vfxList.length === 0) {
+                container.innerHTML = '<div class="status">No VFX available</div>';
                 return;
             }
             
-            container.innerHTML = effects.map(effect => `
+            container.innerHTML = vfxList.map(vfx => `
                 <div class="zone-card">
-                    <div class="zone-name">${effect.name}</div>
+                    <div class="zone-name">${vfx.name}</div>
                     <div class="zone-info">
-                        Status: ${effect.enabled ? 'Running' : 'Stopped'}
+                        Status: ${vfx.enabled ? 'Running' : 'Stopped'}
                     </div>
-                    <button onclick="triggerEffect('${effect.name}', 0)" class="btn">
-                        ${effect.enabled ? 'Restart' : 'Start'} Continuous
+                    <button onclick="triggerVFX('${vfx.name}', 0)" class="btn">
+                        ${vfx.enabled ? 'Restart' : 'Start'} Continuous
                     </button>
-                    <button onclick="triggerEffect('${effect.name}', 2000)" class="btn">
+                    <button onclick="triggerVFX('${vfx.name}', 2000)" class="btn">
                         Trigger 2s
                     </button>
-                    <button onclick="triggerEffect('${effect.name}', 5000)" class="btn">
+                    <button onclick="triggerVFX('${vfx.name}', 5000)" class="btn">
                         Trigger 5s
                     </button>
                 </div>
             `).join('');
         }
         
-        async function triggerEffect(effectName, duration) {
+        async function triggerVFX(vfxName, duration) {
             try {
-                updateStatus('loading', `Triggering ${effectName}...`);
+                updateStatus('loading', `Triggering ${vfxName}...`);
                 
                 const response = await fetch('/api/effects/trigger', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ effectName, duration })
+                    body: JSON.stringify({ effectName: vfxName, duration })
                 });
                 
                 const result = await response.json();
                 
                 if (response.ok) {
                     updateStatus('success', result.message);
-                    setTimeout(() => loadEffects(), 500); // Reload effects after delay
+                    setTimeout(() => loadVFX(), 500); // Reload VFX after delay
                 } else {
-                    updateStatus('error', result.error || 'Failed to trigger effect');
+                    updateStatus('error', result.error || 'Failed to trigger VFX');
                 }
                 
             } catch (error) {
-                console.error('Error triggering effect:', error);
-                updateStatus('error', 'Failed to trigger effect: ' + error.message);
+                console.error('Error triggering VFX:', error);
+                updateStatus('error', 'Failed to trigger VFX: ' + error.message);
             }
         }
         
