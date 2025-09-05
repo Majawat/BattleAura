@@ -4,8 +4,8 @@
 
 namespace BattleAura {
 
-WebServer::WebServer(Configuration& config, LedController& ledController, EffectManager& effectManager, AudioController& audioController) 
-    : config(config), ledController(ledController), effectManager(effectManager), audioController(audioController), server(80), 
+WebServer::WebServer(Configuration& config, LedController& ledController, VFXManager& vfxManager, AudioController& audioController) 
+    : config(config), ledController(ledController), vfxManager(vfxManager), audioController(audioController), server(80), 
       wifiConnected(false), apMode(false) {
 }
 
@@ -279,19 +279,19 @@ void WebServer::setupRoutes() {
     
     // Effects configuration
     server.on("/api/effects/config", HTTP_GET, [this](AsyncWebServerRequest* request) {
-        handleGetEffectConfigs(request);
+        handleGetSceneConfigs(request);
     });
     
     server.on("/api/effects/config", HTTP_POST, [this](AsyncWebServerRequest* request) {
         // Will be handled by body handler
     }, NULL, [this](AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
-        handleAddEffectConfigBody(request, data, len, index, total);
+        handleAddSceneConfigBody(request, data, len, index, total);
     });
     
     server.on("/api/effects/config", HTTP_DELETE, [this](AsyncWebServerRequest* request) {
         // Will be handled by body handler
     }, NULL, [this](AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
-        handleDeleteEffectConfigBody(request, data, len, index, total);
+        handleDeleteSceneConfigBody(request, data, len, index, total);
     });
     
     // Device configuration
@@ -684,11 +684,11 @@ void WebServer::handleGetEffects(AsyncWebServerRequest* request) {
     JsonDocument doc;
     JsonArray effectsArray = doc["effects"].to<JsonArray>();
     
-    auto effectNames = effectManager.getEffectNames();
+    auto effectNames = vfxManager.getEffectNames();
     for (const String& name : effectNames) {
         JsonObject effectObj = effectsArray.add<JsonObject>();
         effectObj["name"] = name;
-        effectObj["enabled"] = effectManager.isEffectEnabled(name);
+        effectObj["enabled"] = vfxManager.isEffectEnabled(name);
     }
     
     String response;
@@ -730,7 +730,7 @@ void WebServer::handleTriggerEffectBody(AsyncWebServerRequest* request, uint8_t 
         String effectName = doc["effectName"];
         uint32_t duration = doc["duration"] | 0; // Default to continuous
         
-        if (effectManager.triggerEffect(effectName, duration)) {
+        if (vfxManager.triggerEffect(effectName, duration)) {
             Serial.printf("WebServer: Triggered effect '%s' for %dms\n", effectName.c_str(), duration);
             
             JsonDocument responseDoc;
@@ -1133,12 +1133,12 @@ void WebServer::handleDeleteAudioTrack(AsyncWebServerRequest* request) {
     }
 }
 
-void WebServer::handleGetEffectConfigs(AsyncWebServerRequest* request) {
+void WebServer::handleGetSceneConfigs(AsyncWebServerRequest* request) {
     JsonDocument doc;
     JsonArray configsArray = doc["configs"].to<JsonArray>();
     
-    auto effectConfigs = config.getAllEffectConfigs();
-    for (const EffectConfig* effectConfig : effectConfigs) {
+    auto effectConfigs = config.getAllSceneConfigs();
+    for (const SceneConfig* effectConfig : effectConfigs) {
         if (effectConfig) {
             JsonObject configObj = configsArray.add<JsonObject>();
             configObj["name"] = effectConfig->name;
@@ -1148,13 +1148,13 @@ void WebServer::handleGetEffectConfigs(AsyncWebServerRequest* request) {
             
             // Convert type enum to string
             switch (effectConfig->type) {
-                case EffectType::AMBIENT:
+                case SceneType::AMBIENT:
                     configObj["type"] = "AMBIENT";
                     break;
-                case EffectType::ACTIVE:
+                case SceneType::ACTIVE:
                     configObj["type"] = "ACTIVE";
                     break;
-                case EffectType::GLOBAL:
+                case SceneType::GLOBAL:
                     configObj["type"] = "GLOBAL";
                     break;
                 default:
@@ -1173,11 +1173,11 @@ void WebServer::handleGetEffectConfigs(AsyncWebServerRequest* request) {
     sendJSONResponse(request, 200, response);
 }
 
-void WebServer::handleAddEffectConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
-    parseJSONBody(request, data, len, index, total, &WebServer::processAddEffectConfig);
+void WebServer::handleAddSceneConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+    parseJSONBody(request, data, len, index, total, &WebServer::processAddSceneConfig);
 }
 
-void WebServer::processAddEffectConfig(AsyncWebServerRequest* request, JsonDocument& doc) {
+void WebServer::processAddSceneConfig(AsyncWebServerRequest* request, JsonDocument& doc) {
     String effectName = doc["name"] | "";
     String effectType = doc["type"] | "AMBIENT";
     JsonArray groupsArray = doc["groups"];
@@ -1190,7 +1190,7 @@ void WebServer::processAddEffectConfig(AsyncWebServerRequest* request, JsonDocum
         return;
     }
     
-    EffectConfig effectConfig;
+    SceneConfig effectConfig;
     effectConfig.name = effectName;
     effectConfig.audioFile = audioFile;
     effectConfig.duration = duration;
@@ -1198,13 +1198,13 @@ void WebServer::processAddEffectConfig(AsyncWebServerRequest* request, JsonDocum
     
     // Set effect type
     if (effectType == "AMBIENT") {
-        effectConfig.type = EffectType::AMBIENT;
+        effectConfig.type = SceneType::AMBIENT;
     } else if (effectType == "ACTIVE") {
-        effectConfig.type = EffectType::ACTIVE;
+        effectConfig.type = SceneType::ACTIVE;
     } else if (effectType == "GLOBAL") {
-        effectConfig.type = EffectType::GLOBAL;
+        effectConfig.type = SceneType::GLOBAL;
     } else {
-        effectConfig.type = EffectType::AMBIENT; // Default
+        effectConfig.type = SceneType::AMBIENT; // Default
     }
     
     // Add target groups
@@ -1215,7 +1215,7 @@ void WebServer::processAddEffectConfig(AsyncWebServerRequest* request, JsonDocum
         }
     }
     
-    if (config.addEffectConfig(effectConfig)) {
+    if (config.addSceneConfig(effectConfig)) {
         if (config.save()) {
             Serial.printf("WebServer: Added effect config '%s' with %d groups\n", 
                          effectName.c_str(), effectConfig.targetGroups.size());
@@ -1235,11 +1235,11 @@ void WebServer::processAddEffectConfig(AsyncWebServerRequest* request, JsonDocum
     }
 }
 
-void WebServer::handleDeleteEffectConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
-    parseJSONBody(request, data, len, index, total, &WebServer::processDeleteEffectConfig);
+void WebServer::handleDeleteSceneConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+    parseJSONBody(request, data, len, index, total, &WebServer::processDeleteSceneConfig);
 }
 
-void WebServer::processDeleteEffectConfig(AsyncWebServerRequest* request, JsonDocument& doc) {
+void WebServer::processDeleteSceneConfig(AsyncWebServerRequest* request, JsonDocument& doc) {
     String effectName = doc["name"] | "";
     
     if (effectName.isEmpty()) {
@@ -1247,7 +1247,7 @@ void WebServer::processDeleteEffectConfig(AsyncWebServerRequest* request, JsonDo
         return;
     }
     
-    if (config.removeEffectConfig(effectName)) {
+    if (config.removeSceneConfig(effectName)) {
         if (config.save()) {
             Serial.printf("WebServer: Removed effect config '%s'\n", effectName.c_str());
             
@@ -1335,7 +1335,7 @@ void WebServer::handleStopAllEffects(AsyncWebServerRequest* request) {
     Serial.println("WebServer: Stopping all effects");
     
     // Stop all effects via the effect manager
-    effectManager.stopAllEffects();
+    vfxManager.stopAllEffects();
     
     JsonDocument responseDoc;
     responseDoc["success"] = true;

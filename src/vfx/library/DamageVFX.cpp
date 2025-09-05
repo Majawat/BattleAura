@@ -3,11 +3,11 @@
 
 namespace BattleAura {
 
-DamageEffect::DamageEffect(LedController& ledController, Configuration& config) 
-    : BaseEffect(ledController, config, "Damage", EffectPriority::GLOBAL) {
+DamageVFX::DamageVFX(LedController& ledController, Configuration& config) 
+    : BaseVFX(ledController, config, "Damage", VFXPriority::GLOBAL) {
 }
 
-void DamageEffect::begin() {
+void DamageVFX::begin() {
     Serial.println("Damage: Initializing...");
     
     std::vector<Zone*> zones = hasTargetZones() ? getTargetZones() : config.getAllZones();
@@ -28,12 +28,12 @@ void DamageEffect::begin() {
     Serial.printf("Damage: Initialized for %d zones\n", zones.size());
 }
 
-void DamageEffect::trigger(uint32_t duration) {
-    BaseEffect::trigger(duration);
+void DamageVFX::trigger(uint32_t duration) {
+    BaseVFX::trigger(duration);
     startDamage();
 }
 
-void DamageEffect::update() {
+void DamageVFX::update() {
     if (!enabled) return;
     
     // Check if timed effect should stop
@@ -63,7 +63,7 @@ void DamageEffect::update() {
     }
 }
 
-void DamageEffect::startDamage() {
+void DamageVFX::startDamage() {
     if (!enabled) return;
     
     uint32_t currentTime = millis();
@@ -87,7 +87,7 @@ void DamageEffect::startDamage() {
     }
 }
 
-void DamageEffect::updateDamageForZone(size_t zoneIndex, Zone* zone) {
+void DamageVFX::updateDamageForZone(size_t zoneIndex, Zone* zone) {
     if (!zone || !zone->enabled) return;
     
     DamageState& state = damageStates[zoneIndex];
@@ -137,7 +137,7 @@ void DamageEffect::updateDamageForZone(size_t zoneIndex, Zone* zone) {
     }
 }
 
-void DamageEffect::restoreZone(size_t zoneIndex, Zone* zone) {
+void DamageVFX::restoreZone(size_t zoneIndex, Zone* zone) {
     if (!zone || zoneIndex >= damageStates.size()) return;
     
     DamageState& state = damageStates[zoneIndex];

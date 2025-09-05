@@ -5,11 +5,11 @@
 
 namespace BattleAura {
 
-class WeaponFireEffect : public BaseEffect {
+class WeaponFireVFX : public BaseVFX {
 public:
-    WeaponFireEffect(LedController& ledController, Configuration& config);
+    WeaponFireVFX(LedController& ledController, Configuration& config);
     
-    // BaseEffect implementation
+    // BaseVFX implementation
     void begin() override;
     void update() override;
     void trigger(uint32_t duration = 1500) override; // 1.5s default duration

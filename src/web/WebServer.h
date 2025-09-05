@@ -15,7 +15,7 @@ namespace BattleAura {
 
 class WebServer {
 public:
-    WebServer(Configuration& config, LedController& ledController, EffectManager& effectManager, AudioController& audioController);
+    WebServer(Configuration& config, LedController& ledController, VFXManager& vfxManager, AudioController& audioController);
     ~WebServer();
     
     // Initialization
@@ -34,7 +34,7 @@ public:
 private:
     Configuration& config;
     LedController& ledController;
-    EffectManager& effectManager;
+    VFXManager& vfxManager;
     AudioController& audioController;
     AsyncWebServer server;
     bool wifiConnected;
@@ -71,9 +71,9 @@ private:
     void handleAddAudioTrack(AsyncWebServerRequest* request);
     void handleAddAudioTrackBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
     void handleDeleteAudioTrack(AsyncWebServerRequest* request);
-    void handleGetEffectConfigs(AsyncWebServerRequest* request);
-    void handleAddEffectConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
-    void handleDeleteEffectConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
+    void handleGetSceneConfigs(AsyncWebServerRequest* request);
+    void handleAddSceneConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
+    void handleDeleteSceneConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
     void handleDeviceConfigBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
     void handleSystemRestart(AsyncWebServerRequest* request);
     void handleFactoryReset(AsyncWebServerRequest* request);
@@ -93,8 +93,8 @@ private:
     
     // JSON processing handlers
     void processAddAudioTrack(AsyncWebServerRequest* request, JsonDocument& doc);
-    void processAddEffectConfig(AsyncWebServerRequest* request, JsonDocument& doc);
-    void processDeleteEffectConfig(AsyncWebServerRequest* request, JsonDocument& doc);
+    void processAddSceneConfig(AsyncWebServerRequest* request, JsonDocument& doc);
+    void processDeleteSceneConfig(AsyncWebServerRequest* request, JsonDocument& doc);
     void processDeviceConfig(AsyncWebServerRequest* request, JsonDocument& doc);
     void processSetGlobalBrightness(AsyncWebServerRequest* request, JsonDocument& doc);
     

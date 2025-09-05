@@ -3,11 +3,11 @@
 
 namespace BattleAura {
 
-WeaponFireEffect::WeaponFireEffect(LedController& ledController, Configuration& config) 
-    : BaseEffect(ledController, config, "MachineGun", EffectPriority::ACTIVE) {
+WeaponFireVFX::WeaponFireVFX(LedController& ledController, Configuration& config) 
+    : BaseVFX(ledController, config, "MachineGun", VFXPriority::ACTIVE) {
 }
 
-void WeaponFireEffect::begin() {
+void WeaponFireVFX::begin() {
     Serial.println("MachineGun: Initializing...");
     
     std::vector<Zone*> zones = hasTargetZones() ? getTargetZones() : config.getAllZones();
@@ -27,12 +27,12 @@ void WeaponFireEffect::begin() {
     Serial.printf("MachineGun: Initialized for %d zones\n", zones.size());
 }
 
-void WeaponFireEffect::trigger(uint32_t duration) {
-    BaseEffect::trigger(duration);
+void WeaponFireVFX::trigger(uint32_t duration) {
+    BaseVFX::trigger(duration);
     startFiring();
 }
 
-void WeaponFireEffect::update() {
+void WeaponFireVFX::update() {
     if (!enabled) return;
     
     // Check if timed effect should stop
@@ -55,7 +55,7 @@ void WeaponFireEffect::update() {
     }
 }
 
-void WeaponFireEffect::startFiring() {
+void WeaponFireVFX::startFiring() {
     if (!enabled) return;
     
     uint32_t currentTime = millis();
@@ -69,7 +69,7 @@ void WeaponFireEffect::startFiring() {
     }
 }
 
-void WeaponFireEffect::updateFireForZone(size_t zoneIndex, Zone* zone) {
+void WeaponFireVFX::updateFireForZone(size_t zoneIndex, Zone* zone) {
     if (!zone || !zone->enabled) return;
     
     FireState& state = fireStates[zoneIndex];

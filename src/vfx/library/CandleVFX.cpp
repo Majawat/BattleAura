@@ -3,11 +3,11 @@
 
 namespace BattleAura {
 
-CandleEffect::CandleEffect(LedController& ledController, Configuration& config) 
-    : BaseEffect(ledController, config, "CandleFlicker", EffectPriority::AMBIENT) {
+CandleVFX::CandleVFX(LedController& ledController, Configuration& config) 
+    : BaseVFX(ledController, config, "CandleFlicker", VFXPriority::AMBIENT) {
 }
 
-void CandleEffect::begin() {
+void CandleVFX::begin() {
     Serial.println("CandleFlicker: Initializing...");
     
     // Use target zones if set, otherwise fall back to all zones
@@ -31,7 +31,7 @@ void CandleEffect::begin() {
                  zones.size(), hasTargetZones() ? "configured groups" : "all zones");
 }
 
-void CandleEffect::update() {
+void CandleVFX::update() {
     if (!enabled) return;
     
     // Use target zones if set, otherwise fall back to all zones
@@ -49,9 +49,9 @@ void CandleEffect::update() {
     }
 }
 
-void CandleEffect::setEnabled(bool enabled) {
+void CandleVFX::setEnabled(bool enabled) {
     if (this->enabled != enabled) {
-        BaseEffect::setEnabled(enabled);
+        BaseVFX::setEnabled(enabled);
         Serial.printf("CandleFlicker: %s\n", enabled ? "Enabled" : "Disabled");
         
         if (enabled) {
@@ -60,7 +60,7 @@ void CandleEffect::setEnabled(bool enabled) {
     }
 }
 
-void CandleEffect::updateFlickerForZone(size_t zoneIndex, Zone* zone) {
+void CandleVFX::updateFlickerForZone(size_t zoneIndex, Zone* zone) {
     if (!zone || !zone->enabled) return;
     
     FlickerState& state = flickerStates[zoneIndex];

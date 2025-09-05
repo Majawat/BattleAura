@@ -6,7 +6,7 @@
 
 namespace BattleAura {
 
-enum class EffectType {
+enum class SceneType {
     AMBIENT,  // Always running (candle flicker, engine idle)
     ACTIVE,   // Triggered by user (weapon fire, engine rev) 
     GLOBAL    // System-wide effects (taking hits, destroyed)
@@ -18,9 +18,9 @@ enum class EffectState {
     STOPPING  // Effect finishing/fading out
 };
 
-struct EffectConfig {
+struct SceneConfig {
     String name;                        // "CandleFlicker", "MachineGun", etc.
-    EffectType type;                    // Ambient, Active, or Global
+    SceneType type;                     // Ambient, Active, or Global
     std::vector<String> targetGroups;   // Groups this effect applies to
     uint16_t audioFile;                 // 0 = no audio, else file number (0001.mp3)
     String audioDescription;            // User's description of audio file
@@ -28,9 +28,9 @@ struct EffectConfig {
     JsonDocument parameters;            // Effect-specific parameters  
     bool enabled;                       // Effect enabled/disabled
     
-    EffectConfig() : type(EffectType::AMBIENT), audioFile(0), duration(0), enabled(true) {}
+    SceneConfig() : type(SceneType::AMBIENT), audioFile(0), duration(0), enabled(true) {}
     
-    EffectConfig(const String& _name, EffectType _type, uint32_t _duration = 0)
+    SceneConfig(const String& _name, SceneType _type, uint32_t _duration = 0)
         : name(_name), type(_type), audioFile(0), duration(_duration), enabled(true) {}
     
     void addTargetGroup(const String& groupName) {
@@ -58,15 +58,15 @@ struct EffectConfig {
     }
     
     bool isAmbient() const {
-        return type == EffectType::AMBIENT;
+        return type == SceneType::AMBIENT;
     }
     
     bool isActive() const {
-        return type == EffectType::ACTIVE;
+        return type == SceneType::ACTIVE;
     }
     
     bool isGlobal() const {
-        return type == EffectType::GLOBAL;
+        return type == SceneType::GLOBAL;
     }
     
     bool isInfinite() const {
@@ -76,7 +76,7 @@ struct EffectConfig {
 
 // Runtime effect instance
 struct EffectInstance {
-    const EffectConfig* config;  // Reference to configuration
+    const SceneConfig* config;   // Reference to configuration
     EffectState state;           // Current runtime state
     uint32_t startTime;          // When effect started (millis())
     uint32_t endTime;            // When effect should end (0 if infinite)
@@ -84,7 +84,7 @@ struct EffectInstance {
     EffectInstance() : config(nullptr), state(EffectState::IDLE), 
                       startTime(0), endTime(0) {}
                       
-    EffectInstance(const EffectConfig* _config) 
+    EffectInstance(const SceneConfig* _config) 
         : config(_config), state(EffectState::IDLE), startTime(0), endTime(0) {}
     
     void start() {

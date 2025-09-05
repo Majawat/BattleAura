@@ -5,11 +5,11 @@
 
 namespace BattleAura {
 
-class EngineIdleEffect : public BaseEffect {
+class EngineIdleVFX : public BaseVFX {
 public:
-    EngineIdleEffect(LedController& ledController, Configuration& config);
+    EngineIdleVFX(LedController& ledController, Configuration& config);
     
-    // BaseEffect implementation
+    // BaseVFX implementation
     void begin() override;
     void update() override;
     

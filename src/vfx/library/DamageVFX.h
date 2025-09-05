@@ -5,11 +5,11 @@
 
 namespace BattleAura {
 
-class DamageEffect : public BaseEffect {
+class DamageVFX : public BaseVFX {
 public:
-    DamageEffect(LedController& ledController, Configuration& config);
+    DamageVFX(LedController& ledController, Configuration& config);
     
-    // BaseEffect implementation
+    // BaseVFX implementation
     void begin() override;
     void update() override;
     void trigger(uint32_t duration = 2000) override; // 2s default duration

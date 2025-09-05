@@ -172,27 +172,27 @@ void Configuration::updateGroupMembership() {
 }
 
 // Effect configuration management
-bool Configuration::addEffectConfig(const EffectConfig& effectConfig) {
+bool Configuration::addSceneConfig(const SceneConfig& effectConfig) {
     effectConfigs[effectConfig.name] = effectConfig;
     return true;
 }
 
-bool Configuration::removeEffectConfig(const String& effectName) {
+bool Configuration::removeSceneConfig(const String& effectName) {
     return effectConfigs.erase(effectName) > 0;
 }
 
-EffectConfig* Configuration::getEffectConfig(const String& effectName) {
+SceneConfig* Configuration::getSceneConfig(const String& effectName) {
     auto it = effectConfigs.find(effectName);
     return (it != effectConfigs.end()) ? &it->second : nullptr;
 }
 
-const EffectConfig* Configuration::getEffectConfig(const String& effectName) const {
+const SceneConfig* Configuration::getSceneConfig(const String& effectName) const {
     auto it = effectConfigs.find(effectName);
     return (it != effectConfigs.end()) ? &it->second : nullptr;
 }
 
-std::vector<EffectConfig*> Configuration::getEffectConfigsByGroup(const String& groupName) {
-    std::vector<EffectConfig*> result;
+std::vector<SceneConfig*> Configuration::getSceneConfigsByGroup(const String& groupName) {
+    std::vector<SceneConfig*> result;
     for (auto& pair : effectConfigs) {
         for (const String& targetGroup : pair.second.targetGroups) {
             if (targetGroup == groupName) {
@@ -204,8 +204,8 @@ std::vector<EffectConfig*> Configuration::getEffectConfigsByGroup(const String& 
     return result;
 }
 
-std::vector<EffectConfig*> Configuration::getEffectConfigsByType(EffectType type) {
-    std::vector<EffectConfig*> result;
+std::vector<SceneConfig*> Configuration::getSceneConfigsByType(SceneType type) {
+    std::vector<SceneConfig*> result;
     for (auto& pair : effectConfigs) {
         if (pair.second.type == type) {
             result.push_back(&pair.second);
@@ -214,17 +214,17 @@ std::vector<EffectConfig*> Configuration::getEffectConfigsByType(EffectType type
     return result;
 }
 
-std::vector<EffectConfig*> Configuration::getAllEffectConfigs() {
-    std::vector<EffectConfig*> result;
+std::vector<SceneConfig*> Configuration::getAllSceneConfigs() {
+    std::vector<SceneConfig*> result;
     for (auto& pair : effectConfigs) {
         result.push_back(&pair.second);
     }
     return result;
 }
 
-const std::vector<EffectConfig*> Configuration::getAllEffectConfigs() const {
-    std::vector<EffectConfig*> result;
-    for (auto& pair : const_cast<std::map<String, EffectConfig>&>(effectConfigs)) {
+const std::vector<SceneConfig*> Configuration::getAllSceneConfigs() const {
+    std::vector<SceneConfig*> result;
+    for (auto& pair : const_cast<std::map<String, SceneConfig>&>(effectConfigs)) {
         result.push_back(&pair.second);
     }
     return result;
@@ -347,9 +347,9 @@ void Configuration::printStatus() const {
     
     Serial.printf("Effects: %d\n", effectConfigs.size());
     for (const auto& pair : effectConfigs) {
-        const EffectConfig& effect = pair.second;
-        String typeStr = (effect.type == EffectType::AMBIENT) ? "Ambient" :
-                        (effect.type == EffectType::ACTIVE) ? "Active" : "Global";
+        const SceneConfig& effect = pair.second;
+        String typeStr = (effect.type == SceneType::AMBIENT) ? "Ambient" :
+                        (effect.type == SceneType::ACTIVE) ? "Active" : "Global";
         Serial.printf("  Effect '%s': %s (Audio: %d)\n", 
                      effect.name.c_str(), typeStr.c_str(), effect.audioFile);
     }
@@ -366,7 +366,7 @@ void Configuration::printStatus() const {
 size_t Configuration::getConfigSize() const {
     return zones.size() * sizeof(Zone) + 
            groups.size() * sizeof(Group) + 
-           effectConfigs.size() * sizeof(EffectConfig);
+           effectConfigs.size() * sizeof(SceneConfig);
 }
 
 // Private methods
@@ -461,7 +461,7 @@ bool Configuration::loadFromLittleFS() {
             String effectName = configPair.key().c_str();
             JsonObject configObj = configPair.value();
             
-            EffectConfig effectConfig;
+            SceneConfig effectConfig;
             effectConfig.name = effectName;
             effectConfig.audioFile = configObj["audioFile"] | 0;
             effectConfig.duration = configObj["duration"] | 0;
@@ -470,13 +470,13 @@ bool Configuration::loadFromLittleFS() {
             // Load type
             String typeStr = configObj["type"] | "AMBIENT";
             if (typeStr == "AMBIENT") {
-                effectConfig.type = EffectType::AMBIENT;
+                effectConfig.type = SceneType::AMBIENT;
             } else if (typeStr == "ACTIVE") {
-                effectConfig.type = EffectType::ACTIVE;
+                effectConfig.type = SceneType::ACTIVE;
             } else if (typeStr == "GLOBAL") {
-                effectConfig.type = EffectType::GLOBAL;
+                effectConfig.type = SceneType::GLOBAL;
             } else {
-                effectConfig.type = EffectType::AMBIENT; // Default
+                effectConfig.type = SceneType::AMBIENT; // Default
             }
             
             // Load target groups
@@ -546,7 +546,7 @@ bool Configuration::saveToLittleFS() {
     // Save effect configs
     JsonObject effectConfigsObj = doc["effectConfigs"].to<JsonObject>();
     for (const auto& pair : effectConfigs) {
-        const EffectConfig& effectConfig = pair.second;
+        const SceneConfig& effectConfig = pair.second;
         JsonObject configObj = effectConfigsObj[effectConfig.name].to<JsonObject>();
         
         configObj["audioFile"] = effectConfig.audioFile;
@@ -554,8 +554,8 @@ bool Configuration::saveToLittleFS() {
         configObj["enabled"] = effectConfig.enabled;
         
         // Save type
-        configObj["type"] = (effectConfig.type == EffectType::AMBIENT) ? "AMBIENT" :
-                           (effectConfig.type == EffectType::ACTIVE) ? "ACTIVE" : "GLOBAL";
+        configObj["type"] = (effectConfig.type == SceneType::AMBIENT) ? "AMBIENT" :
+                           (effectConfig.type == SceneType::ACTIVE) ? "ACTIVE" : "GLOBAL";
         
         // Save target groups
         JsonArray groupsArray = configObj["targetGroups"].to<JsonArray>();

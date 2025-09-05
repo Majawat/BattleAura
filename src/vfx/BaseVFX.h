@@ -6,26 +6,26 @@
 
 namespace BattleAura {
 
-enum class EffectPriority {
-    AMBIENT = 0,    // Background effects (candle flicker, engine idle)
-    ACTIVE = 1,     // Player-triggered effects (weapon fire, engine rev)
-    GLOBAL = 2      // System-wide effects (taking damage, shutdown)
+enum class VFXPriority {
+    AMBIENT = 0,    // Background VFX (candle flicker, engine idle)
+    ACTIVE = 1,     // Player-triggered VFX (weapon fire, engine rev)
+    GLOBAL = 2      // System-wide VFX (taking damage, shutdown)
 };
 
-class BaseEffect {
+class BaseVFX {
 public:
-    BaseEffect(LedController& ledController, Configuration& config, 
-               const String& name, EffectPriority priority)
+    BaseVFX(LedController& ledController, Configuration& config, 
+            const String& name, VFXPriority priority)
         : ledController(ledController), config(config), 
-          effectName(name), priority(priority), enabled(false) {}
+          vfxName(name), priority(priority), enabled(false) {}
     
-    virtual ~BaseEffect() = default;
+    virtual ~BaseVFX() = default;
     
     // Pure virtual methods - must be implemented by subclasses
     virtual void begin() = 0;
     virtual void update() = 0;
     
-    // Effect control
+    // VFX control
     virtual void setEnabled(bool enabled) { this->enabled = enabled; }
     bool isEnabled() const { return enabled; }
     
@@ -34,11 +34,11 @@ public:
     const std::vector<Zone*>& getTargetZones() const { return targetZones; }
     bool hasTargetZones() const { return !targetZones.empty(); }
     
-    // Effect metadata
-    const String& getName() const { return effectName; }
-    EffectPriority getPriority() const { return priority; }
+    // VFX metadata
+    const String& getName() const { return vfxName; }
+    VFXPriority getPriority() const { return priority; }
     
-    // Duration-based effects (0 = continuous)
+    // Duration-based VFX (0 = continuous)
     virtual void trigger(uint32_t duration = 0) {
         if (duration > 0) {
             triggerTime = millis();
@@ -54,7 +54,7 @@ public:
         triggerDuration = 0;
     }
     
-    // Check if timed effect should stop
+    // Check if timed VFX should stop
     bool shouldStop() const {
         return triggerDuration > 0 && 
                (millis() - triggerTime >= triggerDuration);
@@ -63,8 +63,8 @@ public:
 protected:
     LedController& ledController;
     Configuration& config;
-    String effectName;
-    EffectPriority priority;
+    String vfxName;
+    VFXPriority priority;
     bool enabled;
     
     // Target zones (empty = all zones, for backward compatibility)

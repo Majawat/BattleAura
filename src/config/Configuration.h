@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ZoneConfig.h"
-#include "EffectConfig.h"
+#include "SceneConfig.h"
 #include <map>
 #include <LittleFS.h>
 
@@ -65,14 +65,14 @@ public:
     void updateGroupMembership(); // Rebuild group memberships from zones
     
     // Effect configuration management
-    bool addEffectConfig(const EffectConfig& effectConfig);
-    bool removeEffectConfig(const String& effectName);
-    EffectConfig* getEffectConfig(const String& effectName);
-    const EffectConfig* getEffectConfig(const String& effectName) const;
-    std::vector<EffectConfig*> getEffectConfigsByGroup(const String& groupName);
-    std::vector<EffectConfig*> getEffectConfigsByType(EffectType type);
-    std::vector<EffectConfig*> getAllEffectConfigs();
-    const std::vector<EffectConfig*> getAllEffectConfigs() const;
+    bool addSceneConfig(const SceneConfig& effectConfig);
+    bool removeSceneConfig(const String& effectName);
+    SceneConfig* getSceneConfig(const String& effectName);
+    const SceneConfig* getSceneConfig(const String& effectName) const;
+    std::vector<SceneConfig*> getSceneConfigsByGroup(const String& groupName);
+    std::vector<SceneConfig*> getSceneConfigsByType(SceneType type);
+    std::vector<SceneConfig*> getAllSceneConfigs();
+    const std::vector<SceneConfig*> getAllSceneConfigs() const;
     
     // Audio track management
     bool addAudioTrack(const AudioTrack& track);
@@ -101,7 +101,7 @@ public:
 private:
     std::map<uint8_t, Zone> zones;              // zoneId -> Zone
     std::map<String, Group> groups;             // groupName -> Group  
-    std::map<String, EffectConfig> effectConfigs; // effectName -> EffectConfig
+    std::map<String, SceneConfig> effectConfigs; // effectName -> SceneConfig
     std::map<uint16_t, AudioTrack> audioTracks; // fileNumber -> AudioTrack
     DeviceConfig deviceConfig;
     
@@ -110,12 +110,12 @@ private:
     void createDefaultConfiguration();
     JsonDocument serializeZones() const;
     JsonDocument serializeGroups() const;
-    JsonDocument serializeEffectConfigs() const;
+    JsonDocument serializeSceneConfigs() const;
     JsonDocument serializeAudioTracks() const;
     JsonDocument serializeDeviceConfig() const;
     bool deserializeZones(const JsonDocument& doc);
     bool deserializeGroups(const JsonDocument& doc);
-    bool deserializeEffectConfigs(const JsonDocument& doc);
+    bool deserializeSceneConfigs(const JsonDocument& doc);
     bool deserializeAudioTracks(const JsonDocument& doc);
     bool deserializeDeviceConfig(const JsonDocument& doc);
 };

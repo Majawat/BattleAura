@@ -3,11 +3,11 @@
 
 namespace BattleAura {
 
-EngineIdleEffect::EngineIdleEffect(LedController& ledController, Configuration& config) 
-    : BaseEffect(ledController, config, "EngineIdle", EffectPriority::AMBIENT) {
+EngineIdleVFX::EngineIdleVFX(LedController& ledController, Configuration& config) 
+    : BaseVFX(ledController, config, "EngineIdle", VFXPriority::AMBIENT) {
 }
 
-void EngineIdleEffect::begin() {
+void EngineIdleVFX::begin() {
     Serial.println("EngineIdle: Initializing...");
     
     // Use target zones if set, otherwise fall back to all zones
@@ -28,7 +28,7 @@ void EngineIdleEffect::begin() {
     Serial.printf("EngineIdle: Initialized for %d zones\n", zones.size());
 }
 
-void EngineIdleEffect::update() {
+void EngineIdleVFX::update() {
     if (!enabled) return;
     
     // Use target zones if set, otherwise fall back to all zones  
@@ -46,7 +46,7 @@ void EngineIdleEffect::update() {
     }
 }
 
-void EngineIdleEffect::updateIdleForZone(size_t zoneIndex, Zone* zone) {
+void EngineIdleVFX::updateIdleForZone(size_t zoneIndex, Zone* zone) {
     if (!zone || !zone->enabled) return;
     
     IdleState& state = idleStates[zoneIndex];

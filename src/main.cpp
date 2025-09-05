@@ -11,8 +11,8 @@ using namespace BattleAura;
 Configuration BattleAura::config;
 LedController ledController;
 AudioController audioController(config);
-EffectManager effectManager(ledController, config);
-WebServer webServer(config, ledController, effectManager, audioController);
+VFXManager vfxManager(ledController, config);
+WebServer webServer(config, ledController, vfxManager, audioController);
 
 void setup() {
     Serial.begin(115200);
@@ -47,10 +47,10 @@ void setup() {
         return;
     }
     
-    // Initialize EffectManager
-    Serial.println("Initializing EffectManager...");
-    if (!effectManager.begin()) {
-        Serial.println("ERROR: EffectManager failed to initialize!");
+    // Initialize VFXManager
+    Serial.println("Initializing VFXManager...");
+    if (!vfxManager.begin()) {
+        Serial.println("ERROR: VFXManager failed to initialize!");
         return;
     }
     
@@ -64,12 +64,12 @@ void setup() {
     config.printStatus();
     ledController.printStatus();
     webServer.printStatus();
-    effectManager.printStatus();
+    vfxManager.printStatus();
     
     Serial.println("\n=== Phase 2 System Ready ===");
-    Serial.println("- Full effect library with priority system active");
+    Serial.println("- Full VFX library with priority system active");
     Serial.println("- Mixed PWM and RGB LED support via FastLED");
-    Serial.println("- Ambient effects running automatically");
+    Serial.println("- Ambient VFX running automatically");
     Serial.println("- Web interface available for remote control");
     Serial.println("- OTA firmware updates available via web interface");
     Serial.printf("- Access at: http://%s\n", webServer.getIPAddress().c_str());
@@ -79,8 +79,8 @@ void loop() {
     // Handle web server and OTA
     webServer.handle();
     
-    // Update all effects via EffectManager
-    effectManager.update();
+    // Update all VFX via VFXManager
+    vfxManager.update();
     
     // Apply LED changes to hardware
     ledController.update();
@@ -92,9 +92,9 @@ void loop() {
     static uint32_t lastPrint = 0;
     if (millis() - lastPrint >= 15000) {
         lastPrint = millis();
-        Serial.printf("Status: Effects Active | WiFi: %s | IP: %s\n",
+        Serial.printf("Status: VFX Active | WiFi: %s | IP: %s\n",
                      webServer.isWiFiConnected() ? "Connected" : "AP Mode",
                      webServer.getIPAddress().c_str());
-        effectManager.printStatus();
+        vfxManager.printStatus();
     }
 }

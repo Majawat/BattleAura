@@ -13,10 +13,10 @@
 
 namespace BattleAura {
 
-class EffectManager {
+class VFXManager {
 public:
-    EffectManager(LedController& ledController, Configuration& config);
-    ~EffectManager() = default;
+    VFXManager(LedController& ledController, Configuration& config);
+    ~VFXManager() = default;
     
     // Initialization
     bool begin();
@@ -45,22 +45,22 @@ private:
     LedController& ledController;
     Configuration& config;
     
-    // Effect instances
-    std::vector<std::unique_ptr<BaseEffect>> effects;
+    // VFX instances
+    std::vector<std::unique_ptr<BaseVFX>> vfxEffects;
     
     // Priority management
-    struct EffectState {
-        BaseEffect* effect;
+    struct VFXState {
+        BaseVFX* vfx;
         bool wasEnabledBeforeGlobal;
         uint32_t globalStartTime;
     };
     
-    std::vector<EffectState> effectStates;
-    BaseEffect* currentGlobalEffect = nullptr;
+    std::vector<VFXState> vfxStates;
+    BaseVFX* currentGlobalVFX = nullptr;
     
     // Helper methods
-    BaseEffect* findEffect(const String& effectName);
-    const BaseEffect* findEffect(const String& effectName) const;
+    BaseVFX* findVFX(const String& vfxName);
+    const BaseVFX* findVFX(const String& vfxName) const;
     std::vector<Zone*> getZonesForGroups(const std::vector<String>& groupNames);
     void handleGlobalEffectPriority();
     void restorePreGlobalEffects();

@@ -5,11 +5,11 @@
 
 namespace BattleAura {
 
-class CandleEffect : public BaseEffect {
+class CandleVFX : public BaseVFX {
 public:
-    CandleEffect(LedController& ledController, Configuration& config);
+    CandleVFX(LedController& ledController, Configuration& config);
     
-    // BaseEffect implementation
+    // BaseVFX implementation
     void begin() override;
     void update() override;
     void setEnabled(bool enabled) override;
