@@ -179,17 +179,17 @@ void WebServer::setupRoutes() {
     });
     
     // VFX control endpoints
-    server.on("/api/effects", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    server.on("/api/vfx", HTTP_GET, [this](AsyncWebServerRequest* request) {
         handleGetEffects(request);
     });
     
-    server.on("/api/effects/trigger", HTTP_POST, [this](AsyncWebServerRequest* request) {
+    server.on("/api/vfx/trigger", HTTP_POST, [this](AsyncWebServerRequest* request) {
         // Response will be sent after body is processed
     }, NULL, [this](AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
         handleTriggerEffectBody(request, data, len, index, total);
     });
     
-    server.on("/api/effects/stop-all", HTTP_POST, [this](AsyncWebServerRequest* request) {
+    server.on("/api/vfx/stop-all", HTTP_POST, [this](AsyncWebServerRequest* request) {
         handleStopAllEffects(request);
     });
     
@@ -262,7 +262,7 @@ void WebServer::setupRoutes() {
         request->send(200);
     });
     
-    server.on("/api/effects/trigger", HTTP_OPTIONS, [this](AsyncWebServerRequest* request) {
+    server.on("/api/vfx/trigger", HTTP_OPTIONS, [this](AsyncWebServerRequest* request) {
         sendCORSHeaders(request);
         request->send(200);
     });
@@ -278,17 +278,17 @@ void WebServer::setupRoutes() {
     });
     
     // VFX configuration
-    server.on("/api/effects/config", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    server.on("/api/scenes/config", HTTP_GET, [this](AsyncWebServerRequest* request) {
         handleGetSceneConfigs(request);
     });
     
-    server.on("/api/effects/config", HTTP_POST, [this](AsyncWebServerRequest* request) {
+    server.on("/api/scenes/config", HTTP_POST, [this](AsyncWebServerRequest* request) {
         // Will be handled by body handler
     }, NULL, [this](AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
         handleAddSceneConfigBody(request, data, len, index, total);
     });
     
-    server.on("/api/effects/config", HTTP_DELETE, [this](AsyncWebServerRequest* request) {
+    server.on("/api/scenes/config", HTTP_DELETE, [this](AsyncWebServerRequest* request) {
         // Will be handled by body handler
     }, NULL, [this](AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
         handleDeleteSceneConfigBody(request, data, len, index, total);
@@ -682,13 +682,13 @@ void WebServer::handleClearZones(AsyncWebServerRequest* request) {
 // VFX management handlers
 void WebServer::handleGetEffects(AsyncWebServerRequest* request) {
     JsonDocument doc;
-    JsonArray effectsArray = doc["effects"].to<JsonArray>();
+    JsonArray vfxArray = doc["vfx"].to<JsonArray>();
     
     auto effectNames = vfxManager.getEffectNames();
     for (const String& name : effectNames) {
-        JsonObject effectObj = effectsArray.add<JsonObject>();
-        effectObj["name"] = name;
-        effectObj["enabled"] = vfxManager.isEffectEnabled(name);
+        JsonObject vfxObj = vfxArray.add<JsonObject>();
+        vfxObj["name"] = name;
+        vfxObj["enabled"] = vfxManager.isEffectEnabled(name);
     }
     
     String response;

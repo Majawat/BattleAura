@@ -282,7 +282,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             <h2>Configuration</h2>
             <div class="nav-tabs">
                 <button class="tab-btn active" onclick="showConfigTab('zones')">Zones</button>
-                <button class="tab-btn" onclick="showConfigTab('effects')">Scenes & Audio</button>
+                <button class="tab-btn" onclick="showConfigTab('scenes')">Scenes & Audio</button>
                 <button class="tab-btn" onclick="showConfigTab('device')">Device</button>
                 <button class="tab-btn" onclick="showConfigTab('system')">System</button>
             </div>
@@ -324,7 +324,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             </div>
             
             <!-- Scenes & Audio Config Tab -->
-            <div id="config-effects" class="config-tab">
+            <div id="config-scenes" class="config-tab">
                 <h3>Audio Tracks</h3>
                 <p>Configure audio files for scenes. Files must be named 0001.mp3, 0002.mp3, etc. on SD card.</p>
                 <div class="form-row">
@@ -687,7 +687,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             try {
                 updateStatus('loading', 'Configuring VFX Scene...');
                 
-                const response = await fetch('/api/effects/config', {
+                const response = await fetch('/api/scenes/config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -718,7 +718,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         
         async function loadSceneConfigs() {
             try {
-                const response = await fetch('/api/effects/config');
+                const response = await fetch('/api/scenes/config');
                 if (!response.ok) return;
                 
                 const data = await response.json();
@@ -748,7 +748,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         
         async function removeSceneConfig(effectName) {
             try {
-                const response = await fetch('/api/effects/config', {
+                const response = await fetch('/api/scenes/config', {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name: effectName })
@@ -767,7 +767,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         
         async function loadAvailableVFX() {
             try {
-                const response = await fetch('/api/effects');
+                const response = await fetch('/api/vfx');
                 if (!response.ok) return;
                 
                 const data = await response.json();
@@ -775,7 +775,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 
                 if (!select) return;
                 
-                select.innerHTML = (data.effects || []).map(vfx => 
+                select.innerHTML = (data.vfx || []).map(vfx => 
                     `<option value="${vfx.name}">${vfx.name}</option>`
                 ).join('');
             } catch (error) {
@@ -946,7 +946,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             try {
                 updateStatus('loading', 'Stopping all VFX...');
                 
-                const response = await fetch('/api/effects/stop-all', {
+                const response = await fetch('/api/vfx/stop-all', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -1118,11 +1118,11 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         // VFX management functions
         async function loadVFX() {
             try {
-                const response = await fetch('/api/effects');
+                const response = await fetch('/api/vfx');
                 if (!response.ok) throw new Error('Failed to load VFX');
                 
                 const data = await response.json();
-                renderVFX(data.effects || []);
+                renderVFX(data.vfx || []);
             } catch (error) {
                 console.error('Error loading VFX:', error);
             }
@@ -1159,7 +1159,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             try {
                 updateStatus('loading', `Triggering ${vfxName}...`);
                 
-                const response = await fetch('/api/effects/trigger', {
+                const response = await fetch('/api/vfx/trigger', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ effectName: vfxName, duration })
