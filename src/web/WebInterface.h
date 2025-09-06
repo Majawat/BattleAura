@@ -242,7 +242,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                         <span id="global-brightness-value">255</span>
                     </div>
                     <div style="margin-top: 10px;">
-                        <button onclick="stopAllEffects()" class="btn btn-danger" style="margin-right: 10px;">Stop All Effects</button>
+                        <button onclick="stopAllVFX()" class="btn btn-danger" style="margin-right: 10px;">Stop All VFX</button>
                         <button onclick="setAllZonesBrightness(0)" class="btn" style="margin-right: 10px; background: #666;">Lights Off</button>
                         <button onclick="setAllZonesBrightness(255)" class="btn" style="background: #ff9800;">Lights On</button>
                     </div>
@@ -282,7 +282,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             <h2>Configuration</h2>
             <div class="nav-tabs">
                 <button class="tab-btn active" onclick="showConfigTab('zones')">Zones</button>
-                <button class="tab-btn" onclick="showConfigTab('effects')">Effects & Audio</button>
+                <button class="tab-btn" onclick="showConfigTab('effects')">Scenes & Audio</button>
                 <button class="tab-btn" onclick="showConfigTab('device')">Device</button>
                 <button class="tab-btn" onclick="showConfigTab('system')">System</button>
             </div>
@@ -323,10 +323,10 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 </div>
             </div>
             
-            <!-- Effects & Audio Config Tab -->
+            <!-- Scenes & Audio Config Tab -->
             <div id="config-effects" class="config-tab">
                 <h3>Audio Tracks</h3>
-                <p>Configure audio files for effects. Files must be named 0001.mp3, 0002.mp3, etc. on SD card.</p>
+                <p>Configure audio files for scenes. Files must be named 0001.mp3, 0002.mp3, etc. on SD card.</p>
                 <div class="form-row">
                     <label>File Number:</label>
                     <input type="number" id="trackNumber" min="1" max="999" value="1">
@@ -854,7 +854,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 if (response.ok) {
                     updateStatus('success', 'Zone removed');
                     loadZones();
-                    loadVFX(); // Effects may have changed
+                    loadVFX(); // VFX may have changed
                 } else {
                     updateStatus('error', 'Failed to remove zone');
                 }
@@ -942,9 +942,9 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             document.getElementById('global-brightness-value').textContent = brightness;
         }
         
-        async function stopAllEffects() {
+        async function stopAllVFX() {
             try {
-                updateStatus('loading', 'Stopping all effects...');
+                updateStatus('loading', 'Stopping all VFX...');
                 
                 const response = await fetch('/api/effects/stop-all', {
                     method: 'POST',
@@ -954,15 +954,15 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 const result = await response.json();
                 
                 if (response.ok) {
-                    updateStatus('success', 'All effects stopped');
+                    updateStatus('success', 'All VFX stopped');
                     setTimeout(() => loadVFX(), 500);
                 } else {
-                    updateStatus('error', result.error || 'Failed to stop effects');
+                    updateStatus('error', result.error || 'Failed to stop VFX');
                 }
                 
             } catch (error) {
-                console.error('Error stopping effects:', error);
-                updateStatus('error', 'Failed to stop effects: ' + error.message);
+                console.error('Error stopping VFX:', error);
+                updateStatus('error', 'Failed to stop VFX: ' + error.message);
             }
         }
         
@@ -1104,7 +1104,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 if (response.ok) {
                     updateStatus('success', result.message);
                     loadZones(); // Reload zones
-                    loadVFX(); // Reload effects
+                    loadVFX(); // Reload VFX
                 } else {
                     updateStatus('error', result.error || 'Failed to clear zones');
                 }

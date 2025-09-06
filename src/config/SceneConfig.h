@@ -9,7 +9,7 @@ namespace BattleAura {
 enum class SceneType {
     AMBIENT,  // Always running (candle flicker, engine idle)
     ACTIVE,   // Triggered by user (weapon fire, engine rev) 
-    GLOBAL    // System-wide effects (taking hits, destroyed)
+    GLOBAL    // System-wide VFX (taking hits, destroyed)
 };
 
 enum class EffectState {

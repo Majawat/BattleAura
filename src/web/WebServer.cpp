@@ -277,7 +277,7 @@ void WebServer::setupRoutes() {
         request->send(200);
     });
     
-    // Effects configuration
+    // VFX configuration
     server.on("/api/effects/config", HTTP_GET, [this](AsyncWebServerRequest* request) {
         handleGetSceneConfigs(request);
     });
@@ -1332,14 +1332,14 @@ void WebServer::handleFactoryReset(AsyncWebServerRequest* request) {
 }
 
 void WebServer::handleStopAllEffects(AsyncWebServerRequest* request) {
-    Serial.println("WebServer: Stopping all effects");
+    Serial.println("WebServer: Stopping all VFX");
     
     // Stop all VFX via the VFX manager
     vfxManager.stopAllEffects();
     
     JsonDocument responseDoc;
     responseDoc["success"] = true;
-    responseDoc["message"] = "All effects stopped";
+    responseDoc["message"] = "All VFX stopped";
     
     String response;
     serializeJson(responseDoc, response);

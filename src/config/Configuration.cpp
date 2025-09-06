@@ -603,7 +603,7 @@ void Configuration::createDefaultConfiguration() {
     
     // Start with no zones or audio tracks - user will configure via web interface
     // This allows testing with any hardware setup
-    // Effects will be enabled automatically when zones are added
+    // VFX will be enabled automatically when zones are added
     
     Serial.println("Configuration: Default configuration created");
 }

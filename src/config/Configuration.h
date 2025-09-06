@@ -32,7 +32,7 @@ struct DeviceConfig {
     
     DeviceConfig() : deviceName("BattleAura"), otaPassword("battlesync"), 
                     apPassword("battlesync"), audioVolume(20), audioEnabled(true),
-                    globalBrightness(255), firmwareVersion("2.7.0-group-aware-effects") {}
+                    globalBrightness(255), firmwareVersion("2.7.0-group-aware-vfx") {}
 };
 
 class Configuration {
