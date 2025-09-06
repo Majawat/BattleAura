@@ -12,7 +12,7 @@ enum class SceneType {
     GLOBAL    // System-wide VFX (taking hits, destroyed)
 };
 
-enum class EffectState {
+enum class VFXState {
     IDLE,     // VFX not running
     RUNNING,  // VFX currently active
     STOPPING  // VFX finishing/fading out
@@ -75,22 +75,22 @@ struct SceneConfig {
 };
 
 // Runtime VFX instance
-struct EffectInstance {
+struct VFXInstance {
     const SceneConfig* config;   // Reference to configuration
-    EffectState state;           // Current runtime state
+    VFXState state;              // Current runtime state
     uint32_t startTime;          // When VFX started (millis())
     uint32_t endTime;            // When VFX should end (0 if infinite)
     
-    EffectInstance() : config(nullptr), state(EffectState::IDLE), 
-                      startTime(0), endTime(0) {}
+    VFXInstance() : config(nullptr), state(VFXState::IDLE), 
+                   startTime(0), endTime(0) {}
                       
-    EffectInstance(const SceneConfig* _config) 
-        : config(_config), state(EffectState::IDLE), startTime(0), endTime(0) {}
+    VFXInstance(const SceneConfig* _config) 
+        : config(_config), state(VFXState::IDLE), startTime(0), endTime(0) {}
     
     void start() {
         if (!config) return;
         
-        state = EffectState::RUNNING;
+        state = VFXState::RUNNING;
         startTime = millis();
         
         if (config->duration > 0) {
@@ -101,15 +101,15 @@ struct EffectInstance {
     }
     
     void stop() {
-        state = EffectState::STOPPING;
+        state = VFXState::STOPPING;
     }
     
     bool isRunning() const {
-        return state == EffectState::RUNNING;
+        return state == VFXState::RUNNING;
     }
     
     bool isStopping() const {
-        return state == EffectState::STOPPING;
+        return state == VFXState::STOPPING;
     }
     
     bool isExpired() const {

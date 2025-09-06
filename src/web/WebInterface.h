@@ -341,20 +341,20 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 <p>Configure which VFX apply to which groups and their audio associations.</p>
                 <div class="form-row">
                     <label>VFX:</label>
-                    <select id="effectName">
+                    <select id="vfxName">
                         <!-- Will be populated from available VFX -->
                     </select>
                 </div>
                 <div class="form-row">
                     <label>Groups:</label>
-                    <div id="effectGroups" style="flex: 1; max-width: 300px; background: #1a1a1a; border: 1px solid #555; border-radius: 4px; padding: 8px; max-height: 100px; overflow-y: auto;">
+                    <div id="vfxGroups" style="flex: 1; max-width: 300px; background: #1a1a1a; border: 1px solid #555; border-radius: 4px; padding: 8px; max-height: 100px; overflow-y: auto;">
                         <!-- Will be populated with checkboxes for each group -->
                         <div style="color: #666; font-style: italic;">No zones configured</div>
                     </div>
                 </div>
                 <div class="form-row">
                     <label>Audio Track:</label>
-                    <select id="effectAudio">
+                    <select id="vfxAudio">
                         <option value="0">None</option>
                         <!-- Will be populated from audio tracks -->
                     </select>
@@ -637,7 +637,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         }
         
         function populateAudioSelects(tracks) {
-            const select = document.getElementById('effectAudio');
+            const select = document.getElementById('vfxAudio');
             if (!select) return;
             
             select.innerHTML = '<option value="0">None</option>' + 
@@ -647,7 +647,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         }
         
         function populateAvailableGroups() {
-            const container = document.getElementById('effectGroups');
+            const container = document.getElementById('vfxGroups');
             if (!container) return;
             
             // Get unique groups from zones
@@ -669,17 +669,17 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         }
         
         async function addSceneConfig() {
-            const effectName = document.getElementById('effectName')?.value;
-            const audioFile = document.getElementById('effectAudio')?.value;
+            const vfxName = document.getElementById('vfxName')?.value;
+            const audioFile = document.getElementById('vfxAudio')?.value;
             
             // Get selected groups from checkboxes
             const selectedGroups = [];
-            const checkboxes = document.querySelectorAll('#effectGroups input[type="checkbox"]:checked');
+            const checkboxes = document.querySelectorAll('#vfxGroups input[type="checkbox"]:checked');
             checkboxes.forEach(checkbox => {
                 selectedGroups.push(checkbox.value);
             });
             
-            if (!effectName || selectedGroups.length === 0) {
+            if (!vfxName || selectedGroups.length === 0) {
                 updateStatus('error', 'Please select VFX and at least one group');
                 return;
             }
@@ -691,7 +691,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        name: effectName,
+                        name: vfxName,
                         groups: selectedGroups,
                         audioFile: parseInt(audioFile) || 0
                     })
@@ -702,7 +702,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 if (response.ok) {
                     updateStatus('success', 'VFX Scene configured successfully');
                     // Clear selected checkboxes
-                    document.querySelectorAll('#effectGroups input[type="checkbox"]:checked').forEach(checkbox => {
+                    document.querySelectorAll('#vfxGroups input[type="checkbox"]:checked').forEach(checkbox => {
                         checkbox.checked = false;
                     });
                     loadSceneConfigs();
@@ -746,12 +746,12 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             }
         }
         
-        async function removeSceneConfig(effectName) {
+        async function removeSceneConfig(sceneName) {
             try {
                 const response = await fetch('/api/scenes/config', {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: effectName })
+                    body: JSON.stringify({ name: sceneName })
                 });
                 
                 if (response.ok) {
@@ -771,7 +771,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 if (!response.ok) return;
                 
                 const data = await response.json();
-                const select = document.getElementById('effectName');
+                const select = document.getElementById('vfxName');
                 
                 if (!select) return;
                 
@@ -1162,7 +1162,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 const response = await fetch('/api/vfx/trigger', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ effectName: vfxName, duration })
+                    body: JSON.stringify({ vfxName: vfxName, duration })
                 });
                 
                 const result = await response.json();

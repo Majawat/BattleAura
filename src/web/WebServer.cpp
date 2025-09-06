@@ -180,17 +180,17 @@ void WebServer::setupRoutes() {
     
     // VFX control endpoints
     server.on("/api/vfx", HTTP_GET, [this](AsyncWebServerRequest* request) {
-        handleGetEffects(request);
+        handleGetVFX(request);
     });
     
     server.on("/api/vfx/trigger", HTTP_POST, [this](AsyncWebServerRequest* request) {
         // Response will be sent after body is processed
     }, NULL, [this](AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
-        handleTriggerEffectBody(request, data, len, index, total);
+        handleTriggerVFXBody(request, data, len, index, total);
     });
     
     server.on("/api/vfx/stop-all", HTTP_POST, [this](AsyncWebServerRequest* request) {
-        handleStopAllEffects(request);
+        handleStopAllVFX(request);
     });
     
     // Audio control endpoints
@@ -680,15 +680,15 @@ void WebServer::handleClearZones(AsyncWebServerRequest* request) {
 }
 
 // VFX management handlers
-void WebServer::handleGetEffects(AsyncWebServerRequest* request) {
+void WebServer::handleGetVFX(AsyncWebServerRequest* request) {
     JsonDocument doc;
     JsonArray vfxArray = doc["vfx"].to<JsonArray>();
     
-    auto effectNames = vfxManager.getEffectNames();
-    for (const String& name : effectNames) {
+    auto vfxNames = vfxManager.getVFXNames();
+    for (const String& name : vfxNames) {
         JsonObject vfxObj = vfxArray.add<JsonObject>();
         vfxObj["name"] = name;
-        vfxObj["enabled"] = vfxManager.isEffectEnabled(name);
+        vfxObj["enabled"] = vfxManager.isVFXEnabled(name);
     }
     
     String response;
@@ -696,46 +696,46 @@ void WebServer::handleGetEffects(AsyncWebServerRequest* request) {
     sendJSONResponse(request, 200, response);
 }
 
-void WebServer::handleTriggerEffect(AsyncWebServerRequest* request) {
+void WebServer::handleTriggerVFX(AsyncWebServerRequest* request) {
     // This method is no longer used - body handler does the work
 }
 
-static String triggerEffectBody = "";
+static String triggerVFXBody = "";
 
-void WebServer::handleTriggerEffectBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
+void WebServer::handleTriggerVFXBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total) {
     // Accumulate body data
     if (index == 0) {
-        triggerEffectBody = "";
+        triggerVFXBody = "";
     }
     
     for (size_t i = 0; i < len; i++) {
-        triggerEffectBody += (char)data[i];
+        triggerVFXBody += (char)data[i];
     }
     
     // Process when complete
     if (index + len == total) {
         JsonDocument doc;
-        DeserializationError error = deserializeJson(doc, triggerEffectBody);
+        DeserializationError error = deserializeJson(doc, triggerVFXBody);
         
         if (error) {
             sendJSONResponse(request, 400, R"({"success":false,"error":"Invalid JSON"})");
             return;
         }
         
-        if (!doc["effectName"]) {
-            sendJSONResponse(request, 400, R"({"success":false,"error":"Missing effectName"})");
+        if (!doc["vfxName"]) {
+            sendJSONResponse(request, 400, R"({"success":false,"error":"Missing vfxName"})");
             return;
         }
         
-        String effectName = doc["effectName"];
+        String vfxName = doc["vfxName"];
         uint32_t duration = doc["duration"] | 0; // Default to continuous
         
-        if (vfxManager.triggerEffect(effectName, duration)) {
-            Serial.printf("WebServer: Triggered VFX '%s' for %dms\n", effectName.c_str(), duration);
+        if (vfxManager.triggerVFX(vfxName, duration)) {
+            Serial.printf("WebServer: Triggered VFX '%s' for %dms\n", vfxName.c_str(), duration);
             
             JsonDocument responseDoc;
             responseDoc["success"] = true;
-            responseDoc["message"] = String("Triggered VFX: ") + effectName;
+            responseDoc["message"] = String("Triggered VFX: ") + vfxName;
             
             String response;
             serializeJson(responseDoc, response);
@@ -1137,17 +1137,17 @@ void WebServer::handleGetSceneConfigs(AsyncWebServerRequest* request) {
     JsonDocument doc;
     JsonArray configsArray = doc["configs"].to<JsonArray>();
     
-    auto effectConfigs = config.getAllSceneConfigs();
-    for (const SceneConfig* effectConfig : effectConfigs) {
-        if (effectConfig) {
+    auto sceneConfigs = config.getAllSceneConfigs();
+    for (const SceneConfig* sceneConfig : sceneConfigs) {
+        if (sceneConfig) {
             JsonObject configObj = configsArray.add<JsonObject>();
-            configObj["name"] = effectConfig->name;
-            configObj["audioFile"] = effectConfig->audioFile;
-            configObj["duration"] = effectConfig->duration;
-            configObj["enabled"] = effectConfig->enabled;
+            configObj["name"] = sceneConfig->name;
+            configObj["audioFile"] = sceneConfig->audioFile;
+            configObj["duration"] = sceneConfig->duration;
+            configObj["enabled"] = sceneConfig->enabled;
             
             // Convert type enum to string
-            switch (effectConfig->type) {
+            switch (sceneConfig->type) {
                 case SceneType::AMBIENT:
                     configObj["type"] = "AMBIENT";
                     break;
@@ -1162,7 +1162,7 @@ void WebServer::handleGetSceneConfigs(AsyncWebServerRequest* request) {
             }
             
             JsonArray groupsArray = configObj["targetGroups"].to<JsonArray>();
-            for (const String& group : effectConfig->targetGroups) {
+            for (const String& group : sceneConfig->targetGroups) {
                 groupsArray.add(group);
             }
         }
@@ -1178,47 +1178,47 @@ void WebServer::handleAddSceneConfigBody(AsyncWebServerRequest* request, uint8_t
 }
 
 void WebServer::processAddSceneConfig(AsyncWebServerRequest* request, JsonDocument& doc) {
-    String effectName = doc["name"] | "";
-    String effectType = doc["type"] | "AMBIENT";
+    String sceneName = doc["name"] | "";
+    String sceneType = doc["type"] | "AMBIENT";
     JsonArray groupsArray = doc["groups"];
     uint16_t audioFile = doc["audioFile"] | 0;
     uint32_t duration = doc["duration"] | 0;
     bool enabled = doc["enabled"] | true;
     
-    if (effectName.isEmpty()) {
+    if (sceneName.isEmpty()) {
         sendJSONResponse(request, 400, R"({"success":false,"error":"VFX name is required"})");
         return;
     }
     
-    SceneConfig effectConfig;
-    effectConfig.name = effectName;
-    effectConfig.audioFile = audioFile;
-    effectConfig.duration = duration;
-    effectConfig.enabled = enabled;
+    SceneConfig sceneConfig;
+    sceneConfig.name = sceneName;
+    sceneConfig.audioFile = audioFile;
+    sceneConfig.duration = duration;
+    sceneConfig.enabled = enabled;
     
     // Set scene type
-    if (effectType == "AMBIENT") {
-        effectConfig.type = SceneType::AMBIENT;
-    } else if (effectType == "ACTIVE") {
-        effectConfig.type = SceneType::ACTIVE;
-    } else if (effectType == "GLOBAL") {
-        effectConfig.type = SceneType::GLOBAL;
+    if (sceneType == "AMBIENT") {
+        sceneConfig.type = SceneType::AMBIENT;
+    } else if (sceneType == "ACTIVE") {
+        sceneConfig.type = SceneType::ACTIVE;
+    } else if (sceneType == "GLOBAL") {
+        sceneConfig.type = SceneType::GLOBAL;
     } else {
-        effectConfig.type = SceneType::AMBIENT; // Default
+        sceneConfig.type = SceneType::AMBIENT; // Default
     }
     
     // Add target groups
     for (JsonVariant group : groupsArray) {
         String groupName = group.as<String>();
         if (!groupName.isEmpty()) {
-            effectConfig.addTargetGroup(groupName);
+            sceneConfig.addTargetGroup(groupName);
         }
     }
     
-    if (config.addSceneConfig(effectConfig)) {
+    if (config.addSceneConfig(sceneConfig)) {
         if (config.save()) {
             Serial.printf("WebServer: Added scene config '%s' with %d groups\n", 
-                         effectName.c_str(), effectConfig.targetGroups.size());
+                         sceneName.c_str(), sceneConfig.targetGroups.size());
             
             JsonDocument responseDoc;
             responseDoc["success"] = true;
@@ -1240,16 +1240,16 @@ void WebServer::handleDeleteSceneConfigBody(AsyncWebServerRequest* request, uint
 }
 
 void WebServer::processDeleteSceneConfig(AsyncWebServerRequest* request, JsonDocument& doc) {
-    String effectName = doc["name"] | "";
+    String sceneName = doc["name"] | "";
     
-    if (effectName.isEmpty()) {
+    if (sceneName.isEmpty()) {
         sendJSONResponse(request, 400, R"({"success":false,"error":"VFX name is required"})");
         return;
     }
     
-    if (config.removeSceneConfig(effectName)) {
+    if (config.removeSceneConfig(sceneName)) {
         if (config.save()) {
-            Serial.printf("WebServer: Removed scene config '%s'\n", effectName.c_str());
+            Serial.printf("WebServer: Removed scene config '%s'\n", sceneName.c_str());
             
             JsonDocument responseDoc;
             responseDoc["success"] = true;
@@ -1331,11 +1331,11 @@ void WebServer::handleFactoryReset(AsyncWebServerRequest* request) {
     }
 }
 
-void WebServer::handleStopAllEffects(AsyncWebServerRequest* request) {
+void WebServer::handleStopAllVFX(AsyncWebServerRequest* request) {
     Serial.println("WebServer: Stopping all VFX");
     
     // Stop all VFX via the VFX manager
-    vfxManager.stopAllEffects();
+    vfxManager.stopAllVFX();
     
     JsonDocument responseDoc;
     responseDoc["success"] = true;

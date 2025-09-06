@@ -32,7 +32,7 @@ struct DeviceConfig {
     
     DeviceConfig() : deviceName("BattleAura"), otaPassword("battlesync"), 
                     apPassword("battlesync"), audioVolume(20), audioEnabled(true),
-                    globalBrightness(255), firmwareVersion("2.7.0-group-aware-vfx") {}
+                    globalBrightness(255), firmwareVersion("2.8.0-vfx-scenes-terminology") {}
 };
 
 class Configuration {
@@ -65,10 +65,10 @@ public:
     void updateGroupMembership(); // Rebuild group memberships from zones
     
     // Scene configuration management
-    bool addSceneConfig(const SceneConfig& effectConfig);
-    bool removeSceneConfig(const String& effectName);
-    SceneConfig* getSceneConfig(const String& effectName);
-    const SceneConfig* getSceneConfig(const String& effectName) const;
+    bool addSceneConfig(const SceneConfig& sceneConfig);
+    bool removeSceneConfig(const String& sceneName);
+    SceneConfig* getSceneConfig(const String& sceneName);
+    const SceneConfig* getSceneConfig(const String& sceneName) const;
     std::vector<SceneConfig*> getSceneConfigsByGroup(const String& groupName);
     std::vector<SceneConfig*> getSceneConfigsByType(SceneType type);
     std::vector<SceneConfig*> getAllSceneConfigs();
@@ -101,7 +101,7 @@ public:
 private:
     std::map<uint8_t, Zone> zones;              // zoneId -> Zone
     std::map<String, Group> groups;             // groupName -> Group  
-    std::map<String, SceneConfig> effectConfigs; // effectName -> SceneConfig
+    std::map<String, SceneConfig> sceneConfigs; // sceneName -> SceneConfig
     std::map<uint16_t, AudioTrack> audioTracks; // fileNumber -> AudioTrack
     DeviceConfig deviceConfig;
     

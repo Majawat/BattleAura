@@ -56,10 +56,10 @@ private:
     void handleAddZoneBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
     void handleDeleteZone(AsyncWebServerRequest* request);
     void handleClearZones(AsyncWebServerRequest* request);
-    void handleGetEffects(AsyncWebServerRequest* request);
-    void handleTriggerEffect(AsyncWebServerRequest* request);
-    void handleTriggerEffectBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
-    void handleStopAllEffects(AsyncWebServerRequest* request);
+    void handleGetVFX(AsyncWebServerRequest* request);
+    void handleTriggerVFX(AsyncWebServerRequest* request);
+    void handleTriggerVFXBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
+    void handleStopAllVFX(AsyncWebServerRequest* request);
     void handlePlayAudio(AsyncWebServerRequest* request);
     void handlePlayAudioBody(AsyncWebServerRequest* request, uint8_t *data, size_t len, size_t index, size_t total);
     void handleStopAudio(AsyncWebServerRequest* request);

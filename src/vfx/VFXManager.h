@@ -25,28 +25,28 @@ public:
     void update();
     
     // VFX control by name
-    bool triggerEffect(const String& effectName, uint32_t duration = 0);
-    bool enableEffect(const String& effectName);
-    bool disableEffect(const String& effectName);
-    bool isEffectEnabled(const String& effectName) const;
+    bool triggerVFX(const String& vfxName, uint32_t duration = 0);
+    bool enableVFX(const String& vfxName);
+    bool disableVFX(const String& vfxName);
+    bool isVFXEnabled(const String& vfxName) const;
     
     // VFX control by type
-    void enableAmbientEffects();
-    void disableAmbientEffects();
-    void stopActiveEffects();
-    void stopGlobalEffects();
-    void stopAllEffects();
+    void enableAmbientVFX();
+    void disableAmbientVFX();
+    void stopActiveVFX();
+    void stopGlobalVFX();
+    void stopAllVFX();
     
     // Status and debugging
     void printStatus() const;
-    std::vector<String> getEffectNames() const;
+    std::vector<String> getVFXNames() const;
     
 private:
     LedController& ledController;
     Configuration& config;
     
     // VFX instances
-    std::vector<std::unique_ptr<BaseVFX>> vfxEffects;
+    std::vector<std::unique_ptr<BaseVFX>> vfxInstances;
     
     // Priority management
     struct VFXState {
@@ -62,9 +62,9 @@ private:
     BaseVFX* findVFX(const String& vfxName);
     const BaseVFX* findVFX(const String& vfxName) const;
     std::vector<Zone*> getZonesForGroups(const std::vector<String>& groupNames);
-    void handleGlobalEffectPriority();
-    void restorePreGlobalEffects();
-    void initializeDefaultEffects();
+    void handleGlobalVFXPriority();
+    void restorePreGlobalVFX();
+    void initializeDefaultVFX();
 };
 
 } // namespace BattleAura
