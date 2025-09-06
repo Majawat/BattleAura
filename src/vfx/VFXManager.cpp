@@ -61,7 +61,7 @@ bool VFXManager::triggerEffect(const String& effectName, uint32_t duration) {
         return false;
     }
     
-    // Get effect configuration to determine target groups
+    // Get scene configuration to determine target groups
     const SceneConfig* effectConfig = config.getSceneConfig(effectName);
     if (!effectConfig) {
         Serial.printf("VFXManager: No configuration found for VFX '%s', applying to all zones\n", effectName.c_str());
@@ -251,7 +251,7 @@ void VFXManager::restorePreGlobalEffects() {
 }
 
 void VFXManager::initializeDefaultEffects() {
-    // Enable default ambient VFX based on configured effect configs
+    // Enable default ambient VFX based on configured scene configs
     auto effectConfigs = config.getAllSceneConfigs();
     
     for (auto* effectConfig : effectConfigs) {
@@ -261,7 +261,7 @@ void VFXManager::initializeDefaultEffects() {
         }
     }
     
-    // If no effect configs exist, enable candle flicker as default
+    // If no scene configs exist, enable candle flicker as default
     if (effectConfigs.empty()) {
         enableEffect("CandleFlicker");
     }

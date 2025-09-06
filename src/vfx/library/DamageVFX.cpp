@@ -36,7 +36,7 @@ void DamageVFX::trigger(uint32_t duration) {
 void DamageVFX::update() {
     if (!enabled) return;
     
-    // Check if timed effect should stop
+    // Check if timed VFX should stop
     if (shouldStop()) {
         // Restore all zones before stopping
         std::vector<Zone*> zones = hasTargetZones() ? getTargetZones() : config.getAllZones();
@@ -69,7 +69,7 @@ void DamageVFX::startDamage() {
     uint32_t currentTime = millis();
     std::vector<Zone*> zones = hasTargetZones() ? getTargetZones() : config.getAllZones();
     
-    // Store original states and start damage effect
+    // Store original states and start damage VFX
     for (size_t i = 0; i < damageStates.size() && i < zones.size(); i++) {
         DamageState& state = damageStates[i];
         Zone* zone = zones[i];

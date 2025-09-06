@@ -13,20 +13,20 @@ enum class SceneType {
 };
 
 enum class EffectState {
-    IDLE,     // Effect not running
-    RUNNING,  // Effect currently active
-    STOPPING  // Effect finishing/fading out
+    IDLE,     // VFX not running
+    RUNNING,  // VFX currently active
+    STOPPING  // VFX finishing/fading out
 };
 
 struct SceneConfig {
     String name;                        // "CandleFlicker", "MachineGun", etc.
     SceneType type;                     // Ambient, Active, or Global
-    std::vector<String> targetGroups;   // Groups this effect applies to
+    std::vector<String> targetGroups;   // Groups this VFX applies to
     uint16_t audioFile;                 // 0 = no audio, else file number (0001.mp3)
     String audioDescription;            // User's description of audio file
     uint32_t duration;                  // Duration in ms, 0 = infinite/ambient
-    JsonDocument parameters;            // Effect-specific parameters  
-    bool enabled;                       // Effect enabled/disabled
+    JsonDocument parameters;            // VFX-specific parameters  
+    bool enabled;                       // VFX enabled/disabled
     
     SceneConfig() : type(SceneType::AMBIENT), audioFile(0), duration(0), enabled(true) {}
     
@@ -74,12 +74,12 @@ struct SceneConfig {
     }
 };
 
-// Runtime effect instance
+// Runtime VFX instance
 struct EffectInstance {
     const SceneConfig* config;   // Reference to configuration
     EffectState state;           // Current runtime state
-    uint32_t startTime;          // When effect started (millis())
-    uint32_t endTime;            // When effect should end (0 if infinite)
+    uint32_t startTime;          // When VFX started (millis())
+    uint32_t endTime;            // When VFX should end (0 if infinite)
     
     EffectInstance() : config(nullptr), state(EffectState::IDLE), 
                       startTime(0), endTime(0) {}

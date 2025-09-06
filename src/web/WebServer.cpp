@@ -178,7 +178,7 @@ void WebServer::setupRoutes() {
         handleClearZones(request);
     });
     
-    // Effect control endpoints
+    // VFX control endpoints
     server.on("/api/effects", HTTP_GET, [this](AsyncWebServerRequest* request) {
         handleGetEffects(request);
     });
@@ -679,7 +679,7 @@ void WebServer::handleClearZones(AsyncWebServerRequest* request) {
     sendJSONResponse(request, 200, response);
 }
 
-// Effect management handlers
+// VFX management handlers
 void WebServer::handleGetEffects(AsyncWebServerRequest* request) {
     JsonDocument doc;
     JsonArray effectsArray = doc["effects"].to<JsonArray>();
@@ -731,17 +731,17 @@ void WebServer::handleTriggerEffectBody(AsyncWebServerRequest* request, uint8_t 
         uint32_t duration = doc["duration"] | 0; // Default to continuous
         
         if (vfxManager.triggerEffect(effectName, duration)) {
-            Serial.printf("WebServer: Triggered effect '%s' for %dms\n", effectName.c_str(), duration);
+            Serial.printf("WebServer: Triggered VFX '%s' for %dms\n", effectName.c_str(), duration);
             
             JsonDocument responseDoc;
             responseDoc["success"] = true;
-            responseDoc["message"] = String("Triggered effect: ") + effectName;
+            responseDoc["message"] = String("Triggered VFX: ") + effectName;
             
             String response;
             serializeJson(responseDoc, response);
             sendJSONResponse(request, 200, response);
         } else {
-            sendJSONResponse(request, 404, R"({"success":false,"error":"Effect not found"})");
+            sendJSONResponse(request, 404, R"({"success":false,"error":"VFX not found"})");
         }
     }
 }
@@ -1186,7 +1186,7 @@ void WebServer::processAddSceneConfig(AsyncWebServerRequest* request, JsonDocume
     bool enabled = doc["enabled"] | true;
     
     if (effectName.isEmpty()) {
-        sendJSONResponse(request, 400, R"({"success":false,"error":"Effect name is required"})");
+        sendJSONResponse(request, 400, R"({"success":false,"error":"VFX name is required"})");
         return;
     }
     
@@ -1196,7 +1196,7 @@ void WebServer::processAddSceneConfig(AsyncWebServerRequest* request, JsonDocume
     effectConfig.duration = duration;
     effectConfig.enabled = enabled;
     
-    // Set effect type
+    // Set scene type
     if (effectType == "AMBIENT") {
         effectConfig.type = SceneType::AMBIENT;
     } else if (effectType == "ACTIVE") {
@@ -1217,12 +1217,12 @@ void WebServer::processAddSceneConfig(AsyncWebServerRequest* request, JsonDocume
     
     if (config.addSceneConfig(effectConfig)) {
         if (config.save()) {
-            Serial.printf("WebServer: Added effect config '%s' with %d groups\n", 
+            Serial.printf("WebServer: Added scene config '%s' with %d groups\n", 
                          effectName.c_str(), effectConfig.targetGroups.size());
             
             JsonDocument responseDoc;
             responseDoc["success"] = true;
-            responseDoc["message"] = "Effect configuration saved successfully";
+            responseDoc["message"] = "Scene configuration saved successfully";
             
             String response;
             serializeJson(responseDoc, response);
@@ -1231,7 +1231,7 @@ void WebServer::processAddSceneConfig(AsyncWebServerRequest* request, JsonDocume
             sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to save configuration"})");
         }
     } else {
-        sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to add effect configuration"})");
+        sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to add scene configuration"})");
     }
 }
 
@@ -1243,17 +1243,17 @@ void WebServer::processDeleteSceneConfig(AsyncWebServerRequest* request, JsonDoc
     String effectName = doc["name"] | "";
     
     if (effectName.isEmpty()) {
-        sendJSONResponse(request, 400, R"({"success":false,"error":"Effect name is required"})");
+        sendJSONResponse(request, 400, R"({"success":false,"error":"VFX name is required"})");
         return;
     }
     
     if (config.removeSceneConfig(effectName)) {
         if (config.save()) {
-            Serial.printf("WebServer: Removed effect config '%s'\n", effectName.c_str());
+            Serial.printf("WebServer: Removed scene config '%s'\n", effectName.c_str());
             
             JsonDocument responseDoc;
             responseDoc["success"] = true;
-            responseDoc["message"] = "Effect configuration removed successfully";
+            responseDoc["message"] = "Scene configuration removed successfully";
             
             String response;
             serializeJson(responseDoc, response);
@@ -1262,7 +1262,7 @@ void WebServer::processDeleteSceneConfig(AsyncWebServerRequest* request, JsonDoc
             sendJSONResponse(request, 500, R"({"success":false,"error":"Failed to save configuration"})");
         }
     } else {
-        sendJSONResponse(request, 404, R"({"success":false,"error":"Effect configuration not found"})");
+        sendJSONResponse(request, 404, R"({"success":false,"error":"Scene configuration not found"})");
     }
 }
 
@@ -1334,7 +1334,7 @@ void WebServer::handleFactoryReset(AsyncWebServerRequest* request) {
 void WebServer::handleStopAllEffects(AsyncWebServerRequest* request) {
     Serial.println("WebServer: Stopping all effects");
     
-    // Stop all effects via the effect manager
+    // Stop all VFX via the VFX manager
     vfxManager.stopAllEffects();
     
     JsonDocument responseDoc;

@@ -24,7 +24,7 @@ public:
     uint8_t getZoneBrightness(uint8_t zoneId) const;
     CRGB getZoneColor(uint8_t zoneId) const;
     
-    // User brightness control (separate from effect brightness)
+    // User brightness control (separate from VFX brightness)
     void setUserBrightness(uint8_t zoneId, uint8_t brightness);
     uint8_t getUserBrightness(uint8_t zoneId) const;
     

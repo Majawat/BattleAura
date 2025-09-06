@@ -24,13 +24,13 @@ public:
     // Main update loop
     void update();
     
-    // Effect control by name
+    // VFX control by name
     bool triggerEffect(const String& effectName, uint32_t duration = 0);
     bool enableEffect(const String& effectName);
     bool disableEffect(const String& effectName);
     bool isEffectEnabled(const String& effectName) const;
     
-    // Effect control by type
+    // VFX control by type
     void enableAmbientEffects();
     void disableAmbientEffects();
     void stopActiveEffects();

@@ -27,7 +27,7 @@ private:
     
     std::vector<DamageState> damageStates;
     
-    // Damage effect parameters
+    // Damage VFX parameters
     static const uint16_t FLICKER_INTERVAL = 80;    // Fast damage flicker
     static const uint8_t DAMAGE_BRIGHTNESS = 200;   // Bright damage flash
     

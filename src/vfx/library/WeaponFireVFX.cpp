@@ -35,7 +35,7 @@ void WeaponFireVFX::trigger(uint32_t duration) {
 void WeaponFireVFX::update() {
     if (!enabled) return;
     
-    // Check if timed effect should stop
+    // Check if timed VFX should stop
     if (shouldStop()) {
         stop();
         return;

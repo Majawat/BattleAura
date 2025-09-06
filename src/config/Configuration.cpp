@@ -171,7 +171,7 @@ void Configuration::updateGroupMembership() {
     }
 }
 
-// Effect configuration management
+// Scene configuration management
 bool Configuration::addSceneConfig(const SceneConfig& effectConfig) {
     effectConfigs[effectConfig.name] = effectConfig;
     return true;
@@ -345,13 +345,13 @@ void Configuration::printStatus() const {
         Serial.printf("  Group '%s': %d zones\n", group.name.c_str(), group.zoneIds.size());
     }
     
-    Serial.printf("Effects: %d\n", effectConfigs.size());
+    Serial.printf("Scenes: %d\n", effectConfigs.size());
     for (const auto& pair : effectConfigs) {
-        const SceneConfig& effect = pair.second;
-        String typeStr = (effect.type == SceneType::AMBIENT) ? "Ambient" :
-                        (effect.type == SceneType::ACTIVE) ? "Active" : "Global";
-        Serial.printf("  Effect '%s': %s (Audio: %d)\n", 
-                     effect.name.c_str(), typeStr.c_str(), effect.audioFile);
+        const SceneConfig& scene = pair.second;
+        String typeStr = (scene.type == SceneType::AMBIENT) ? "Ambient" :
+                        (scene.type == SceneType::ACTIVE) ? "Active" : "Global";
+        Serial.printf("  Scene '%s': %s (Audio: %d)\n", 
+                     scene.name.c_str(), typeStr.c_str(), scene.audioFile);
     }
     
     std::vector<uint8_t> availableGPIOs = getAvailableGPIOs();
@@ -454,7 +454,7 @@ bool Configuration::loadFromLittleFS() {
         }
     }
     
-    // Load effect configs
+    // Load scene configs
     if (doc["effectConfigs"]) {
         effectConfigs.clear();
         for (JsonPair configPair : doc["effectConfigs"].as<JsonObject>()) {
@@ -495,7 +495,7 @@ bool Configuration::loadFromLittleFS() {
     
     updateGroupMembership();
     
-    Serial.printf("Configuration: Loaded %d zones, %d audio tracks, %d effect configs from LittleFS\n", 
+    Serial.printf("Configuration: Loaded %d zones, %d audio tracks, %d scene configs from LittleFS\n", 
                  zones.size(), audioTracks.size(), effectConfigs.size());
     return true;
 }
@@ -543,7 +543,7 @@ bool Configuration::saveToLittleFS() {
         trackObj["duration"] = track.duration;
     }
     
-    // Save effect configs
+    // Save scene configs
     JsonObject effectConfigsObj = doc["effectConfigs"].to<JsonObject>();
     for (const auto& pair : effectConfigs) {
         const SceneConfig& effectConfig = pair.second;

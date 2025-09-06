@@ -28,7 +28,7 @@ private:
     
     std::vector<FlickerState> flickerStates;
     
-    // Effect parameters - realistic candle flicker
+    // VFX parameters - realistic candle flicker
     static const uint16_t UPDATE_INTERVAL = 20;    // Update every 20ms for smoothness
     static const uint8_t MIN_BRIGHTNESS = 40;      // Minimum candle brightness
     static const uint8_t BRIGHTNESS_VARIANCE = 80;  // Maximum flicker range

@@ -64,7 +64,7 @@ public:
     const std::vector<Group*> getAllGroups() const;
     void updateGroupMembership(); // Rebuild group memberships from zones
     
-    // Effect configuration management
+    // Scene configuration management
     bool addSceneConfig(const SceneConfig& effectConfig);
     bool removeSceneConfig(const String& effectName);
     SceneConfig* getSceneConfig(const String& effectName);

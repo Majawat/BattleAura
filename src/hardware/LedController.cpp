@@ -79,8 +79,8 @@ void LedController::setZoneBrightness(uint8_t zoneId, uint8_t brightness) {
         return;
     }
     
-    // Scale effect brightness by user brightness setting
-    // brightness parameter is the effect brightness (0-255)
+    // Scale VFX brightness by user brightness setting
+    // brightness parameter is the VFX brightness (0-255)
     // userBrightness is the user's maximum setting (0-255) 
     uint16_t scaledBrightness = (brightness * zoneState->userBrightness) / 255;
     if (scaledBrightness > 255) scaledBrightness = 255;
@@ -114,7 +114,7 @@ void LedController::setZoneColorAndBrightness(uint8_t zoneId, CRGB color, uint8_
     ZoneState* zoneState = findZone(zoneId);
     if (!zoneState) return;
     
-    // Scale effect brightness by user brightness setting
+    // Scale VFX brightness by user brightness setting
     uint16_t scaledBrightness = (brightness * zoneState->userBrightness) / 255;
     if (scaledBrightness > 255) scaledBrightness = 255;
     
@@ -300,7 +300,7 @@ void LedController::setUserBrightness(uint8_t zoneId, uint8_t brightness) {
     
     zoneState->userBrightness = brightness;
     
-    // Force recalculation of current effect brightness
+    // Force recalculation of current VFX brightness
     zoneState->needsUpdate = true;
     
     Serial.printf("LedController: Set user brightness for zone %d to %d\n", zoneId, brightness);

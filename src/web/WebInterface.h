@@ -602,7 +602,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                     </div>`
                 ).join('');
                 
-                // Update effect audio select options
+                // Update VFX audio select options
                 populateAudioSelects(data.tracks);
             } catch (error) {
                 console.error('Error loading audio tracks:', error);
