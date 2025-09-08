@@ -11,7 +11,7 @@ using namespace BattleAura;
 Configuration BattleAura::config;
 LedController ledController;
 AudioController audioController(config);
-VFXManager vfxManager(ledController, config);
+VFXManager vfxManager(ledController, audioController, config);
 WebServer webServer(config, ledController, vfxManager, audioController);
 
 void setup() {

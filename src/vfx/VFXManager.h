@@ -9,13 +9,14 @@
 #include "library/WeaponFireVFX.h"
 #include "library/DamageVFX.h"
 #include "../hardware/LedController.h"
+#include "../audio/AudioController.h"
 #include "../config/Configuration.h"
 
 namespace BattleAura {
 
 class VFXManager {
 public:
-    VFXManager(LedController& ledController, Configuration& config);
+    VFXManager(LedController& ledController, AudioController& audioController, Configuration& config);
     ~VFXManager() = default;
     
     // Initialization
@@ -43,6 +44,7 @@ public:
     
 private:
     LedController& ledController;
+    AudioController& audioController;
     Configuration& config;
     
     // VFX instances
@@ -57,6 +59,11 @@ private:
     
     std::vector<VFXState> vfxStates;
     BaseVFX* currentGlobalVFX = nullptr;
+    
+    // Audio timeout tracking
+    uint32_t audioStartTime = 0;
+    uint32_t audioTimeoutDuration = 0;
+    String currentAudioScene = "";
     
     // Helper methods
     BaseVFX* findVFX(const String& vfxName);

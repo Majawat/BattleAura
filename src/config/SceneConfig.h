@@ -25,13 +25,14 @@ struct SceneConfig {
     uint16_t audioFile;                 // 0 = no audio, else file number (0001.mp3)
     String audioDescription;            // User's description of audio file
     uint32_t duration;                  // Duration in ms, 0 = infinite/ambient
+    uint32_t audioTimeout;              // Audio timeout in ms, 0 = no timeout
     JsonDocument parameters;            // VFX-specific parameters  
     bool enabled;                       // VFX enabled/disabled
     
-    SceneConfig() : type(SceneType::AMBIENT), audioFile(0), duration(0), enabled(true) {}
+    SceneConfig() : type(SceneType::AMBIENT), audioFile(0), duration(0), audioTimeout(0), enabled(true) {}
     
     SceneConfig(const String& _name, SceneType _type, uint32_t _duration = 0)
-        : name(_name), type(_type), audioFile(0), duration(_duration), enabled(true) {}
+        : name(_name), type(_type), audioFile(0), duration(_duration), audioTimeout(0), enabled(true) {}
     
     void addTargetGroup(const String& groupName) {
         // Avoid duplicates

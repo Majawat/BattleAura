@@ -1144,6 +1144,7 @@ void WebServer::handleGetSceneConfigs(AsyncWebServerRequest* request) {
             configObj["name"] = sceneConfig->name;
             configObj["audioFile"] = sceneConfig->audioFile;
             configObj["duration"] = sceneConfig->duration;
+            configObj["audioTimeout"] = sceneConfig->audioTimeout;
             configObj["enabled"] = sceneConfig->enabled;
             
             // Convert type enum to string
@@ -1183,6 +1184,7 @@ void WebServer::processAddSceneConfig(AsyncWebServerRequest* request, JsonDocume
     JsonArray groupsArray = doc["groups"];
     uint16_t audioFile = doc["audioFile"] | 0;
     uint32_t duration = doc["duration"] | 0;
+    uint32_t audioTimeout = doc["audioTimeout"] | 0;
     bool enabled = doc["enabled"] | true;
     
     if (sceneName.isEmpty()) {
@@ -1194,6 +1196,7 @@ void WebServer::processAddSceneConfig(AsyncWebServerRequest* request, JsonDocume
     sceneConfig.name = sceneName;
     sceneConfig.audioFile = audioFile;
     sceneConfig.duration = duration;
+    sceneConfig.audioTimeout = audioTimeout;
     sceneConfig.enabled = enabled;
     
     // Set scene type

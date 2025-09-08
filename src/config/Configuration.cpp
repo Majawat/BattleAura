@@ -465,6 +465,7 @@ bool Configuration::loadFromLittleFS() {
             sceneConfig.name = sceneName;
             sceneConfig.audioFile = configObj["audioFile"] | 0;
             sceneConfig.duration = configObj["duration"] | 0;
+            sceneConfig.audioTimeout = configObj["audioTimeout"] | 0;
             sceneConfig.enabled = configObj["enabled"] | true;
             
             // Load type
@@ -551,6 +552,7 @@ bool Configuration::saveToLittleFS() {
         
         configObj["audioFile"] = sceneConfig.audioFile;
         configObj["duration"] = sceneConfig.duration;
+        configObj["audioTimeout"] = sceneConfig.audioTimeout;
         configObj["enabled"] = sceneConfig.enabled;
         
         // Save type

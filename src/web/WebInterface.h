@@ -360,6 +360,11 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                     </select>
                 </div>
                 <div class="form-row">
+                    <label>Audio Timeout (seconds):</label>
+                    <input type="number" id="vfxAudioTimeout" placeholder="0 = no timeout" min="0" value="0" style="width: 120px;">
+                    <small style="color: #666; margin-left: 10px;">Leave 0 for no timeout (plays full track)</small>
+                </div>
+                <div class="form-row">
                     <button onclick="addSceneConfig()" class="btn">Configure Scene</button>
                 </div>
                 <div id="scene-configs-list"></div>
@@ -671,6 +676,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
         async function addSceneConfig() {
             const vfxName = document.getElementById('vfxName')?.value;
             const audioFile = document.getElementById('vfxAudio')?.value;
+            const audioTimeout = document.getElementById('vfxAudioTimeout')?.value;
             
             // Get selected groups from checkboxes
             const selectedGroups = [];
@@ -693,7 +699,8 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                     body: JSON.stringify({
                         name: vfxName,
                         groups: selectedGroups,
-                        audioFile: parseInt(audioFile) || 0
+                        audioFile: parseInt(audioFile) || 0,
+                        audioTimeout: (parseInt(audioTimeout) || 0) * 1000
                     })
                 });
                 
@@ -736,6 +743,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                         <strong>${config.name}</strong> → Status: ${config.enabled ? 'Enabled' : 'Disabled'}
                         ${config.targetGroups ? ' | Groups: ' + (Array.isArray(config.targetGroups) ? config.targetGroups.join(', ') : config.targetGroups) : ''}
                         ${config.audioFile ? ' | Audio: Track ' + config.audioFile : ''}
+                        ${config.audioTimeout ? ' | Timeout: ' + Math.round(config.audioTimeout/1000) + 's' : ''}
                         <div style="margin-top: 5px;">
                             <button onclick="removeSceneConfig('${config.name}')" class="btn btn-danger" style="padding: 5px 10px;">Remove</button>
                         </div>

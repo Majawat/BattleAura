@@ -26,8 +26,8 @@
 - D1: Candle Fibers 2 - 3mm warm white, 3v
 - D2: Candle Fibers 3 - 3mm warm white, 3v
 - D3: Console screen - WS2812B RGB, 5v
-- D4: Weapon 1 - Nano (1.6mm) warm white, 3v
-- D5: Weapon 2 - Nano (1.6mm) warm white, 3v
+- D4: Machine Gun - Nano (1.6mm) warm white, 3v
+- D5: Flamethrower - Nano (1.6mm) warm white, 3v
 - D8: Engine stack 1 - Chip (3.2mm) warm white, 3v
 - D9: Engine stack 2 - Chip (3.2mm) warm white, 3v
 - D10: Brazier - Chip (3.2mm) warm white, 3v

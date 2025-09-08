@@ -2,8 +2,8 @@
 
 namespace BattleAura {
 
-VFXManager::VFXManager(LedController& ledController, Configuration& config)
-    : ledController(ledController), config(config) {
+VFXManager::VFXManager(LedController& ledController, AudioController& audioController, Configuration& config)
+    : ledController(ledController), audioController(audioController), config(config) {
 }
 
 bool VFXManager::begin() {
@@ -41,6 +41,19 @@ bool VFXManager::begin() {
 void VFXManager::update() {
     // Handle global VFX priority management
     handleGlobalVFXPriority();
+    
+    // Check audio timeout
+    if (audioStartTime > 0 && audioTimeoutDuration > 0) {
+        uint32_t elapsed = millis() - audioStartTime;
+        if (elapsed >= audioTimeoutDuration) {
+            Serial.printf("VFXManager: Audio timeout reached for scene '%s' after %dms\n", 
+                         currentAudioScene.c_str(), elapsed);
+            audioController.stop();
+            audioStartTime = 0;
+            audioTimeoutDuration = 0;
+            currentAudioScene = "";
+        }
+    }
     
     // Update all active VFX
     for (auto& vfx : vfxInstances) {
@@ -83,6 +96,16 @@ bool VFXManager::triggerVFX(const String& vfxName, uint32_t duration) {
     // Set target zones for this VFX
     vfx->setTargetZones(targetZones);
     vfx->trigger(duration);
+    
+    // Start audio timeout tracking if scene has audio timeout configured
+    if (sceneConfig->audioFile > 0 && sceneConfig->audioTimeout > 0) {
+        audioStartTime = millis();
+        audioTimeoutDuration = sceneConfig->audioTimeout;
+        currentAudioScene = vfxName;
+        Serial.printf("VFXManager: Started audio timeout tracking for scene '%s' (%dms)\n", 
+                     vfxName.c_str(), sceneConfig->audioTimeout);
+    }
+    
     return true;
 }
 
