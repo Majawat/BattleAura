@@ -332,7 +332,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                     <input type="number" id="trackNumber" min="1" max="999" value="1">
                     <label>Description:</label>
                     <input type="text" id="trackDescription" placeholder="Track description">
-                    <input type="checkbox" id="trackLoop"> <label for="trackLoop">Loop</label>
+                    <input type="checkbox" id="trackLoop" style="flex: none; width: auto;"> <label for="trackLoop" style="flex: none;">Loop</label>
                     <button onclick="addAudioTrack()" class="btn">Add Track</button>
                 </div>
                 <div id="audio-tracks-list"></div>
@@ -401,8 +401,8 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                     <div class="form-row">
                         <label for="wifiPassword">Password:</label>
                         <input type="password" id="wifiPassword" name="password" placeholder="WiFi Password" maxlength="64" autocomplete="new-password">
-                        <input type="checkbox" id="showPassword" style="margin-left: 10px;">
-                        <label for="showPassword" style="margin-left: 5px;">Show</label>
+                        <input type="checkbox" id="showPassword" style="margin-left: 10px; flex: none; width: auto;">
+                        <label for="showPassword" style="margin-left: 5px; flex: none;">Show</label>
                     </div>
                 </form>
                 <div style="margin-top: 10px;">
@@ -413,7 +413,7 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
                 <h3 style="margin-top: 30px;">Audio Settings</h3>
                 <div class="form-row">
                     <label for="audioEnabled">Audio Enabled:</label>
-                    <input type="checkbox" id="audioEnabled" checked>
+                    <input type="checkbox" id="audioEnabled" checked style="flex: none; width: auto;">
                 </div>
                 <button onclick="saveDeviceConfig()" class="btn btn-success">Save Device Settings</button>
             </div>
