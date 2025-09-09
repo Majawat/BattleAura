@@ -19,6 +19,11 @@ bool VFXManager::begin() {
     vfxInstances.push_back(std::unique_ptr<BaseVFX>(new EngineIdleVFX(ledController, config)));
     vfxInstances.push_back(std::unique_ptr<BaseVFX>(new WeaponFireVFX(ledController, config)));
     vfxInstances.push_back(std::unique_ptr<BaseVFX>(new DamageVFX(ledController, config)));
+    vfxInstances.push_back(std::unique_ptr<BaseVFX>(new FlamethrowerVFX(ledController, config)));
+    vfxInstances.push_back(std::unique_ptr<BaseVFX>(new EngineRevVFX(ledController, config)));
+    vfxInstances.push_back(std::unique_ptr<BaseVFX>(new DestroyedVFX(ledController, config)));
+    vfxInstances.push_back(std::unique_ptr<BaseVFX>(new RocketLauncherVFX(ledController, config)));
+    vfxInstances.push_back(std::unique_ptr<BaseVFX>(new VictoryVFX(ledController, config)));
     
     // Initialize VFX states for priority management
     vfxStates.resize(vfxInstances.size());
