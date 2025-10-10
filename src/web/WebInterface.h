@@ -940,14 +940,13 @@ const char MAIN_HTML[] PROGMEM = R"rawliteral(
             }
         }
         
-        function setAllZonesBrightness(brightness) {
-            zones.forEach(zone => {
-                setBrightness(zone.id, brightness);
-            });
-            
-            // Update global slider
-            document.getElementById('global-brightness').value = brightness;
-            document.getElementById('global-brightness-value').textContent = brightness;
+        async function setAllZonesBrightness(brightness) {
+            try {
+                // Use the global brightness API instead of individual zone calls
+                await setGlobalBrightness(brightness);
+            } catch (error) {
+                console.error('Error setting all zones brightness:', error);
+            }
         }
         
         async function stopAllVFX() {
