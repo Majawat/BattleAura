@@ -11,21 +11,19 @@ The goal is to build a highly configurable effects controller using an ESP32-C3/
 The software will be organized into the following components:
 
 -   `main.cpp`: The main application entry point, responsible for setup and the main loop.
--   `/effects`: Manages all effects, including their priorities and transitions.
-    -   `EffectManager.h/cpp`: The core of the effects system.
-    -   `BaseEffect.h`: An abstract base class for all effects.
-    -   `/library`: Individual effect implementations.
+-   `/vfx`: Manages all visual effects, including their priorities and transitions.
+    -   `VFXManager.h/cpp`: The core of the visual effects system.
+    -   `BaseVFX.h`: An abstract base class for all visual effects.
+    -   `/library`: Individual visual effect implementations.
 -   `/hardware`: Provides an abstraction layer for interacting with hardware components.
     -   `LedController.h/cpp`: A unified interface for controlling both PWM and WS2812B LEDs.
     -   `AudioController.h/cpp`: A wrapper for the DFPlayer Mini MP3 player.
-    -   `PinManager.h/cpp`: Manages GPIO pin allocation and validation.
 -   `/web`: Implements the web-based configuration and control interface.
     -   `WebServer.h/cpp`: Based on the ESP32 AsyncWebServer.
-    -   `WebSocketHandler.h/cpp`: For real-time communication with the web interface.
     -   `WebInterface.h`: Contains the HTML, CSS, and JavaScript for the web UI, embedded as PROGMEM strings.
 -   `/config`: Handles persistent storage of configuration data.
     -   `Configuration.h/cpp`: Manages loading and saving of configuration data to LittleFS.
-    -   `EffectConfig.h`: Defines the structure for effect-to-zone mappings.
+    -   `SceneConfig.h`: Defines the structure for effect-to-zone mappings.
     -   `ZoneConfig.h`: Defines the structure for pin assignments and groups.
 
 ## 3. Data Models
@@ -34,18 +32,18 @@ The following data structures will be used to model the system's configuration:
 
 -   **`Zone`**: Represents a physical LED output, with properties for name, GPIO pin, type (PWM or WS2812B), LED count, group, brightness, and enabled status.
 -   **`Group`**: A logical collection of zones.
--   **`EffectConfig`**: Defines an effect, including its name, type (ambient, active, or global), target groups, associated audio file, duration, and effect-specific parameters.
--   **`EffectInstance`**: A runtime instance of an effect, with a pointer to its configuration, a start time, a state, and an implementation.
+-   **`SceneConfig`**: Defines a visual effect scene, including its name, type (ambient, active, or global), target groups, associated audio file, duration, and effect-specific parameters.
+-   **`EffectInstance`**: A runtime instance of a visual effect, with a pointer to its configuration, a start time, a state, and an implementation.
 
 ## 4. Effect System
 
-The effect system is managed by the `EffectManager`, which handles effect priorities:
+The visual effect system is managed by the `VFXManager`, which handles effect priorities:
 
 1.  **Global effects** (e.g., taking hits, destroyed)
 2.  **Active effects** (e.g., weapon firing)
 3.  **Ambient effects** (e.g., idle animations)
 
-The `BaseEffect` class provides a common interface for all effect implementations, with methods for initialization, updating, and applying the effect to the LEDs.
+The `BaseVFX` class provides a common interface for all effect implementations, with methods for initialization, updating, and applying the effect to the LEDs.
 
 ## 5. Hardware Abstraction Layer
 
@@ -54,11 +52,10 @@ The `BaseEffect` class provides a common interface for all effect implementation
 
 ## 6. Web Interface
 
-The web interface will be embedded in the firmware to save flash memory space.
+The web interface will be embedded in the firmware to save flash memory space. While currently embedded as `PROGMEM` strings, future iterations may explore serving a modern Single-Page Application (SPA) from LittleFS for enhanced development and user experience.
 
 -   **Assets Strategy**: All HTML, CSS, and JavaScript will be minified, gzipped, and stored as `PROGMEM` strings.
 -   **UI Framework**: The UI will be built with vanilla JavaScript to minimize its footprint.
--   **Real-time Updates**: WebSockets will be used for real-time communication between the web UI and the ESP32.
 -   **Configuration Pages**: The web interface will include pages for configuring zones, effects, and system settings.
 
 ## 7. Configuration and Storage
@@ -87,11 +84,21 @@ monitor_speed = 115200
 board_build.filesystem = littlefs
 board_build.partitions = partitions.csv
 lib_deps =
-    ESPAsyncWebServer
-    ArduinoJson@^6.21.0
-    FastLED@^3.6.0
-    DFRobotDFPlayerMini@^1.0.6
-    arduinoWebSockets@^2.4.0
+    bblanchon/ArduinoJson@^7.4.2
+    fastled/FastLED@^3.10.3
+    dfrobot/DFRobotDFPlayerMini@^1.0.6
+    esp32async/ESPAsyncWebServer@^3.8.1
+
+build_flags =
+    -DCORE_DEBUG_LEVEL=3
+
+lib_ignore = 
+    WebServer
+
+; Memory optimization
+board_build.flash_mode = dio
+board_build.f_cpu = 160000000L
+board_build.f_flash = 80000000L
 ```
 
 ## 10. Implementation Notes
@@ -99,3 +106,5 @@ lib_deps =
 -   **Memory Optimization**: Careful use of `PROGMEM` and pre-allocated buffers will be necessary to stay within the ESP32-C3's memory limits.
 -   **Pin Allocation**: GPIO pins are a limited resource and will be carefully managed.
 -   **DFPlayer Configuration**: Audio files must be named `XXXX.mp3` and stored on the root of the SD card.
+-   **Future Hardware Target**: The project aims to target ESP32-S3 devices in future iterations, leveraging its enhanced capabilities.
+-   **OTA Update Strategy**: The current OTA update mechanism supports separate firmware and filesystem uploads via the web interface. Future plans include exploring a single-file OTA update process for improved user experience.
