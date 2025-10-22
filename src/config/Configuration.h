@@ -30,9 +30,9 @@ struct DeviceConfig {
     uint8_t globalBrightness;
     String firmwareVersion;
     
-    DeviceConfig() : deviceName("BattleAura"), otaPassword("battlesync"), 
+    DeviceConfig() : deviceName("BattleAura"), otaPassword("battlesync"),
                     apPassword("battlesync"), audioVolume(20), audioEnabled(true),
-                    globalBrightness(255), firmwareVersion("2.9.0-complete-vfx-library") {}
+                    globalBrightness(255), firmwareVersion("2.10.0-esp32s3-hardware") {}
 };
 
 class Configuration {

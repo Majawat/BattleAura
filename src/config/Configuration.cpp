@@ -597,7 +597,7 @@ void Configuration::createDefaultConfiguration() {
     
     // Set device defaults
     deviceConfig.deviceName = "BattleAura";
-    deviceConfig.firmwareVersion = "2.9.0-complete-vfx-library";
+    deviceConfig.firmwareVersion = "2.10.0-esp32s3-hardware";
     deviceConfig.audioEnabled = true;
     deviceConfig.audioVolume = 20;
     deviceConfig.otaPassword = "battlesync";
