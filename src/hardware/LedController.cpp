@@ -245,8 +245,10 @@ bool LedController::setupWS2812B(ZoneState& zoneState) {
         zoneState.leds[i] = CRGB::Black;
     }
     
-    // Add LED strip to FastLED - using template matching for common pins
+    // Add LED strip to FastLED - using template matching for ESP32-S3 pins
+    // Valid GPIOs: 1-9 (always), 43-44 (if audio disabled)
     switch (zoneState.zone.gpio) {
+        case 1:  FastLED.addLeds<WS2812B, 1, GRB>(zoneState.leds, zoneState.zone.ledCount); break;
         case 2:  FastLED.addLeds<WS2812B, 2, GRB>(zoneState.leds, zoneState.zone.ledCount); break;
         case 3:  FastLED.addLeds<WS2812B, 3, GRB>(zoneState.leds, zoneState.zone.ledCount); break;
         case 4:  FastLED.addLeds<WS2812B, 4, GRB>(zoneState.leds, zoneState.zone.ledCount); break;
@@ -255,9 +257,8 @@ bool LedController::setupWS2812B(ZoneState& zoneState) {
         case 7:  FastLED.addLeds<WS2812B, 7, GRB>(zoneState.leds, zoneState.zone.ledCount); break;
         case 8:  FastLED.addLeds<WS2812B, 8, GRB>(zoneState.leds, zoneState.zone.ledCount); break;
         case 9:  FastLED.addLeds<WS2812B, 9, GRB>(zoneState.leds, zoneState.zone.ledCount); break;
-        case 10: FastLED.addLeds<WS2812B, 10, GRB>(zoneState.leds, zoneState.zone.ledCount); break;
-        case 20: FastLED.addLeds<WS2812B, 20, GRB>(zoneState.leds, zoneState.zone.ledCount); break;
-        case 21: FastLED.addLeds<WS2812B, 21, GRB>(zoneState.leds, zoneState.zone.ledCount); break;
+        case 43: FastLED.addLeds<WS2812B, 43, GRB>(zoneState.leds, zoneState.zone.ledCount); break;
+        case 44: FastLED.addLeds<WS2812B, 44, GRB>(zoneState.leds, zoneState.zone.ledCount); break;
         default:
             Serial.printf("LedController: Unsupported GPIO %d for WS2812B\n", zoneState.zone.gpio);
             delete[] zoneState.leds;
