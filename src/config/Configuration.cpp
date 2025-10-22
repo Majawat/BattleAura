@@ -290,9 +290,9 @@ void Configuration::clearAllAudioTracks() {
 
 // Validation
 bool Configuration::isValidGPIO(uint8_t gpio) const {
-    // Valid GPIO pins for ESP32-C3: 2-10, 20-21 (if audio disabled)
-    if (gpio >= 2 && gpio <= 10) return true;
-    if (!deviceConfig.audioEnabled && (gpio == 20 || gpio == 21)) return true;
+    // Valid GPIO pins for ESP32-S3 (Seeed Xiao): 1-9, 43-44 (if audio disabled)
+    if (gpio >= 1 && gpio <= 9) return true;
+    if (!deviceConfig.audioEnabled && (gpio == 43 || gpio == 44)) return true;
     return false;
 }
 
@@ -307,20 +307,20 @@ bool Configuration::isGPIOInUse(uint8_t gpio, uint8_t excludeZoneId) const {
 
 std::vector<uint8_t> Configuration::getAvailableGPIOs() const {
     std::vector<uint8_t> available;
-    
-    // Check GPIO 2-10
-    for (uint8_t gpio = 2; gpio <= 10; gpio++) {
+
+    // Check GPIO 1-9
+    for (uint8_t gpio = 1; gpio <= 9; gpio++) {
         if (!isGPIOInUse(gpio)) {
             available.push_back(gpio);
         }
     }
-    
-    // Check GPIO 20-21 if audio disabled
+
+    // Check GPIO 43-44 if audio disabled
     if (!deviceConfig.audioEnabled) {
-        if (!isGPIOInUse(20)) available.push_back(20);
-        if (!isGPIOInUse(21)) available.push_back(21);
+        if (!isGPIOInUse(43)) available.push_back(43);
+        if (!isGPIOInUse(44)) available.push_back(44);
     }
-    
+
     return available;
 }
 

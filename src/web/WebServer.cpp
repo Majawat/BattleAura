@@ -372,7 +372,7 @@ void WebServer::setupmDNS() {
         MDNS.addService("http", "tcp", 80);
         MDNS.addServiceTxt("http", "tcp", "device", "BattleAura");
         MDNS.addServiceTxt("http", "tcp", "version", deviceConfig.firmwareVersion.c_str());
-        MDNS.addServiceTxt("http", "tcp", "model", "ESP32-C3");
+        MDNS.addServiceTxt("http", "tcp", "model", "ESP32-S3");
         MDNS.addServiceTxt("http", "tcp", "path", "/");
         
         // Add BattleAura-specific service for discovery
@@ -973,7 +973,7 @@ void WebServer::processWiFiConfig(AsyncWebServerRequest* request, JsonDocument& 
                 MDNS.addService("http", "tcp", 80);
                 MDNS.addServiceTxt("http", "tcp", "device", "BattleAura");
                 MDNS.addServiceTxt("http", "tcp", "version", config.getDeviceConfig().firmwareVersion.c_str());
-                MDNS.addServiceTxt("http", "tcp", "model", "ESP32-C3");
+                MDNS.addServiceTxt("http", "tcp", "model", "ESP32-S3");
                 MDNS.addServiceTxt("http", "tcp", "path", "/");
                 
                 MDNS.addService("battleaura", "tcp", 80);

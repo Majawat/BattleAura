@@ -3,7 +3,7 @@
 
 ## Parts
 
-- Seeed Studio Xaio ESP32-C3 dev board
+- Seeed Studio Xiao ESP32-S3 dev board
 - DFRobot DFPlayer Mini
 - microSD card
 - LEDs (single LEDs and WS2812B)
@@ -12,11 +12,11 @@
 
 ### Wiring Notes
 
-- ESP32 TX -> DFPlayer RX
-- ESP32 RX -> DFPlayer TX
-- GPIO pins to LEDs+, GND
+- ESP32 GPIO43 (D6/TX) -> DFPlayer RX
+- ESP32 GPIO44 (D7/RX) -> DFPlayer TX
+- GPIO 1-9 pins to LEDs+, GND
 - Speaker +/1 to DFPlayer
-- Battery direct to ESP32-C3 battery terminals, WS2812B, and DFPlayer
+- Battery direct to ESP32-S3 battery terminals, WS2812B, and DFPlayer
 
 ## LEDS
 

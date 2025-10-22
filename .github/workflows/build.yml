@@ -26,15 +26,15 @@ jobs:
       - name: Show build results
         run: |
           echo "Build complete for release version!"
-          ls -la .pio/build/seeed_xiao_esp32c3/
-          echo "Firmware size: $(du -h .pio/build/seeed_xiao_esp32c3/firmware.bin)"
+          ls -la .pio/build/seeed_xiao_esp32s3/
+          echo "Firmware size: $(du -h .pio/build/seeed_xiao_esp32s3/firmware.bin)"
           echo "This would be deployed to battlesync.me"
           
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
           name: battleaura-firmware-${{ github.ref_name }}
-          path: .pio/build/seeed_xiao_esp32c3/firmware.bin
+          path: .pio/build/seeed_xiao_esp32s3/firmware.bin
           
       - name: Deploy to battlesync.me
         run: |
@@ -45,7 +45,7 @@ jobs:
           
           # Get HTTP status code only  
           http_code=$(curl -X POST \
-            -F "file=@.pio/build/seeed_xiao_esp32c3/firmware.bin" \
+            -F "file=@.pio/build/seeed_xiao_esp32s3/firmware.bin" \
             -F "version=${{ github.ref_name }}" \
             -F "changelog=<changelog.tmp" \
             --write-out "%{http_code}" \
@@ -63,7 +63,7 @@ jobs:
             echo "Debug: Checking server response..."
             # Retry with verbose output for debugging
             curl -X POST \
-              -F "file=@.pio/build/seeed_xiao_esp32c3/firmware.bin" \
+              -F "file=@.pio/build/seeed_xiao_esp32s3/firmware.bin" \
               -F "version=${{ github.ref_name }}" \
               -F "changelog=Upload via GitHub Actions" \
               -v \
