@@ -2,7 +2,7 @@
   (version "D")
   (design
     (source "battleaura_v2.py")
-    (date "11/14/2026 04:13 PM")
+    (date "11/14/2026 04:34 PM")
     (tool "SKiDL (3.0.0)")
     (sheet
       (number 1)
@@ -891,7 +891,7 @@
         (field
           (name "SKiDL Tag") "D1")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:192"))
+          (name "SKiDL Line") "battleaura_v2.py:194"))
       (libsource
         (lib "Device")
         (part "LED"))
@@ -917,7 +917,7 @@
         (field
           (name "SKiDL Tag") "F1")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:150"))
+          (name "SKiDL Line") "battleaura_v2.py:152"))
       (libsource
         (lib "Device")
         (part "Polyfuse"))
@@ -943,7 +943,7 @@
         (field
           (name "SKiDL Tag") "J1")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:88"))
+          (name "SKiDL Line") "battleaura_v2.py:90"))
       (libsource
         (lib "Connector")
         (part "USB_C_Receptacle_USB2.0_16P"))
@@ -969,7 +969,7 @@
         (field
           (name "SKiDL Tag") "J10")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:231"))
+          (name "SKiDL Line") "battleaura_v2.py:233"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_01x03"))
@@ -995,7 +995,7 @@
         (field
           (name "SKiDL Tag") "J11")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:211"))
+          (name "SKiDL Line") "battleaura_v2.py:213"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_01x02"))
@@ -1021,7 +1021,7 @@
         (field
           (name "SKiDL Tag") "J2")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:59"))
+          (name "SKiDL Line") "battleaura_v2.py:61"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_01x02"))
@@ -1047,7 +1047,7 @@
         (field
           (name "SKiDL Tag") "J3")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:231"))
+          (name "SKiDL Line") "battleaura_v2.py:233"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_01x03"))
@@ -1073,7 +1073,7 @@
         (field
           (name "SKiDL Tag") "J4")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:231"))
+          (name "SKiDL Line") "battleaura_v2.py:233"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_01x03"))
@@ -1099,7 +1099,7 @@
         (field
           (name "SKiDL Tag") "J5")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:231"))
+          (name "SKiDL Line") "battleaura_v2.py:233"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_01x03"))
@@ -1125,7 +1125,7 @@
         (field
           (name "SKiDL Tag") "J6")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:231"))
+          (name "SKiDL Line") "battleaura_v2.py:233"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_01x03"))
@@ -1151,7 +1151,7 @@
         (field
           (name "SKiDL Tag") "J7")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:231"))
+          (name "SKiDL Line") "battleaura_v2.py:233"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_01x03"))
@@ -1177,7 +1177,7 @@
         (field
           (name "SKiDL Tag") "J8")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:231"))
+          (name "SKiDL Line") "battleaura_v2.py:233"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_01x03"))
@@ -1203,7 +1203,7 @@
         (field
           (name "SKiDL Tag") "J9")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:231"))
+          (name "SKiDL Line") "battleaura_v2.py:233"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_01x03"))
@@ -1229,7 +1229,7 @@
         (field
           (name "SKiDL Tag") "Q1")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:82"))
+          (name "SKiDL Line") "battleaura_v2.py:84"))
       (libsource
         (lib "Transistor_FET")
         (part "AO3401A"))
@@ -1255,7 +1255,7 @@
         (field
           (name "SKiDL Tag") "Q2")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:130"))
+          (name "SKiDL Line") "battleaura_v2.py:132"))
       (libsource
         (lib "Transistor_FET")
         (part "AO3401A"))
@@ -1281,7 +1281,7 @@
         (field
           (name "SKiDL Tag") "Q3")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:65"))
+          (name "SKiDL Line") "battleaura_v2.py:67"))
       (libsource
         (lib "battleaura")
         (part "FS8205A"))
@@ -2139,7 +2139,7 @@
         (field
           (name "SKiDL Tag") "SW1")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:137"))
+          (name "SKiDL Line") "battleaura_v2.py:139"))
       (libsource
         (lib "Switch")
         (part "SW_SPDT"))
@@ -2165,7 +2165,7 @@
         (field
           (name "SKiDL Tag") "SW2")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:180"))
+          (name "SKiDL Line") "battleaura_v2.py:182"))
       (libsource
         (lib "Switch")
         (part "SW_Push"))
@@ -2191,7 +2191,7 @@
         (field
           (name "SKiDL Tag") "SW3")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:174"))
+          (name "SKiDL Line") "battleaura_v2.py:176"))
       (libsource
         (lib "Switch")
         (part "SW_Push"))
@@ -2215,7 +2215,7 @@
         (field
           (name "SKiDL Tag") "TP1")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:242"))
+          (name "SKiDL Line") "battleaura_v2.py:244"))
       (libsource
         (lib "Connector")
         (part "TestPoint"))
@@ -2239,7 +2239,7 @@
         (field
           (name "SKiDL Tag") "TP10")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:242"))
+          (name "SKiDL Line") "battleaura_v2.py:244"))
       (libsource
         (lib "Connector")
         (part "TestPoint"))
@@ -2263,7 +2263,7 @@
         (field
           (name "SKiDL Tag") "TP11")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:242"))
+          (name "SKiDL Line") "battleaura_v2.py:244"))
       (libsource
         (lib "Connector")
         (part "TestPoint"))
@@ -2287,7 +2287,7 @@
         (field
           (name "SKiDL Tag") "TP12")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:242"))
+          (name "SKiDL Line") "battleaura_v2.py:244"))
       (libsource
         (lib "Connector")
         (part "TestPoint"))
@@ -2311,7 +2311,7 @@
         (field
           (name "SKiDL Tag") "TP13")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:242"))
+          (name "SKiDL Line") "battleaura_v2.py:244"))
       (libsource
         (lib "Connector")
         (part "TestPoint"))
@@ -2335,7 +2335,7 @@
         (field
           (name "SKiDL Tag") "TP14")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:242"))
+          (name "SKiDL Line") "battleaura_v2.py:244"))
       (libsource
         (lib "Connector")
         (part "TestPoint"))
@@ -2359,7 +2359,7 @@
         (field
           (name "SKiDL Tag") "TP15")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:242"))
+          (name "SKiDL Line") "battleaura_v2.py:244"))
       (libsource
         (lib "Connector")
         (part "TestPoint"))
@@ -2383,7 +2383,7 @@
         (field
           (name "SKiDL Tag") "TP16")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:242"))
+          (name "SKiDL Line") "battleaura_v2.py:244"))
       (libsource
         (lib "Connector")
         (part "TestPoint"))
@@ -2407,7 +2407,7 @@
         (field
           (name "SKiDL Tag") "TP2")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:242"))
+          (name "SKiDL Line") "battleaura_v2.py:244"))
       (libsource
         (lib "Connector")
         (part "TestPoint"))
@@ -2431,7 +2431,7 @@
         (field
           (name "SKiDL Tag") "TP3")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:242"))
+          (name "SKiDL Line") "battleaura_v2.py:244"))
       (libsource
         (lib "Connector")
         (part "TestPoint"))
@@ -2455,7 +2455,7 @@
         (field
           (name "SKiDL Tag") "TP4")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:242"))
+          (name "SKiDL Line") "battleaura_v2.py:244"))
       (libsource
         (lib "Connector")
         (part "TestPoint"))
@@ -2479,7 +2479,7 @@
         (field
           (name "SKiDL Tag") "TP5")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:242"))
+          (name "SKiDL Line") "battleaura_v2.py:244"))
       (libsource
         (lib "Connector")
         (part "TestPoint"))
@@ -2503,7 +2503,7 @@
         (field
           (name "SKiDL Tag") "TP6")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:242"))
+          (name "SKiDL Line") "battleaura_v2.py:244"))
       (libsource
         (lib "Connector")
         (part "TestPoint"))
@@ -2527,7 +2527,7 @@
         (field
           (name "SKiDL Tag") "TP7")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:242"))
+          (name "SKiDL Line") "battleaura_v2.py:244"))
       (libsource
         (lib "Connector")
         (part "TestPoint"))
@@ -2551,7 +2551,7 @@
         (field
           (name "SKiDL Tag") "TP8")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:242"))
+          (name "SKiDL Line") "battleaura_v2.py:244"))
       (libsource
         (lib "Connector")
         (part "TestPoint"))
@@ -2575,7 +2575,7 @@
         (field
           (name "SKiDL Tag") "TP9")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:242"))
+          (name "SKiDL Line") "battleaura_v2.py:244"))
       (libsource
         (lib "Connector")
         (part "TestPoint"))
@@ -2601,7 +2601,7 @@
         (field
           (name "SKiDL Tag") "U1")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:165"))
+          (name "SKiDL Line") "battleaura_v2.py:167"))
       (libsource
         (lib "RF_Module")
         (part "ESP32-S3-WROOM-1"))
@@ -2627,7 +2627,7 @@
         (field
           (name "SKiDL Tag") "U10")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:219"))
+          (name "SKiDL Line") "battleaura_v2.py:221"))
       (libsource
         (lib "Logic_LevelTranslator")
         (part "SN74LVC1T45DBV"))
@@ -2653,7 +2653,7 @@
         (field
           (name "SKiDL Tag") "U11")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:219"))
+          (name "SKiDL Line") "battleaura_v2.py:221"))
       (libsource
         (lib "Logic_LevelTranslator")
         (part "SN74LVC1T45DBV"))
@@ -2679,7 +2679,7 @@
         (field
           (name "SKiDL Tag") "U12")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:219"))
+          (name "SKiDL Line") "battleaura_v2.py:221"))
       (libsource
         (lib "Logic_LevelTranslator")
         (part "SN74LVC1T45DBV"))
@@ -2705,7 +2705,7 @@
         (field
           (name "SKiDL Tag") "U13")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:219"))
+          (name "SKiDL Line") "battleaura_v2.py:221"))
       (libsource
         (lib "Logic_LevelTranslator")
         (part "SN74LVC1T45DBV"))
@@ -2731,7 +2731,7 @@
         (field
           (name "SKiDL Tag") "U14")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:102"))
+          (name "SKiDL Line") "battleaura_v2.py:104"))
       (libsource
         (lib "Power_Protection")
         (part "USBLC6-2SC6"))
@@ -2757,7 +2757,7 @@
         (field
           (name "SKiDL Tag") "U2")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:156"))
+          (name "SKiDL Line") "battleaura_v2.py:158"))
       (libsource
         (lib "Regulator_Linear")
         (part "TLV75733PDBV"))
@@ -2783,7 +2783,7 @@
         (field
           (name "SKiDL Tag") "U3")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:109"))
+          (name "SKiDL Line") "battleaura_v2.py:111"))
       (libsource
         (lib "Battery_Management")
         (part "BQ24074RGT"))
@@ -2809,7 +2809,7 @@
         (field
           (name "SKiDL Tag") "U4")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:64"))
+          (name "SKiDL Line") "battleaura_v2.py:66"))
       (libsource
         (lib "Battery_Management")
         (part "DW01A"))
@@ -2835,7 +2835,7 @@
         (field
           (name "SKiDL Tag") "U5")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:197"))
+          (name "SKiDL Line") "battleaura_v2.py:199"))
       (libsource
         (lib "Audio")
         (part "MAX98357A"))
@@ -2861,7 +2861,7 @@
         (field
           (name "SKiDL Tag") "U6")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:219"))
+          (name "SKiDL Line") "battleaura_v2.py:221"))
       (libsource
         (lib "Logic_LevelTranslator")
         (part "SN74LVC1T45DBV"))
@@ -2887,7 +2887,7 @@
         (field
           (name "SKiDL Tag") "U7")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:219"))
+          (name "SKiDL Line") "battleaura_v2.py:221"))
       (libsource
         (lib "Logic_LevelTranslator")
         (part "SN74LVC1T45DBV"))
@@ -2913,7 +2913,7 @@
         (field
           (name "SKiDL Tag") "U8")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:219"))
+          (name "SKiDL Line") "battleaura_v2.py:221"))
       (libsource
         (lib "Logic_LevelTranslator")
         (part "SN74LVC1T45DBV"))
@@ -2939,7 +2939,7 @@
         (field
           (name "SKiDL Tag") "U9")
         (field
-          (name "SKiDL Line") "battleaura_v2.py:219"))
+          (name "SKiDL Line") "battleaura_v2.py:221"))
       (libsource
         (lib "Logic_LevelTranslator")
         (part "SN74LVC1T45DBV"))
@@ -3095,7 +3095,7 @@
         (pintype "PASSIVE"))
       (node
         (ref "J2")
-        (pin "1")
+        (pin "2")
         (pintype "PASSIVE"))
       (node
         (ref "Q1")
@@ -3115,7 +3115,7 @@
       (class "Default")
       (node
         (ref "J2")
-        (pin "2")
+        (pin "1")
         (pintype "PASSIVE"))
       (node
         (ref "Q1")

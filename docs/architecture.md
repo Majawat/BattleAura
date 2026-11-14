@@ -741,7 +741,7 @@ All fifteen were answered by the owner. The questions as originally asked are in
 4. ~~PTC drop~~ — nSMD075 is 90 mΩ min / 500 mΩ max after a trip → 27–150 mV at 300 mA on zone V+, which lowers pixel supply further below spec (A-2). Accepted with A-2; re-measure on the dev kit.
 5. ~~Cell~~ — Adafruit #2011 chosen (OQ-A13). Confirm its discharge rating covers the 1.16 A peak when bought.
 6. ~~Netlist~~ — `hardware/battleaura_v2.py` → `hardware/battleaura_v2.net`: 113 components, ERC 0 errors; per-LCSC counts match `bom-draft.csv` (97 parts).
-7. **J2 pin polarity** vs the Adafruit #2011 lead — confirm before layout fixes the connector orientation.
+7. ~~J2 pin polarity~~ — done: **pin 1 = +, pin 2 = −** to match Adafruit cells. Evidence: Adafruit's Feather RP2040 Eagle footprint (JSTPH2_BATT) silkscreens "+" on the contact that is on the left when facing the opening; JST's S2B-PH-SM4-TB drawing numbers that contact circuit 1, and KiCad's footprint follows JST. Layout must silkscreen + / − at J2. Still check a new cell's lead with the multimeter (TOOL-1); Q1 protects the board if it is reversed.
 8. Reverse-battery SPICE run (item 3) — ngspice 45.2 is installed on Bastet.
 9. Layout handoff for the Fable 5.2 session: PCB file with the 45 × 36 mm outline, JLC design rules and the netlist imported.
 

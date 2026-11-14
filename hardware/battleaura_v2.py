@@ -55,11 +55,13 @@ for n in (GND, VBUS, VBAT_SW, V3V3, VSYS, VBAT_RAW, CELL_N, ZONE_VP):
     n.drive = 99  # power nets: suppress "no driver" ERC noise on supplies fed through passives
 
 # ---- J2 battery, U4/Q3 protection, Q1 reverse polarity (§3.1-3.3) ----------------------------
-# TODO (verify before ordering): which J2 pin is + for the Adafruit #2011 lead. Q1 protects either way.
+# Polarity matches Adafruit LiPo cells (checked 2026-11-14): Adafruit's Feather footprint puts "+" on the
+# contact that is on the LEFT when facing the connector opening, which JST's S2B-PH-SM4-TB drawing (and
+# KiCad's footprint, which follows it) numbers circuit 1. So pin 1 = +, pin 2 = -. Silkscreen +/- at J2.
 J2 = Part("Connector_Generic", "Conn_01x02", ref="J2", value="BATT",
           footprint="Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal", LCSC="C295747")
-J2[1] += CELL_N
-J2[2] += CELL_P
+J2[1] += CELL_P
+J2[2] += CELL_N
 
 U4 = Part("Battery_Management", "DW01A", ref="U4", LCSC="C351410")
 Q3 = Part("battleaura", "FS8205A", ref="Q3", LCSC="C908265")
