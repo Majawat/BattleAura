@@ -1,0 +1,70 @@
+* BattleAura v2 - reversed cell at J2, behavioral check of Q1/U4/Q3/U3-BAT (architecture.md §3.3, OQ-A5)
+* Behavioral models from datasheet figures; NOT vendor models (none exist for DW01A/FS8205A/BQ24074 BAT).
+.param vcell=4.2 vthp=0.9 vthn=0.7 usb=1 forceq3=0
+.options method=gear reltol=1e-3 itl4=200
+
+* reversed cell: cell + on J2 pin 2 (CELL_N), cell - on J2 pin 1 (CELL_P); 0.15 ohm cell+PCM resistance
+Vcell cn_int cp {vcell}
+Rcell cn_int cell_n 0.15
+
+* Q1 AO3401A P-FET: D=cell_p S=vbat_raw G=cell_n (gate to connector negative). Level-1 fit, Rds ~60 mohm
+* SPICE order: D G S B. Vq1 measures current out of VBAT_RAW into Q1's source.
+M1 cp cell_n q1s q1s PFET_Q1 W=1 L=1
+Vq1 vbat_raw q1s 0
+.model PFET_Q1 PMOS (LEVEL=1 VTO={-vthp} KP=20 LAMBDA=0.01)
+D_Q1body cp q1s DBODY
+
+* Q3 FS8205A dual N-FET, common drain q3d: Q3a S1=cell_n G1=od ; Q3b S2=gnd G2=oc
+M3a q3d od cell_n cell_n NFET_Q3 W=1 L=1
+M3b q3d oc 0 0 NFET_Q3 W=1 L=1
+.model NFET_Q3 NMOS (LEVEL=1 VTO={vthn} KP=40 LAMBDA=0.01)
+D_Q3a cell_n q3d DBODY
+D_Q3b 0 q3d DBODY
+.model DBODY D (IS=1e-12 N=1.2 RS=0.05)
+
+* U4 DW01A behavioral: VCC from vbat_raw via R4 100R, C 100n to cell_n; supply 3-6 uA;
+* OD/OC = VCC (relative to its GND=cell_n) only inside the normal window 2.5 V < VCC-GND < 4.3 V, else 0
+R4 vbat_raw u4vcc 100
+C4 u4vcc cell_n 100n
+Bu4q u4vcc cell_n I = 4.5u*0.5*(1+tanh(20*(V(u4vcc,cell_n)-0.5)))
+Bod od cell_n V = {forceq3}*4 + (1-{forceq3})*(V(u4vcc,cell_n) * 0.25*(1+tanh(20*(V(u4vcc,cell_n)-2.5)))*(1-tanh(20*(V(u4vcc,cell_n)-4.3))))
+Boc oc cell_n V = {forceq3}*4 + (1-{forceq3})*(V(u4vcc,cell_n) * 0.25*(1+tanh(20*(V(u4vcc,cell_n)-2.5)))*(1-tanh(20*(V(u4vcc,cell_n)-4.3))))
+D_u4esd1 cell_n u4vcc DESD
+D_u4cs u4cs u4vcc DESD
+R5 u4cs 0 1k
+.model DESD D (IS=1e-14 N=1.5 RS=10)
+
+* U3 BQ24074 BAT pin: short-detect 1.3 mA below 1.8 V, pre-charge 49 mA to 3.0 V, regulates <= 4.2 V; ESD diode from VSS
+Vusb usbon 0 PWL(0 0 1m 0 1.1m {usb})
+Bchg 0 vbat_raw I = V(usbon) * ( 1.3m + 47.7m*0.5*(1+tanh(8*(V(vbat_raw)-1.8))) ) * 0.5*(1-tanh(8*(V(vbat_raw)-4.2)))
+D_u3esd 0 vbat_raw DESD
+* load on VBAT_RAW when switch OFF: BQ sleep + Q2 leakage (~10 uA) modeled as resistor; leakage on floating nodes
+Rleak_v vbat_raw 0 470k
+Rleak_n cell_n 0 10Meg
+
+.control
+  set noaskquit
+  foreach f 0 1
+   foreach u 0 1
+    foreach vp 0.5 0.9 1.3
+      foreach vn 0.5 1.0
+        alterparam usb = $u
+        alterparam forceq3 = $f
+        alterparam vthp = $vp
+        alterparam vthn = $vn
+        reset
+        tran 20u 300m
+        let iq1 = i(vq1)
+        let pq1 = v(vbat_raw,cp) * iq1
+        meas tran tend MAX time
+        meas tran imax MAX iq1
+        meas tran pmax MAX pq1
+        meas tran vbmin MIN v(vbat_raw)
+        meas tran vbmax MAX v(vbat_raw)
+        echo RESULT usb=$u forceQ3=$f vthp=$vp vthn=$vn t_end=$&tend imax=$&imax pmax=$&pmax vbat_min=$&vbmin vbat_max=$&vbmax
+      end
+    end
+   end
+  end
+.endc
+.end

@@ -127,8 +127,8 @@ cell and reverse-bias U4 through R4. With the gate on B−:
   at K_PRECHG / R_ISET = 70/88/106 AΩ ÷ 1.8 kΩ ≈ 39/49/59 mA until V_LOWV 3.0 V [BQ §9.3.5, EC]. So the
   bound on current into a reversed cell is the same ≈50–60 mA as with the TP4056, and only ≈1.3 mA while
   Q1 holds VBAT_RAW below ≈1.6 V. **New concern:** the BQ24074 BAT pin is rated −0.3 V minimum [BQ AMR];
-  the SPICE run must confirm that a reversed cell cannot pull VBAT_RAW below that through Q1 or U4's
-  CS/VCC paths. If it can, add a small Schottky clamp from GND to VBAT_RAW (TODO (verify), OQ-A5).
+  the 2026-11-14 behavioral SPICE run (`hardware/sim/reverse_battery.cir`) shows VBAT_RAW never below −4.4 µV in any
+  threshold corner, with or without USB, so no clamp is needed. Worst case: ≈48 mA / 0.27 W in Q1 with USB attached.
 - **Confidence:** this is reasoned analysis, not a datasheet guarantee. It should be simulated and then
   tested on a sacrificial board before the ASM-6 gate (see OQ-A5).
 
@@ -742,7 +742,7 @@ All fifteen were answered by the owner. The questions as originally asked are in
 5. ~~Cell~~ — Adafruit #2011 chosen (OQ-A13). Confirm its discharge rating covers the 1.16 A peak when bought.
 6. ~~Netlist~~ — `hardware/battleaura_v2.py` → `hardware/battleaura_v2.net`: 113 components, ERC 0 errors; per-LCSC counts match `bom-draft.csv` (97 parts).
 7. ~~J2 pin polarity~~ — done: **pin 1 = +, pin 2 = −** to match Adafruit cells. Evidence: Adafruit's Feather RP2040 Eagle footprint (JSTPH2_BATT) silkscreens "+" on the contact that is on the left when facing the opening; JST's S2B-PH-SM4-TB drawing numbers that contact circuit 1, and KiCad's footprint follows JST. Layout must silkscreen + / − at J2. Still check a new cell's lead with the multimeter (TOOL-1); Q1 protects the board if it is reversed.
-8. Reverse-battery SPICE run (item 3) — ngspice 45.2 is installed on Bastet.
+8. ~~Reverse-battery SPICE~~ — done (`hardware/sim/`, behavioral models): BAT pin min −4.4 µV in every corner → **no clamp diode needed**; worst case Q1 ≈48 mA / 0.27 W with USB attached. Sacrificial-board test still required before quantity (OQ-A5).
 9. Layout handoff for the Fable 5.2 session: PCB file with the 45 × 36 mm outline, JLC design rules and the netlist imported.
 
 ### Cell candidates (OQ-A13, 2026-11-14)
