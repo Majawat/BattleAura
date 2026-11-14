@@ -743,7 +743,7 @@ All fifteen were answered by the owner. The questions as originally asked are in
 6. ~~Netlist~~ — `hardware/battleaura_v2.py` → `hardware/battleaura_v2.net`: 113 components, ERC 0 errors; per-LCSC counts match `bom-draft.csv` (97 parts).
 7. ~~J2 pin polarity~~ — done: **pin 1 = +, pin 2 = −** to match Adafruit cells. Evidence: Adafruit's Feather RP2040 Eagle footprint (JSTPH2_BATT) silkscreens "+" on the contact that is on the left when facing the opening; JST's S2B-PH-SM4-TB drawing numbers that contact circuit 1, and KiCad's footprint follows JST. Layout must silkscreen + / − at J2. Still check a new cell's lead with the multimeter (TOOL-1); Q1 protects the board if it is reversed.
 8. ~~Reverse-battery SPICE~~ — done (`hardware/sim/`, behavioral models): BAT pin min −4.4 µV in every corner → **no clamp diode needed**; worst case Q1 ≈48 mA / 0.27 W with USB attached. Sacrificial-board test still required before quantity (OQ-A5).
-9. Layout handoff for the Fable 5.2 session: PCB file with the 45 × 36 mm outline, JLC design rules and the netlist imported.
+9. ~~Layout starter~~ — done: `hardware/pcb/battleaura_v2.kicad_pcb` (outline, 2 layers, JLC rules, net classes, 113 footprints with all 337 pads on their nets; DRC shows only parking overlaps + the ESP32 footprint's 0.2 mm vias). Handoff: `hardware/LAYOUT-HANDOFF.md`. **Next: the layout session.**
 
 ### Cell candidates (OQ-A13, 2026-11-14)
 

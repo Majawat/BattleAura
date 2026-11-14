@@ -8,3 +8,7 @@
 *_sklib.py
 hardware/*.log
 skidl*.log
+hardware/pcb/*.kicad_prl
+hardware/pcb/*-backups/
+hardware/pcb/fp-info-cache
+hardware/__pycache__/
