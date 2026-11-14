@@ -1,0 +1,37 @@
+ref,part,MPN,LCSC#,qty,unit cost,datasheet URL
+U1,"Wi-Fi/BLE MCU module, 16 MB flash, 8 MB PSRAM, PCB antenna",ESP32-S3-WROOM-1-N16R8,C2913202,1,4.9500,https://www.espressif.com/sites/default/files/documentation/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf
+U2,"LDO 3.3 V 1 A, SOT-23-5",TLV75733PDBVR,C485517,1,0.2080,https://www.ti.com/lit/ds/symlink/tlv757p.pdf
+U3,"Power-path 1S Li-ion charger 4.2 V, 4.4 V system output, VQFN-16 3x3 (OQ-A3)",BQ24074RGTR,C54313,1,2.1188,https://www.ti.com/lit/ds/symlink/bq24074.pdf
+U4,"1S Li-ion protection IC, SOT-23-6",DW01A,C351410,1,0.0532,https://datasheet.lcsc.com/datasheet/pdf/0d2b2b5e8d1207bf276387cb4ff3a495.pdf?productCode=C351410
+U5,"I2S mono class-D amplifier, TQFN-16 3x3",MAX98357AETE+T,C910544,1,1.3090,https://datasheet.lcsc.com/datasheet/pdf/9dd365a93d191d8d6f09766b0e3ea172.pdf?productCode=C910544
+U6-U13,"Single-bit dual-supply translator, SOT-23-6 (one per LED zone)",SN74LVC1T45DBVR,C7843,8,0.0827,https://www.ti.com/lit/ds/symlink/sn74lvc1t45.pdf
+U14,"USB D+/D- ESD protection, SOT-23-6",USBLC6-2SC6,C7519,1,0.1624,https://datasheet.lcsc.com/datasheet/pdf/0d3a2ab954b34651a0695e7ccf534db0.pdf?productCode=C7519
+"Q1,Q2","P-channel MOSFET -30 V, SOT-23 (Q1 reverse-battery, Q2 load switch)",AO3401A,C15127,2,0.0812,https://datasheet.lcsc.com/datasheet/pdf/fee353dd1e9e0bc90b295f14f381aa4c.pdf?productCode=C15127
+Q3,"Dual N-channel MOSFET 20 V, SOT-23-6 (protection switch for U4)",FS8205A,C908265,1,0.0717,https://datasheet.lcsc.com/datasheet/pdf/5d5d336ed528176185784e3faf8fb551.pdf?productCode=C908265
+F1,"Resettable PTC fuse 1206, 0.75 A hold / 1.5 A trip, 6 V (shared zone V+, OQ-A15; check drop at 300 mA)",nSMD075,C70078,1,0.0403,
+D1,"Status LED red, 0603",KT-0603R,C2286,1,0.0077,https://datasheet.lcsc.com/datasheet/pdf/011ec3e8cb1e825f6961d29bc4db4c7a.pdf?productCode=C2286
+J1,"USB Type-C receptacle, 16-pin, SMD",TYPE-C-31-M-12,C165948,1,0.1870,https://datasheet.lcsc.com/datasheet/pdf/9e56b777c022540fcce7c7f67825f55e.pdf?productCode=C165948
+J2,"Battery connector JST-PH 2.0 mm 2-pin, side entry, SMD",S2B-PH-SM4-TB,C295747,1,0.2260,https://datasheet.lcsc.com/datasheet/pdf/2474e9261ed7c5f86b55d373e724589d.pdf?productCode=C295747
+J3-J10,"LED zone connector JST-SH 1.0 mm 3-pin, top entry, SMD (Z1-Z8)",BM03B-SRSS-TB,C160389,8,0.2760,https://datasheet.lcsc.com/datasheet/pdf/e03a82bcc66e3c3589917313e54d45e2.pdf?productCode=C160389
+J11,"Speaker connector JST-SH 1.0 mm 2-pin, top entry, SMD",BM02B-SRSS-TB,C160388,1,0.1630,https://datasheet.lcsc.com/datasheet/pdf/e03a82bcc66e3c3589917313e54d45e2.pdf?productCode=C160388
+SW1,"Slide switch SPDT, SMD, side actuated (drives Q2 gate only)",MSK12C02,C431540,1,0.0540,https://datasheet.lcsc.com/datasheet/pdf/5162155576bfd231c35aa9a893d25c8c.pdf?productCode=C431540
+"SW2,SW3","Tactile switch 5.1x5.1 mm SMD (BOOT, RESET)",TS-1187A-B-A-B,C318884,2,0.0215,https://datasheet.lcsc.com/datasheet/pdf/56c8799ae5193945a16a1ffbe378246a.pdf?productCode=C318884
+"R1,R2",Resistor 5.1 kOhm 1% 0402 (USB CC1/CC2 pull-down),0402WGF5101TCE,C25905,2,0.0014,https://datasheet.lcsc.com/datasheet/pdf/0a975aaa49b7c97f38a963127be4a823.pdf?productCode=C25905
+R3,Resistor 1.8 kOhm 1% 0402 (U3 ISET -> ~494 mA charge),0402WGF1801TCE,C25871,1,0.0012,https://datasheet.lcsc.com/datasheet/pdf/0a975aaa49b7c97f38a963127be4a823.pdf?productCode=C25879
+R31,Resistor 1.1 kOhm 1% 0402 (U3 ILIM -> ~1.46 A input limit),0402WGF1101TCE,C25860,1,0.0012,https://datasheet.lcsc.com/datasheet/pdf/0a975aaa49b7c97f38a963127be4a823.pdf?productCode=C25879
+R32,"Resistor 10 kOhm 1% 0402 (U3 TS, no-thermistor connection)",0402WGF1002TCE,C25744,1,0.0010,https://datasheet.lcsc.com/datasheet/pdf/0a975aaa49b7c97f38a963127be4a823.pdf?productCode=C25879
+R4,Resistor 100 Ohm 1% 0402 (U4 VCC filter),0402WGF1000TCE,C25076,1,0.0012,https://datasheet.lcsc.com/datasheet/pdf/0a975aaa49b7c97f38a963127be4a823.pdf?productCode=C25076
+"R5,R6,R30",Resistor 1 kOhm 1% 0402 (U4 CS; D1 series; SW1 OFF-throw to VSYS),0402WGF1001TCE,C11702,3,0.0013,https://datasheet.lcsc.com/datasheet/pdf/0a975aaa49b7c97f38a963127be4a823.pdf?productCode=C11702
+R7,Resistor 1 MOhm 1% 0402 (Q2 gate-source),0402WGF1004TCE,C26083,1,0.0012,https://datasheet.lcsc.com/datasheet/pdf/0a975aaa49b7c97f38a963127be4a823.pdf?productCode=C26083
+R8-R19,Resistor 100 kOhm 1% 0402 (Q2 gate series; zone input pull-downs x8; VBAT divider bottom; CHG/PGOOD pull-ups x2),0402WGF1003TCE,C25741,12,0.0012,https://datasheet.lcsc.com/datasheet/pdf/0a975aaa49b7c97f38a963127be4a823.pdf?productCode=C25741
+R20,Resistor 200 kOhm 1% 0402 (VBAT divider top),0402WGF2003TCE,C25764,1,0.0013,https://datasheet.lcsc.com/datasheet/pdf/0a975aaa49b7c97f38a963127be4a823.pdf?productCode=C25764
+R21,Resistor 10 kOhm 1% 0402 (EN pull-up),0402WGF1002TCE,C25744,1,0.0010,https://datasheet.lcsc.com/datasheet/pdf/0a975aaa49b7c97f38a963127be4a823.pdf?productCode=C25744
+R22-R29,"Resistor 120 Ohm 1% 1206 0.25 W (zone series R_Z, OQ-A2)",1206W4F1200T5E,C17909,8,0.0046,https://datasheet.lcsc.com/datasheet/pdf/0a975aaa49b7c97f38a963127be4a823.pdf?productCode=C17901
+C1-C20,Capacitor 100 nF 16 V X7R 0402 (decoupling; VBAT sense),CL05B104KO5NNNC,C1525,20,0.0031,https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf?productCode=C1525
+C21-C23,Capacitor 1 uF 25 V X5R 0402 (U2 input; EN delay; Q2 gate-source soft start),CL05A105KA5NQNC,C52923,3,0.0058,https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf?productCode=C52923
+C24-C27,Capacitor 10 uF 10 V X5R 0603 (VBUS; U3 BAT; U5 VDD; U1 3V3),CL10A106KP8NNNC,C19702,4,0.0233,https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf?productCode=C19702
+C28,Capacitor 22 uF 6.3 V X5R 0603 (U2 output),CL10A226MQ8NRNC,C59461,1,0.0221,https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf?productCode=C59461
+C31,Capacitor 22 uF 25 V X5R 0805 (U3 OUT / VSYS),CL21A226MAQNNNE,C45783,1,,
+"C29,C30","Capacitor 100 uF 10 V X5R 1206 (VBAT_SW bulk, OQ-A9; Murata DC-bias curve available - add a third if derated value is short)",GRM31CR61A107MEA8L,C883598,2,0.2721,
+BT1 (off-board),"LiPo pouch cell 803450 class, ~1500 mAh, >=1.2 A continuous, JST-PH 2.0 lead - candidates pending (OQ-A13)",TBD,n/a,1,TBD,n/a
+LS1 (off-board),Speaker 8 Ohm 1 W with JST-SH 2-pin lead (OQ-A7) - not selected,TBD,n/a,1,TBD,n/a
