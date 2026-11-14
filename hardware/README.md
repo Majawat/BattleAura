@@ -9,6 +9,7 @@ The board is described as code in `battleaura_v2.py` (SKiDL). Every connection t
 | `battleaura_v2.net` | Generated KiCad netlist (commit it; layout imports this) |
 | `lib/battleaura.kicad_sym` | Custom symbols not in KiCad's stock library (FS8205A) |
 | `make_pcb_starter.py` | Builds `pcb/battleaura_v2.kicad_pcb` from the netlist (outline, rules, parked footprints); won't overwrite |
+| `place_stage1.py` | Stage-1 placement of the hull-fixed parts (module, USB-C, switch, connectors, mounting holes); re-runnable |
 | `pcb/` | The KiCad board and project |
 | `sim/` | ngspice checks (reversed cell) |
 | `LAYOUT-HANDOFF.md` | Brief for the layout session |

@@ -17,6 +17,47 @@ wrong, stop and raise it rather than changing it.
 - Tools on Bastet: KiCad 9.0.9 (`kicad-cli`, `pcbnew` Python module), ngspice 45.2.
 - The owner allows commits and pushes on the `v2-hardware` branch without asking.
 
+## Stage 1 result (2026-11-14): one-sided placement does not fit
+
+The first placement pass (the check architecture.md §12.2 asked for) shows the board cannot be
+populated on the top side only:
+
+| | mm² |
+|---|---|
+| Board | 1620 |
+| Module courtyard (body + antenna) | 511 |
+| Antenna keep-out beside the module (no parts, no copper) | 99 |
+| Left for everything else | **1010** |
+| Courtyards of everything else (112 parts) + 2 mounting holes | **≈1090** |
+
+That is over 100 % before any routing room; a routable 2-layer board wants roughly 75 %. The zone
+connectors are the main miss: 34 mm² each in the real footprint against the 18 mm² estimated.
+
+The owner chose to place only the hull-fixed parts for now and decide the rest later.
+`hardware/place_stage1.py` holds those positions (re-runnable); everything else is still parked.
+
+| Part | Position (mm from top-left) | Notes |
+|---|---|---|
+| U1 module | 12.75, 10.0, rot 90 | antenna flush with the left (x = 0) edge, top-left corner; pins 1–14 (zones, USB) face the board, pins 27–40 on the top edge |
+| J1 USB-C | 23.3, 32.3 | bottom edge, shell front flush; D+/D− pads sit directly below module pins 13/14 |
+| SW1 switch | 33.2, 34.25 | bottom edge next to J1 (ENV-4); lever sticks 1.15 mm past the edge |
+| J2 battery | 40.1, 4.64, rot 90 | top-right corner, opening faces the speaker end; `+` is the lower pin |
+| J3–J10 zones | see script | Z1, Z3, Z4, Z5 in a row under the module; Z2, Z7 on the bottom edge; Z6 on the right edge; Z8 on the top edge |
+| H1, H2 (M2) | 8.5, 33.6 and 42.6, 11.8 | diagonal pair, board-only footprints, outside the antenna keep-out |
+
+DRC on the placed area: only the 12 known 0.2 mm module vias (below).
+
+**Decision needed before stage 2** — which rule gives:
+
+1. **Two-sided assembly (recommended).** Low parts (0402/0603 passives, SOT-23s, the eight zone
+   driver channels, test pads; all ≤ 1.5 mm) on the bottom; module, connectors, switches, charger and
+   amp on top. No netlist or part changes; total height ≈ 8 mm. Relaxes ASM-1 / ENV-3 "one side";
+   needs printed standoffs ≥ 2 mm (ENV-8) and a JLC two-sided quote.
+2. **Stay one-sided and change parts** (smaller module, one 8-channel translator, smaller tactile
+   switches, smaller R_Z). Re-opens settled decisions and the netlist checks, and is still tight.
+
+Free top-side area after this placement is ≈ 490 mm²; the parked parts need ≈ 600 mm².
+
 ## Hard constraints (requirement IDs)
 
 | ID | Constraint |
@@ -42,8 +83,8 @@ wrong, stop and raise it rather than changing it.
   short pair ("Speaker" class). Keep the class-D outputs away from the antenna and the I²S lines.
 - **U2 TLV75733P**: its 1 µF input and 22 µF output close to the pins; the 3V3 trace to the module
   short. Module decoupling (10 µF + 100 nF) at module pin 2.
-- **Bulk caps C29/C30/C32** (3 × 100 µF 1206) between the amp and the zone connectors on VBAT_SW.
-- **Translators U6–U13**: each 100 nF pair (VCCA, VCCB) at its pins; R_Z (120 Ω 1206) between the
+- **Bulk caps C6/C7/C8** (3 × 100 µF 1206; refs as in the netlist) between the amp and the zone connectors on VBAT_SW.
+- **Translators U6–U13**: each 100 nF pair (VCCA, VCCB) at its pins; R_Z (120 Ω 1206; R18, R20 … R32) between the
   translator B pin and its connector.
 - **USB D+/D−** through U14 to module pins 13/14: short, matched, routed as a pair; ESD part near J1.
 - **GND**: solid pour on the bottom layer (and fill on top), stitched; respect the antenna keep-out on
