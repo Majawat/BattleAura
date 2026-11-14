@@ -7,7 +7,7 @@
 
 | Subsystem | Pick | MPN (LCSC#) | Satisfies |
 |---|---|---|---|
-| Cell | 1S LiPo pouch, 803450 class, JST-PH lead (off-board, not yet selected) | TBD | PWR-1, PWR-4 |
+| Cell | 1S LiPo, Adafruit #2011 2000 mAh, 60 × 36 × 7 mm, JST-PH, own PCM (off-board) | Adafruit 2011 | PWR-1, PWR-4 |
 | Cell protection | DW01A + dual N-FET in the battery negative return | DW01A (C351410) + FS8205A (C908265) | PWR-2 |
 | Reverse polarity | P-FET in the positive lead, gate to battery-connector negative | AO3401A (C15127) | PWR-3 |
 | Charger | Power-path linear charger, 4.2 V, 500 mA charge, 4.4 V system output, CHG + PGOOD to GPIO | BQ24074RGTR (C54313; JLC Ext, 3,780 on 2026-11-14) | PWR-5, PWR-6, PWR-7, PWR-8, PWR-16 |
@@ -34,7 +34,7 @@ VBAT_SW ─┬─► U2 TLV75733P ─► 3V3 ─► U1 ESP32-S3-WROOM-1, U6–U1
          ├─► U6–U13 VCCB ─► R_Z 120 Ω ─► J3–J10 SIG        (zones Z1–Z8)
          ├─► F1 PTC ─► J3–J10 V+
          ├─► 200k/100k divider ─► GPIO1 (ADC)
-         └─► 2 × 100 µF 10 V bulk
+         └─► 3 × 100 µF 10 V bulk
 ```
 
 | Rail | Source | Range | Loads |
@@ -122,6 +122,13 @@ cell and reverse-bias U4 through R4. With the gate on B−:
   2.2 kΩ (derived, scaled). Q1 then dissipates ≤ ≈5.7 V × 58 mA ≈ 0.33 W (derived), ≈+41 °C at 125 °C/W
   max steady-state [AO Thermal Characteristics]. Peak stress ≈8.4 V (derived), inside the ratings.
   **The reversed cell is slowly discharged (≈50 mA) and is not protected by U4 in this state.**
+- **Re-check against the BQ24074 (2026-11-14).** Before charging, the BQ24074 sources only
+  I_BAT(SC) ≈1.3 mA into BAT until the pin rises above V_BAT(SC) 1.6/1.8/2.0 V; above that it pre-charges
+  at K_PRECHG / R_ISET = 70/88/106 AΩ ÷ 1.8 kΩ ≈ 39/49/59 mA until V_LOWV 3.0 V [BQ §9.3.5, EC]. So the
+  bound on current into a reversed cell is the same ≈50–60 mA as with the TP4056, and only ≈1.3 mA while
+  Q1 holds VBAT_RAW below ≈1.6 V. **New concern:** the BQ24074 BAT pin is rated −0.3 V minimum [BQ AMR];
+  the SPICE run must confirm that a reversed cell cannot pull VBAT_RAW below that through Q1 or U4's
+  CS/VCC paths. If it can, add a small Schottky clamp from GND to VBAT_RAW (TODO (verify), OQ-A5).
 - **Confidence:** this is reasoned analysis, not a datasheet guarantee. It should be simulated and then
   tested on a sacrificial board before the ASM-6 gate (see OQ-A5).
 
@@ -216,7 +223,7 @@ only one whose datasheet lets PWR-9 be shown to hold: 1 A rating ≥ 600 mA, and
 
 - **Capacitors:** C21 1 µF at the input (≥1 µF required), C28 22 µF + C27 10 µF + 100 nF at the output —
   ≈32 µF nominal, inside the 1–200 µF stable range [TLV §5.3] and meeting PWR-11's ≥22 µF.
-  2 × 100 µF (C29, C30) on VBAT_SW next to the amp and zone connectors meet PWR-11's ≥100 µF.
+  **3 × 100 µF 10 V** (C29, C30, C32; GRM31CR61A107MEA8L) on VBAT_SW next to the amp and zone connectors (OQ-A9). Murata's DC-bias curve could not be retrieved (JS-only product page), so per the owner's rule ("add a third if the derated value is short") a third part is fitted: typical 1206 100 µF X5R retention at 4 V is roughly 40–60 % (industry-typical, UNVERIFIED), i.e. ≈120–180 µF effective for three, ≥ PWR-11's 100 µF.
   DC-bias derating of the 100 µF 6.3 V X5R parts at 4.2 V is UNVERIFIED [SAM gives nominal only].
   Alternative considered: tantalum TAJB107K006 (Basic, C16133, $0.2515, case B 3.5 × 2.8 × 1.9 mm):
   ESR 1.7 Ω max at 100 kHz and 224 mA RMS ripple rating [TAJ] — rejected, because 1.7 Ω × the ≈0.46 A
@@ -230,6 +237,16 @@ only one whose datasheet lets PWR-9 be shown to hold: 1 A rating ≥ 600 mA, and
   ADC samples (up to ≈0.42 A more × 0.25 Ω ≈ 0.1 V) stays inside that margin. Below ≈3.45 V at
   VBAT_SW the 3V3 rail tracks the battery down (3.3 V is no longer regulated) but remains in the
   module's 3.0–3.6 V range.
+- **Headroom re-run for the BQ24074 (2026-11-14, derived).** The charger's battery FET adds
+  V_DO(BAT-OUT) 50/100 mV typ/max at 1 A [BQ] ≈ ≤0.10 Ω, so the cell → LDO-input path is ≈0.35 Ω max
+  (Q3 64 + Q1 85 + BQ ≈100 + Q2 85 + JST 20 mΩ), plus cell and lead resistance (UNVERIFIED). Drop:
+  ≈0.26 V at 0.74 A, ≈0.41 V at 1.16 A. **The 3.35 V cutoff (PWR-12) does not change:** the gauge reads
+  VBAT_SW, downstream of the whole path, so the margin above the LDO's ≈3.15 V minimum input is still
+  ≈0.2 V. The worst load step between ADC samples is now ≈0.42 A × 0.35 Ω ≈ 0.15 V — still inside that
+  margin, but thinner (was 0.10 V). The cost is capacity left in the cell under heavy load: at the cutoff
+  the cell sits at ≈3.6 V under the 0.74 A worst case, ≈3.42 V at the 200 mA typical load. Firmware
+  should sample VBAT_SW at least every 100 ms near the cutoff and apply it to the lowest reading over a
+  short window, so a load step cannot hide a brown-out (TODO (firmware)).
 - **Thermal (derived).** (4.2 − 3.3) V × 0.175 A ≈ 0.16 W → ≈+37 °C at 231.1 °C/W (JEDEC) or ≈+16 °C at
   100.8 °C/W (EVM-style copper) [TLV §5.4].
 
@@ -712,14 +729,25 @@ All fifteen were answered by the owner. The questions as originally asked are in
 | OQ-A10 | Connector orientation decided during layout from the 65 × 40 × 30 mm cavity; **prefer top-entry** where it fits | §9.2 — layout |
 | OQ-A11 | Genuine ST USBLC6-2SC6 | §9.3 |
 | OQ-A12 | **No** firmware power cap; 3 h target is for typical use | §11.4, §3.4 of requirements |
-| OQ-A13 | Owner wants 2–3 concrete cell recommendations (capacity, ≥1.2 A discharge, IR, lead polarity, built-in PCM) | TODO |
+| OQ-A13 | **Adafruit #2011, 2000 mAh LiPo, 60 × 36 × 7 mm, JST-PH, own PCM** (chosen 2026-11-14 from the candidates below) | PWR-4, BOM BT1 |
 | OQ-A14 | Spare GPIOs (3, 18, 21, 38–42, 47, 48) to test pads; USB-present = BQ24074 PGOOD on GPIO10 | §3.4, MCU-7 |
 | OQ-A15 | One resettable PTC on the shared zone V+ | §6.2, LED-9 |
 
 ### Remaining before layout
 
-1. ~~Verify LCSC#/stock~~ — done 2026-11-14: BQ24074RGTR C54313, 120 Ω 1206 C17909 (Basic), 100 µF 10 V GRM31CR61A107MEA8L C883598, PTC nSMD075 C70078, 22 µF 25 V C45783 (Basic). Still to check: Murata DC-bias derating at 4.2 V for the bulk caps, and the PTC's drop at 300 mA.
-2. Re-run the cell-to-LDO dropout budget with the BQ battery FET (§3.4 knock-on) and confirm the PWR-12 cutoff.
-3. Re-check the reverse-battery analysis against the BQ24074 (OQ-A5).
-4. Recommend the cell (OQ-A13).
-5. ~~Pin map~~ — done: GPIO9 = CHG, GPIO10 = PGOOD (§5.1).
+1. ~~Verify LCSC#/stock~~ — done 2026-11-14 (BOM). Bulk caps: three fitted instead of verifying the derating curve (§4).
+2. ~~Dropout budget with the BQ battery FET~~ — done (§4): 3.35 V cutoff unchanged; load-step margin 0.15 V of 0.2 V.
+3. Reverse-battery re-check — bound unchanged (§3.3); **SPICE still required** for the BQ24074 BAT pin's −0.3 V limit (OQ-A5).
+4. ~~PTC drop~~ — nSMD075 is 90 mΩ min / 500 mΩ max after a trip → 27–150 mV at 300 mA on zone V+, which lowers pixel supply further below spec (A-2). Accepted with A-2; re-measure on the dev kit.
+5. ~~Cell~~ — Adafruit #2011 chosen (OQ-A13). Confirm its discharge rating covers the 1.16 A peak when bought.
+
+### Cell candidates (OQ-A13, 2026-11-14)
+
+All have a 2-pin JST-PH lead and their own protection board (a second layer under U4/Q3 — adds ≈50–60 mΩ of
+path resistance and cuts off at ≈2.75–3.0 V, both below the firmware's 3.35 V cutoff, so harmless).
+
+| Option | Size (mm) | Capacity | Discharge | Pros / cons |
+|---|---|---|---|---|
+| **Adafruit #2011 LiPo 2000 mAh** | 60 × 36 × 7 | 2000 mAh | not stated; Adafruit's own cells are typically 1C (≈2 A) — UNVERIFIED | Fits the 65 × 40 cavity footprint flat; known-good JST-PH **polarity** (matches the board); reputable; sold at Micro Center. Some resellers list it retired (replacement CE04378) — check stock. ≈8 h typical, ≈2.4 h worst case |
+| Generic **803450 1500 mAh** with JST-PH 2.0 (eBay/Amazon/LiPo makers) | 8 × 34 × 50 | 1500 mAh | sellers list 1C (1.5 A) max; some 0.5C | The size requirements.md was written around; cheap. Sellers disagree on specs and **lead polarity is not guaranteed** — check with the multimeter before plugging in (PWR-3 protects the board anyway). Avoid listings rated 0.5C (750 mA < 1.16 A peak) |
+| 603450 / 503562 1200 mAh class with PCM + JST-PH | ≈6 × 34 × 50–62 | 1200 mAh | 1C (1.2 A) | Thinner, fallback if height is tight; meets the 1.2 A peak with no margin; ≈6 h typical |

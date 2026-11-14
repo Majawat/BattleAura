@@ -351,7 +351,7 @@ Stage 1 drives pixels straight from a 3.3 V GPIO. That typically works, but is n
 | OQ-A10 connectors | Decided during layout from the cavity measurements; prefer top-entry where it fits. |
 | OQ-A11 USB ESD | Genuine ST USBLC6-2SC6. |
 | OQ-A12 runtime | No firmware power cap; 3 h applies to typical use (§3.4). |
-| OQ-A13 cell | Candidate cells to be researched and proposed to the owner (PWR-4). |
+| OQ-A13 cell | **Adafruit #2011, 2000 mAh, 60 × 36 × 7 mm**, JST-PH, own protection board. Fits the cavity footprint flat; known-good lead polarity. ≈8 h typical, ≈2.4 h continuous worst case. Supersedes the generic 803450 recommendation in PWR-4. |
 | OQ-A14 extras | Spare GPIOs to test pads; USB-present readable by firmware (PWR-8). |
 | OQ-A15 V+ short | Resettable PTC on the shared zone V+ (LED-9). |
 

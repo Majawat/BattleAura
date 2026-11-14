@@ -32,6 +32,6 @@ C21-C23,Capacitor 1 uF 25 V X5R 0402 (U2 input; EN delay; Q2 gate-source soft st
 C24-C27,Capacitor 10 uF 10 V X5R 0603 (VBUS; U3 BAT; U5 VDD; U1 3V3),CL10A106KP8NNNC,C19702,4,0.0233,https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf?productCode=C19702
 C28,Capacitor 22 uF 6.3 V X5R 0603 (U2 output),CL10A226MQ8NRNC,C59461,1,0.0221,https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf?productCode=C59461
 C31,Capacitor 22 uF 25 V X5R 0805 (U3 OUT / VSYS),CL21A226MAQNNNE,C45783,1,,
-"C29,C30","Capacitor 100 uF 10 V X5R 1206 (VBAT_SW bulk, OQ-A9; Murata DC-bias curve available - add a third if derated value is short)",GRM31CR61A107MEA8L,C883598,2,0.2721,
-BT1 (off-board),"LiPo pouch cell 803450 class, ~1500 mAh, >=1.2 A continuous, JST-PH 2.0 lead - candidates pending (OQ-A13)",TBD,n/a,1,TBD,n/a
+"C29,C30,C32","Capacitor 100 uF 10 V X5R 1206 (VBAT_SW bulk, OQ-A9; third fitted because the DC-bias curve could not be verified)",GRM31CR61A107MEA8L,C883598,3,0.2721,
+BT1 (off-board),"LiPo 3.7 V 2000 mAh, 60x36x7 mm, JST-PH 2.0 lead, built-in protection (OQ-A13)",Adafruit 2011,n/a,1,12.50,https://www.adafruit.com/product/2011
 LS1 (off-board),Speaker 8 Ohm 1 W with JST-SH 2-pin lead (OQ-A7) - not selected,TBD,n/a,1,TBD,n/a
