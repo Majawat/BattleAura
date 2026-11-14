@@ -740,6 +740,10 @@ All fifteen were answered by the owner. The questions as originally asked are in
 3. Reverse-battery re-check — bound unchanged (§3.3); **SPICE still required** for the BQ24074 BAT pin's −0.3 V limit (OQ-A5).
 4. ~~PTC drop~~ — nSMD075 is 90 mΩ min / 500 mΩ max after a trip → 27–150 mV at 300 mA on zone V+, which lowers pixel supply further below spec (A-2). Accepted with A-2; re-measure on the dev kit.
 5. ~~Cell~~ — Adafruit #2011 chosen (OQ-A13). Confirm its discharge rating covers the 1.16 A peak when bought.
+6. ~~Netlist~~ — `hardware/battleaura_v2.py` → `hardware/battleaura_v2.net`: 113 components, ERC 0 errors; per-LCSC counts match `bom-draft.csv` (97 parts).
+7. **J2 pin polarity** vs the Adafruit #2011 lead — confirm before layout fixes the connector orientation.
+8. Reverse-battery SPICE run (item 3) — ngspice 45.2 is installed on Bastet.
+9. Layout handoff for the Fable 5.2 session: PCB file with the 45 × 36 mm outline, JLC design rules and the netlist imported.
 
 ### Cell candidates (OQ-A13, 2026-11-14)
 
